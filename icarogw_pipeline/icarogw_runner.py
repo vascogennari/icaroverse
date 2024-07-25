@@ -1,4 +1,4 @@
-import os, sys, configparser, ast
+import os, sys, configparser, ast, shutil
 from optparse import OptionParser
 from options import usage
 
@@ -70,9 +70,6 @@ def default_priors():
         'kappa'       : [-6. , 6.  ],
         'zp'          : [0. , 4.   ],
         'R0'          : [0. , 100. ],
-
-        # Prior conditional
-        #'mean_three_sigmas': [0, 1000],
     }
 
     return prior
@@ -441,6 +438,7 @@ def main():
         'N-z-slices'            : 10,
         'bounds-m1'             : [1, 100],
         'bounds-z'              : [1e-5, 0.8],
+        'true-values'           : {},
     }
 
     # Read options from config file
@@ -483,10 +481,16 @@ def main():
         if ('bounds-m1' in key) or ('bounds-z' in key):
             try: input_pars[key] = Config.get('plots', key)
             except: pass
+        if ('true-values' in key):
+            try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
+            except: pass
 
     # Set output directory
     # FIXME: Add option to control that only one of the two between 'O3-cosmology' and 'simulation' is active.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
+
+    # Save the config file to output
+    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
 
     # Deviate stdout and stderr to file
     if not input_pars['screen-output']:
@@ -546,18 +550,37 @@ def main():
     input_pars['output'] = os.path.join(input_pars['output'], 'plots')
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
+    # Primary mass
     if not 'Redshift' in input_pars['model-primary']:
         curves, plot_dict = icaroproc.PrimaryMassFunction(df, m1w, priors_dict, input_pars)
-        icaroproc.plot_curves(curves, plot_dict, logscale = True)
+        if input_pars['true-values'] == {}:
+            icaroproc.plot_curves(curves, plot_dict, logscale = True)
+        else:
+            curve_true, _ = icaroproc.PrimaryMassFunction(pd.DataFrame(input_pars['true-values'], index = [0]), m1w, priors_dict, input_pars)
+            icaroproc.plot_curves(curves, plot_dict, truth = curve_true, logscale = True)
     else:
         curves, plot_dict = icaroproc.PrimaryMassFunction(df, m1w, priors_dict, input_pars)
-        icaroproc.plot_curves_evolving(curves, plot_dict)
+        if input_pars['true-values'] == {}:
+            icaroproc.plot_curves_evolving(curves, plot_dict)
+        else:
+            curve_true, _ = icaroproc.PrimaryMassFunction(pd.DataFrame(input_pars['true-values'], index = [0]), m1w, priors_dict, input_pars)
+            icaroproc.plot_curves_evolving_long(curves, plot_dict, truth = curve_true)
 
-    curves, plot_dict   = icaroproc.SecondaryMassFunction(df, m2w, priors_dict, input_pars)
-    icaroproc.plot_curves(curves, plot_dict, figsize = (8,8))
+    # Secondary mass
+    curves, plot_dict = icaroproc.SecondaryMassFunction(df, m2w, priors_dict, input_pars)
+    if input_pars['true-values'] == {}:
+        icaroproc.plot_curves(curves, plot_dict, figsize = (8,8))
+    else:
+        curve_true, _ = icaroproc.SecondaryMassFunction(pd.DataFrame(input_pars['true-values'], index = [0]), m2w, priors_dict, input_pars)
+        icaroproc.plot_curves(curves, plot_dict, figsize = (8,8), truth = curve_true[0])
 
-    curves, plot_dict   = icaroproc.RateEvolutionFunction(df, rw, priors_dict, input_pars)
-    icaroproc.plot_curves(curves, plot_dict)
+    # Rate evolution
+    curves, plot_dict = icaroproc.RateEvolutionFunction(df, rw, priors_dict, input_pars)
+    if input_pars['true-values'] == {}:
+        icaroproc.plot_curves(curves, plot_dict)
+    else:
+        curve_true, _ = icaroproc.RateEvolutionFunction(pd.DataFrame(input_pars['true-values'], index = [0]), rw, priors_dict, input_pars)
+        icaroproc.plot_curves(curves, plot_dict, truth = curve_true[0])
 
     print('\n * Finished.\n')
 

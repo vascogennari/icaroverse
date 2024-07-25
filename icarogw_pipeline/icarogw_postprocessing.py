@@ -3,23 +3,22 @@ import json, pandas as pd, numpy as np
 import matplotlib.pyplot as plt
 import tqdm, seaborn as sns
 
-from matplotlib import rcParams
-from distutils.spawn import find_executable
+# from matplotlib import rcParams
+# from distutils.spawn import find_executable
 
-if find_executable('latex'): rcParams["text.usetex"] = True
-rcParams["xtick.labelsize"] = 18
-rcParams["ytick.labelsize"] = 13
-rcParams["xtick.direction"] = "in"
-rcParams["ytick.direction"] = "in"
-rcParams["legend.fontsize"] = 15
-rcParams["legend.frameon"]  = False
-rcParams["legend.loc"]      = "best"
-rcParams["axes.labelsize"]  = 24
-rcParams["axes.grid"]       = True
-rcParams["grid.alpha"]      = 0.6
-rcParams["grid.linestyle"]  = "dotted"
-rcParams["lines.linewidth"] = 0.7
-
+#if find_executable('latex'): rcParams["text.usetex"] = True
+# rcParams["xtick.labelsize"] = 18
+# rcParams["ytick.labelsize"] = 13
+# rcParams["xtick.direction"] = "in"
+# rcParams["ytick.direction"] = "in"
+# rcParams["legend.fontsize"] = 15
+# rcParams["legend.frameon"]  = False
+# rcParams["legend.loc"]      = "best"
+# rcParams["axes.labelsize"]  = 24
+# rcParams["axes.grid"]       = True
+# rcParams["grid.alpha"]      = 0.6
+# rcParams["grid.linestyle"]  = "dotted"
+# rcParams["lines.linewidth"] = 0.7
 
 # ---------------------------------------------------------------- #
 # -------------------- Wrappers initialization ------------------- #
@@ -79,7 +78,7 @@ def initialize_Rate(df, func):
 # ------------------------------------------------------------- #
 # ----------------------- Generate plots ---------------------- #
 # ------------------------------------------------------------- #
-def plot_curves(curves, pl_dct, logscale = False, figsize = (10,5), curves_prior = 0):
+def plot_curves(curves, pl_dct, logscale = False, figsize = (10,5), truth = np.array([0]), curves_prior = 0):
 
     _, ax = plt.subplots(figsize = figsize)
 
@@ -97,12 +96,14 @@ def plot_curves(curves, pl_dct, logscale = False, figsize = (10,5), curves_prior
     ax.fill_between(pl_dct['x'], MF[16], MF[84],   color = pl_dct['color'], alpha = 0.5, label = pl_dct['label'])
     ax.plot(        pl_dct['x'], MF[50], lw = 0.7, color = pl_dct['color'])
 
+    if not (truth.all() == 0 and len(truth) == 1):
+        ax.plot(pl_dct['x'], truth, lw = 0.3, color = '#494949')
+
     if logscale:
         plt.yscale('log')
         plt.ylim(1e-5, 1)
 
     plt.xlim( pl_dct['x_min'], pl_dct['x_max'])
-    #plt.ylim(-3, 3)
     plt.xlabel(pl_dct['x_label'])
     plt.ylabel(pl_dct['y_label'])
 
@@ -113,7 +114,36 @@ def plot_curves(curves, pl_dct, logscale = False, figsize = (10,5), curves_prior
     plt.close()
 
 
-def plot_curves_evolving(curves, pl_dct, curves_prior = {}):
+def plot_curves_evolving_long(curves, pl_dct, truth = {}, curves_prior = {}):
+
+    _, ax = plt.subplots(figsize = (5, 9))
+
+    if bool(curves_prior):
+        for zi, z_array in enumerate(pl_dct['z_grid']):
+            z = z_array[0]
+            ax.fill_between(pl_dct['x'], curves_prior[zi][5] +z, curves_prior[zi][95]+z, color = '#AB7C41', alpha = 0.05)
+            ax.fill_between(pl_dct['x'], curves_prior[zi][16]+z, curves_prior[zi][84]+z, color = '#AB7C41', alpha = 0.15)
+ 
+    for zi, z_array in enumerate(pl_dct['z_grid']):
+        z = z_array[0]
+        ax.fill_between(pl_dct['x'], curves[zi][5] +z, curves[zi][95]+z, color = pl_dct['colors'][zi], alpha = 0.25)
+        ax.fill_between(pl_dct['x'], curves[zi][16]+z, curves[zi][84]+z, color = pl_dct['colors'][zi], alpha = 0.5)
+        ax.plot(        pl_dct['x'], curves[zi][50]+z, lw = 0.7,         color = pl_dct['colors'][zi])
+    
+        if not truth == {}:
+            ax.plot(    pl_dct['x'], truth[zi][50]+z,  lw = 0.3,         color = '#494949')
+
+    ax.set_xlim(0, 70)
+    ax.set_xlabel(pl_dct['x_label'])
+    ax.set_ylabel(pl_dct['y_label_a'])
+
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('{}/{}.pdf'.format(pl_dct['output'], pl_dct['figname']), transparent = True)
+    plt.close()
+
+
+def plot_curves_evolving(curves, pl_dct, truth = {}, curves_prior = {}):
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 5))
 
@@ -122,8 +152,6 @@ def plot_curves_evolving(curves, pl_dct, curves_prior = {}):
             z = z_array[0]
             ax[0].fill_between(pl_dct['x'], curves_prior[zi][5] +z, curves_prior[zi][95]+z, color = '#AB7C41', alpha = 0.05)
             ax[0].fill_between(pl_dct['x'], curves_prior[zi][16]+z, curves_prior[zi][84]+z, color = '#AB7C41', alpha = 0.15)
-            #ax[0].plot(        pl_dct['x'], curves_prior[zi][50]+z, lw = 0.7,               color = '#37571A')
-            #ax[1].plot(        pl_dct['x'], curves_prior[zi][50],   lw = 1,                 color = pl_dct['colors'][zi], alpha = 0.25)
             if zi == 0:
                 ax[1].fill_between(pl_dct['x'], curves_prior[zi][5],  curves_prior[zi][95], color = '#AB7C41', alpha = 0.05)
                 ax[1].fill_between(pl_dct['x'], curves_prior[zi][16], curves_prior[zi][84], color = '#AB7C41', alpha = 0.15, label = '$\mathrm{Prior}$')
@@ -137,6 +165,10 @@ def plot_curves_evolving(curves, pl_dct, curves_prior = {}):
         ax[0].fill_between(pl_dct['x'], curves[zi][16]+z, curves[zi][84]+z, color = pl_dct['colors'][zi], alpha = 0.5)
         ax[0].plot(        pl_dct['x'], curves[zi][50]+z, lw = 0.7,         color = pl_dct['colors'][zi])
         ax[1].plot(        pl_dct['x'], curves[zi][50],   lw = 1,           color = pl_dct['colors'][zi])
+    
+        if not truth == {}:
+            ax[0].plot(    pl_dct['x'], truth[zi][50]+z,  lw = 0.3,         color = '#494949')
+            ax[1].plot(    pl_dct['x'], truth[zi][50],    lw = 0.3,         color = '#494949')
     
     # ------------------------------------------------------------------ #
     # White plot slides/poster
@@ -187,9 +219,6 @@ def plot_curves_evolving_MassRedshift_Joint(curves, pl_dct):
  
     for zi, z_array in enumerate(pl_dct['z_grid'][::-1]):
         z = z_array[0]
-        #ax[0].fill_between(pl_dct['x'], curves[zi][5] +z, curves[zi][95]+z, color = pl_dct['colors'][zi], alpha = 0.25)
-        #ax[0].fill_between(pl_dct['x'], curves[zi][16]+z, curves[zi][84]+z, color = pl_dct['colors'][zi], alpha = 0.5)
-        #ax[0].plot(        pl_dct['x'], curves[zi][50]+z, lw = 0.7,         color = pl_dct['colors'][zi])
         ax[1].plot(        pl_dct['x'], curves[len(pl_dct['z_grid'])-1-zi][50],      lw = 1,   color = pl_dct['colors'][len(pl_dct['z_grid'])-1-zi])
         ax[0].fill_between(pl_dct['x'], curves[len(pl_dct['z_grid'])-1-zi][50]+z, z, lw = 0.7, color = pl_dct['colors'][len(pl_dct['z_grid'])-1-zi], alpha = 0.7)
 
@@ -568,8 +597,6 @@ def main():
         f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), round(tmp['log_evidence_err'], 2), round(max(df['log_likelihood']), 2)))
 
     # Downsample the posteriors
-    # df = df[df.zt < 0.4]
-    # df = df.reset_index()
     if not input_pars['downsample'] == -1:
         print('Total number of samples: {}'.format(len(df)))
         df = df.iloc[::input_pars['downsample']]
@@ -619,7 +646,7 @@ def main():
         curves_prior = np.zeros(5)
         print('\nPlotting rate evolution probability distribution.')
         curves, plot_dict = RateEvolutionFunctionProb(df, input_pars)
-        plot_curves(curves, plot_dict, curves_prior = curves_prior)#, figsize = (8,6))
+        plot_curves(curves, plot_dict, curves_prior = curves_prior)
 
     if input_pars['2D_joint']:
         print('\nPlotting 2D joint Mass-Redshift distribution.')
