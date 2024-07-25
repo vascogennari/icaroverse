@@ -2,7 +2,7 @@ import os, sys, configparser, ast, shutil
 from optparse import OptionParser
 from options import usage
 
-import pickle, h5py, pandas as pd
+import pickle, h5py, pandas as pd, json
 import numpy as np
 import icarogw, bilby
 import icarogw_postprocessing as icaroproc
@@ -176,6 +176,7 @@ class Rate():
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
+        pars['population-parameters'] = self.w.population_parameters
     
     def return_Rate(self):
         return self.w
@@ -542,8 +543,16 @@ def main():
     hierarchical.plot_corner()
 
     # Get the samples
-    df = pd.DataFrame(hierarchical.samples, columns = hierarchical.search_parameter_keys)
-    priors_dict = hierarchical.priors
+    samp_path = os.path.join(input_pars['output'], 'sampler', 'label_result.json')
+    with open(samp_path) as f:
+        tmp = json.load(f)
+        df  = pd.DataFrame(tmp['posterior']['content'])
+        priors_dict = tmp['priors']
+
+    # Save the evidence
+    with open('{}/log_evidence.txt'.format(input_pars['output']), 'w') as f:
+        f.write('{}\n'.format('# log_Z_base_e\tlog_Z_err\tmax_log_L'))
+        f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), round(tmp['log_evidence_err'], 2), round(max(df['log_likelihood']), 2)))
 
     # Make plots
     print(' * Producing plots.\n')

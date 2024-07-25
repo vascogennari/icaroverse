@@ -1,4 +1,4 @@
-import os, sys, configparser
+import os, sys
 
 template = """executable = {executable}
 universe = vanilla
