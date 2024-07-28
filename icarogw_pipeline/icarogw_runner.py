@@ -5,7 +5,7 @@ from options import usage
 import pickle, h5py, pandas as pd, json
 import numpy as np
 import icarogw, bilby
-import icarogw_postprocessing as icaroproc
+import icarogw_postprocessing
 
 
 
@@ -440,6 +440,7 @@ def main():
         'bounds-m1'             : [1, 100],
         'bounds-z'              : [1e-5, 0.8],
         'true-values'           : {},
+        'selection-effects'     : 0,
     }
 
     # Read options from config file
@@ -484,6 +485,9 @@ def main():
             except: pass
         if ('true-values' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
+            except: pass
+        if ('selection-effects' in key):
+            try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
 
     # Set output directory
@@ -555,42 +559,13 @@ def main():
         f.write('{}\n'.format('# log_Z_base_e\tlog_Z_err\tmax_log_L'))
         f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), round(tmp['log_evidence_err'], 2), round(max(df['log_likelihood']), 2)))
 
-    # Make plots
+    # Plots production
     print(' * Producing plots.\n')
     input_pars['output'] = os.path.join(input_pars['output'], 'plots')
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
-    # Primary mass
-    if not 'Redshift' in input_pars['model-primary']:
-        curves, plot_dict = icaroproc.PrimaryMassFunction(df, m1w, priors_dict, input_pars)
-        if input_pars['true-values'] == {}:
-            icaroproc.plot_curves(curves, plot_dict, logscale = True)
-        else:
-            curve_true, _ = icaroproc.PrimaryMassFunction(pd.DataFrame(input_pars['true-values'], index = [0]), m1w, priors_dict, input_pars)
-            icaroproc.plot_curves(curves, plot_dict, truth = curve_true, logscale = True)
-    else:
-        curves, plot_dict = icaroproc.PrimaryMassFunction(df, m1w, priors_dict, input_pars)
-        if input_pars['true-values'] == {}:
-            icaroproc.plot_curves_evolving(curves, plot_dict)
-        else:
-            curve_true, _ = icaroproc.PrimaryMassFunction(pd.DataFrame(input_pars['true-values'], index = [0]), m1w, priors_dict, input_pars)
-            icaroproc.plot_curves_evolving_long(curves, plot_dict, truth = curve_true)
-
-    # Secondary mass
-    curves, plot_dict = icaroproc.SecondaryMassFunction(df, m2w, priors_dict, input_pars)
-    if input_pars['true-values'] == {}:
-        icaroproc.plot_curves(curves, plot_dict, figsize = (8,8))
-    else:
-        curve_true, _ = icaroproc.SecondaryMassFunction(pd.DataFrame(input_pars['true-values'], index = [0]), m2w, priors_dict, input_pars)
-        icaroproc.plot_curves(curves, plot_dict, figsize = (8,8), truth = curve_true[0])
-
-    # Rate evolution
-    curves, plot_dict = icaroproc.RateEvolutionFunction(df, rw, priors_dict, input_pars)
-    if input_pars['true-values'] == {}:
-        icaroproc.plot_curves(curves, plot_dict)
-    else:
-        curve_true, _ = icaroproc.RateEvolutionFunction(pd.DataFrame(input_pars['true-values'], index = [0]), rw, priors_dict, input_pars)
-        icaroproc.plot_curves(curves, plot_dict, truth = curve_true[0])
+    tmp = icarogw_postprocessing.Plots(input_pars, df, m1w, m2w, rw, priors_dict, injections)
+    tmp.ProducePlots()
 
     print('\n * Finished.\n')
 

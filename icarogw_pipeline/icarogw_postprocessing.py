@@ -2,6 +2,7 @@ import os, icarogw, bilby
 import json, pandas as pd, numpy as np
 import matplotlib.pyplot as plt
 import tqdm, seaborn as sns
+from scipy.stats import kde
 
 # from matplotlib import rcParams
 # from distutils.spawn import find_executable
@@ -20,63 +21,37 @@ import tqdm, seaborn as sns
 # rcParams["grid.linestyle"]  = "dotted"
 # rcParams["lines.linewidth"] = 0.7
 
-# ---------------------------------------------------------------- #
-# -------------------- Wrappers initialization ------------------- #
-# ---------------------------------------------------------------- #
-def initialize_PrimaryMass(df, func, pars):
 
-    if   func == 'PowerLaw':     w = icarogw.wrappers.massprior_PowerLaw()
-    elif func == 'PowerLawPeak': w = icarogw.wrappers.massprior_PowerLawPeak()
-    else:
-        raise ValueError('Unknown function for the primary mass wrapper.')
 
-    if pars['smoothing']:
-        w = icarogw.wrappers.lowSmoothedwrapper(w)
-        
-    if pars['evolving'] and pars['transition'] == '':                w = icarogw.wrappers.mixed_mass_redshift_evolving(w)
-    if pars['evolving'] and pars['transition'] == 'sigmoid':         w = icarogw.wrappers.mixed_mass_redshift_evolving_sigmoid(w)
-    if pars['evolving'] and pars['transition'] == 'double-sigmoid':  w = icarogw.wrappers.double_mixed_mass_redshift_evolving_sigmoid(w)
-    if pars['evolving'] and pars['transition'] == 'linear':          w = icarogw.wrappers.double_mixed_mass_redshift_evolving_linear(w)
-    if pars['evolving'] and pars['transition'] == 'linear-sinusoid': w = icarogw.wrappers.double_mixed_mass_redshift_evolving_linear_sinusoid(w)
+def selection_effects_countour_level(x, y):
 
-    # FIXME: Change the structure
-    if pars['evolving'] and func == 'PowerLawZPeakZ':                w = icarogw.wrappers.PowerLawLinear_GaussianLinear_TransitionLinear()
+    from astropy.cosmology import FlatLambdaCDM
 
-    if pars['positive']:
-        w = icarogw.wrappers.massprior_PowerLawPeakPositive(w)
-    if not (set(w.population_parameters) <= set(df.keys())):
-        raise ValueError('Cannot find the parameters for the selected primary mass function. Please make sure that you are using the correct one.')
+    cosmo_ref = icarogw.cosmology.astropycosmology(zmax = 20.)
+    cosmo_ref.build_cosmology(FlatLambdaCDM(H0 = 67.7, Om0 = 0.308))
 
-    return w
+    y  = cosmo_ref.dl2z(y)
+    x /= (1+y)
 
-def initialize_SecondaryMass(df, func):
+    k = kde.gaussian_kde([x, y])
 
-    if func == 'MassRatio': w = icarogw.wrappers.mass_ratio_prior_Gaussian()
-    else:
-        raise ValueError('Unknown function for the secondary mass wrapper.')
-    if not (set(w.population_parameters) <= set(df.keys())):
-        raise ValueError('Cannot find the parameters for the selected secondary mass function. Please make sure that you are using the correct one.')
+    # Evaluate the KDE on a grid
+    N = 100
+    x_grid, y_grid = np.meshgrid(np.linspace(x.min(), x.max(), N), np.linspace(y.min(), y.max(), N))
+    z = k(np.vstack([x_grid.ravel(), y_grid.ravel()])).reshape(x_grid.shape)
 
-    return w
+    # Compute the credible interval
+    sorted_z = np.sort(z.ravel())
+    cumulative_sum = np.cumsum(sorted_z)
+    cumulative_sum /= cumulative_sum[-1]  # Normalize to make it a CDF
 
-def initialize_Rate(df, func):
+    # Find the contour level for the credible interval
+    credible_level = 0.1
+    contour_level = sorted_z[np.searchsorted(cumulative_sum, credible_level)]
 
-    if   func == 'MadauDickinson':      w = icarogw.wrappers.rateevolution_Madau()
-    elif func == 'beta':                w = icarogw.wrappers.rateevolution_beta()
-    elif func == 'betaline':            w = icarogw.wrappers.rateevolution_beta_line()
-    elif func == 'MadauDickinsonGamma': w = icarogw.wrappers.rateevolution_Madau_gamma()
-    elif func == 'PowerLaw':            w = icarogw.wrappers.rateevolution_PowerLaw()
-    else:
-        raise ValueError('Unknown function for the rate wrapper.')
-    if not (set(w.population_parameters) <= set(df.keys())):
-        raise ValueError('Cannot find the parameters for the selected rate. Please make sure that you are using the correct one.')
-
-    return w
-# ---------------------------------------------------------------- #
-# ---------------------------------------------------------------- #
-
+    return x_grid, y_grid, z, contour_level
 # ------------------------------------------------------------- #
-# ----------------------- Generate plots ---------------------- #
+
 # ------------------------------------------------------------- #
 def plot_curves(curves, pl_dct, logscale = False, figsize = (10,5), truth = np.array([0]), curves_prior = 0):
 
@@ -114,9 +89,13 @@ def plot_curves(curves, pl_dct, logscale = False, figsize = (10,5), truth = np.a
     plt.close()
 
 
-def plot_curves_evolving_long(curves, pl_dct, truth = {}, curves_prior = {}):
+def plot_curves_evolving_long(curves, pl_dct, truth = {}, curves_prior = {}, selection_effects = {}):
 
     _, ax = plt.subplots(figsize = (5, 9))
+
+    if not selection_effects == {}:
+        m1_grid, z_grid, height, contour_level = selection_effects_countour_level(selection_effects['mass_1'], selection_effects['luminosity_distance'])
+        ax.contourf(m1_grid, z_grid, height, levels = [contour_level, height.max()], colors = '#C4B692', alpha = 0.2)
 
     if bool(curves_prior):
         for zi, z_array in enumerate(pl_dct['z_grid']):
@@ -128,10 +107,10 @@ def plot_curves_evolving_long(curves, pl_dct, truth = {}, curves_prior = {}):
         z = z_array[0]
         ax.fill_between(pl_dct['x'], curves[zi][5] +z, curves[zi][95]+z, color = pl_dct['colors'][zi], alpha = 0.25)
         ax.fill_between(pl_dct['x'], curves[zi][16]+z, curves[zi][84]+z, color = pl_dct['colors'][zi], alpha = 0.5)
-        ax.plot(        pl_dct['x'], curves[zi][50]+z, lw = 0.7,         color = pl_dct['colors'][zi])
+        #ax.plot(        pl_dct['x'], curves[zi][50]+z, lw = 0.7,         color = pl_dct['colors'][zi])
     
         if not truth == {}:
-            ax.plot(    pl_dct['x'], truth[zi][50]+z,  lw = 0.3,         color = '#494949')
+            ax.plot(    pl_dct['x'], truth[zi][50]+z,  lw = 0.5,         color = '#494949')
 
     ax.set_xlim(0, 70)
     ax.set_xlabel(pl_dct['x_label'])
@@ -237,11 +216,8 @@ def plot_curves_evolving_MassRedshift_Joint(curves, pl_dct):
     fig.savefig('{}/{}.pdf'.format(pl_dct['output'], pl_dct['figname']), transparent = True)
     plt.close()
 # ------------------------------------------------------------- #
-# ------------------------------------------------------------- #
 
-# ------------------------------------------------------------------ #
-# ----------------------- Return level curves ---------------------- #
-# ------------------------------------------------------------------ #
+# ------------------------------------------------------------- #
 def PrimaryMassFunction(df, w, p_dct, pars, prior = False):
 
     mass_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
@@ -261,7 +237,7 @@ def PrimaryMassFunction(df, w, p_dct, pars, prior = False):
         zy         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-z-slices'])
         _, z_grid  = np.meshgrid(zx, zy)
 
-        colors = sns.color_palette('RdBu_r', pars['N-z-slices'])   # 'blend:#E5E3C8,#914E63'
+        colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])   # 'RdBu_r'
         zi = 0
 
         for z_array in tqdm.tqdm(z_grid):
@@ -529,133 +505,60 @@ def MassRedshift_Joint(df, pars):
     }
 
     return curves, plot_dict
-# ---------------------------------------------------------------- #
-# ---------------------------------------------------------------- #
+# ------------------------------------------------------------- #
 
+# ------------------------------------------------------------- #
+class Plots:
 
-# ---------------------------------------------------------------- #
-# ------------------------- Main function ------------------------ #
-# ---------------------------------------------------------------- #
-def main():
+    def __init__(self, pars, df, m1w, m2w, rw, priors, injections):
 
-    # INPUT PARAMETERS
-    input_pars = {
-        'model'       : 'PowerLaw',          # Options: [PowerLaw, PowerLawPeak, PowerLawZPeakZ]
-        'rate'        : 'MadauDickinson',    # Options: [MadauDickinson, beta, betaline, MadauDickinsonGamma, PowerLaw]
-        'transition'  : 'linear',            # Options: [sigmoid, double-sigmoid, linear, linear-sinusoid]
+        self.pars   = pars
+        self.df     = df
+        self.m1w    = m1w
+        self.m2w    = m2w
+        self.rw     = rw
+        self.priors = priors
+        self.inj    = injections
 
-        'Primary'     : 1,
-        'Secondary'   : 1,
-        'Rate'        : 1,
-        'RateProb'    : 0,
-        'Transition'  : 1,
-        '2D_joint'    : 0,
+    def PrimaryMass(self):
 
-        'evolving'    : 1,              # Evolution already implies an evolving gaussian peak: you don't need to use PowerLawPeak as mass model
-        'smoothing'   : 1,
-        'positive'    : 0,
-        'logscale'    : 1,
-        'priors'      : 0,
-        'cosmology'   : 0,
-
-        'N-points'    : 1000,
-        'N-z-slices'  : 10,
-        'N_samp_prior': 1000,
-        'downsample'  : -1,
-
-        'bounds-m1'   : [1, 100],
-        'bounds-z'    : [1e-5, 0.8],
-
-        'filename'    : 'PLGz-m1_G-q_EXP16_md_double-mixed-linear_COND-PRIOR',
-        'root-path'   : '/Users/vgennari/Documents/work/code/python/icarogw/results/evolution_study/sigmoid',
-    }
-
-    # Set output directory
-    if input_pars['evolving']:
-        if not input_pars['cosmology']: input_pars['outdir-path'] = os.path.join(input_pars['root-path'], 'evolving', 'population', input_pars['filename'])
-        else:                           input_pars['outdir-path'] = os.path.join(input_pars['root-path'], 'evolving', 'cosmology',  input_pars['filename'])
-        input_pars['output'] = os.path.join(input_pars['outdir-path'], 'postprocessing')
-        input_pars['outdir-path'] = os.path.join(input_pars['outdir-path'], 'GWTC-3_FAR-025_PLGz-m1_G-q')
-    else:
-        if not input_pars['cosmology']: input_pars['outdir-path'] = os.path.join(input_pars['root-path'], 'non-evolving', 'population', input_pars['filename'])
-        else:                           input_pars['outdir-path'] = os.path.join(input_pars['root-path'], 'non-evolving', 'cosmology',  input_pars['filename'])
-        input_pars['output'] = os.path.join(input_pars['outdir-path'], 'postprocessing')
-        input_pars['outdir-path'] = os.path.join(input_pars['outdir-path'], 'GWTC-3_FAR-025_PLG-m1_G-q')
-    if not os.path.exists(input_pars['output']):
-        os.makedirs(input_pars['output'])
-
-    # Load samples as Data Frame
-    samp_path = os.path.join(input_pars['outdir-path'], 'label_result.json')
-    with open(samp_path) as f:
-        tmp = json.load(f)
-        df  = pd.DataFrame(tmp['posterior']['content'])
-        priors_dict = tmp['priors']
-
-    # Read and save the evidence
-    with open('{}/log_evidence.txt'.format(input_pars['output']), 'w') as f:
-        f.write('{}\n'.format('# log_Z_base_e\tlog_Z_err\tmax_log_L'))
-        f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), round(tmp['log_evidence_err'], 2), round(max(df['log_likelihood']), 2)))
-
-    # Downsample the posteriors
-    if not input_pars['downsample'] == -1:
-        print('Total number of samples: {}'.format(len(df)))
-        df = df.iloc[::input_pars['downsample']]
-        df = df.reset_index()
-        print('Reduced number of samples: {}'.format(len(df)))
-
-    if input_pars['Primary']:
-        print('\nPlotting primary mass function.')
-        if not input_pars['evolving']:
-            curves_prior = np.zeros(5)
-            if input_pars['priors']:
-                curves_prior, _ = PrimaryMassFunction(  df, priors_dict, input_pars, prior = True)
-            curves, plot_dict   = PrimaryMassFunction(  df, priors_dict, input_pars)
-            plot_curves(curves, plot_dict, curves_prior = curves_prior, logscale = True)
+        if not 'Redshift' in self.pars['model-primary']:
+            curves, plot_dict = PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
+            if self.pars['true-values'] == {}:
+                plot_curves(curves, plot_dict, logscale = True)
+            else:
+                curve_true, _ = PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
+                plot_curves(curves, plot_dict, truth = curve_true, logscale = True)
         else:
-            curves_prior = {}
-            if input_pars['priors']:
-                curves_prior, _ = PrimaryMassFunction(  df, priors_dict, input_pars, prior = True)
-            curves, plot_dict   = PrimaryMassFunction(  df, priors_dict, input_pars)
-            plot_curves_evolving(curves, plot_dict, curves_prior = curves_prior)
+            curves, plot_dict = PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
+            if self.pars['true-values'] == {}:
+                plot_curves_evolving(curves, plot_dict)
+            else:
+                curve_true, _ = PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
+                if not self.pars['selection-effects']: plot_curves_evolving_long(curves, plot_dict, truth = curve_true)
+                else:                                  plot_curves_evolving_long(curves, plot_dict, truth = curve_true, selection_effects = self.inj.injections_data)
 
-    if input_pars['Secondary']:
-        print('\nPlotting secondary mass function.')
-        curves_prior = np.zeros(5)
-        if input_pars['priors']:
-            curves_prior, _ = SecondaryMassFunction(df, priors_dict, input_pars, prior = True)
-        curves, plot_dict   = SecondaryMassFunction(df, priors_dict, input_pars)
-        plot_curves(curves, plot_dict, figsize = (8,8), curves_prior = curves_prior)
+    def SecondaryMass(self):
 
-    if input_pars['Transition']:
-        print('\nPlotting transition function.')
-        curves_prior = np.zeros(5)
-        if input_pars['priors']:
-            curves_prior, _ = TransitionFunction(df, priors_dict, input_pars, prior = True)
-        curves, plot_dict   = TransitionFunction(df, priors_dict, input_pars)
-        plot_curves(curves, plot_dict, curves_prior = curves_prior)
+        curves, plot_dict = SecondaryMassFunction(self.df, self.m2w, self.priors, self.pars)
+        if self.pars['true-values'] == {}:
+            plot_curves(curves, plot_dict, figsize = (8,8))
+        else:
+            curve_true, _ = SecondaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m2w, self.priors, self.pars)
+            plot_curves(curves, plot_dict, figsize = (8,8), truth = curve_true[0])
 
-    if input_pars['Rate']:
-        print('\nPlotting rate evolution function.')
-        curves_prior = np.zeros(5)
-        if input_pars['priors']:
-            curves_prior, _ = RateEvolutionFunction(df, priors_dict, input_pars, prior = True)
-        curves, plot_dict   = RateEvolutionFunction(df, priors_dict, input_pars)
-        plot_curves(curves, plot_dict, curves_prior = curves_prior)
+    def RateEvolution(self):
 
-    if input_pars['RateProb']:
-        curves_prior = np.zeros(5)
-        print('\nPlotting rate evolution probability distribution.')
-        curves, plot_dict = RateEvolutionFunctionProb(df, input_pars)
-        plot_curves(curves, plot_dict, curves_prior = curves_prior)
+        curves, plot_dict = RateEvolutionFunction(self.df, self.rw, self.priors, self.pars)
+        if self.pars['true-values'] == {}:
+            plot_curves(curves, plot_dict)
+        else:
+            curve_true, _ = RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.priors, self.pars)
+            plot_curves(curves, plot_dict, truth = curve_true[0])
 
-    if input_pars['2D_joint']:
-        print('\nPlotting 2D joint Mass-Redshift distribution.')
-        curves, plot_dict = MassRedshift_Joint(df, input_pars)
-        plot_curves_evolving_MassRedshift_Joint(curves, plot_dict)
-        
-    print('\nFinished.\n')
+    # Produce the plots
+    def ProducePlots(self):
 
-if __name__=='__main__':
-    main()
-# ---------------------------------------------------------------- #
-# ---------------------------------------------------------------- #
+        self.PrimaryMass()
+        self.SecondaryMass()
+        self.RateEvolution()
