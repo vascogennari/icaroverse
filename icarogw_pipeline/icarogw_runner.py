@@ -1,9 +1,9 @@
-import os, sys, configparser, ast, shutil
+import os, sys, configparser, shutil
 from optparse import OptionParser
 
 import pickle, h5py, pandas as pd, json
 import numpy as np
-import icarogw, bilby
+import icarogw, bilby, astropy
 
 # Internal imports
 import options, icarogw_postprocessing
@@ -98,15 +98,22 @@ class Wrappers:
 
         w = icarogw.wrappers.FlatLambdaCDM_wrap(zmax = 20.)
         return w
-    
+
+    def ReferenceCosmology(self):
+          
+        w = icarogw.cosmology.astropycosmology(10)
+        w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = 67.7, Om0 = 0.308))
+        return w
+
     def return_Wrappers(self):
 
         self.Wrapper_PrimaryMass   = self.PrimaryMass(self.pars)
         self.Wrapper_SecondaryMass = self.SecondaryMass(self.pars, self.Wrapper_PrimaryMass)
         self.Wrapper_RateEvolution = self.RateEvolution(self.pars)
         self.Wrapper_Cosmology     = self.Cosmology()
+        self.Wrapper_RefCosmology  = self.ReferenceCosmology()
 
-        return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Cosmology
+        return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
 
 
 
@@ -138,7 +145,7 @@ class Rate():
 
 class SelectionEffects:
         
-    def __init__(self, pars):
+    def __init__(self, pars, ref_cosmo):
 
         # Load file with the injections used to compute selection effects.
         print('\n * Loading injections for selection effects.\n\n\t{}'.format(pars['injections-path']))
@@ -155,13 +162,10 @@ class SelectionEffects:
         # O3 Cosmology paper injections
         if   pars['O3-cosmology']:
 
-            from astropy.cosmology import FlatLambdaCDM
             obs_time = (28519200 / 86400) / 365
-            cosmo_ref = icarogw.cosmology.astropycosmology(10)
-            cosmo_ref.build_cosmology(FlatLambdaCDM(H0 = 67.7, Om0 = 0.308))
             pars['injections-number'] = data_inj.attrs['total_generated']
             prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
-            prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), cosmo_ref)
+            prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
 
             tmp = np.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
             ifarmax = np.max(tmp, axis = 0)
@@ -309,7 +313,7 @@ class LikelihoodPrior:
 
             return dict_out
 
-        # FIXME: Add option to del with additional conditions on the prior
+        # FIXME: Add option to deal with additional conditions on the prior.
         if pars['conditional-prior']: prior = bilby.core.prior.PriorDict(conversion_function = conditional_prior)
         else:                         prior = bilby.core.prior.PriorDict()
         prior = initialise_prior(pars['all-priors'], prior, w)
@@ -350,7 +354,7 @@ def main():
     # Initialise input parameters dictionary.
     input_pars = options.InitialiseOptions(Config)
 
-    # Set output directory
+    # Set output directory.
     # FIXME: Add option to control that only one of the two between 'O3-cosmology' and 'simulation' is active.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
@@ -374,13 +378,13 @@ def main():
 
     # Initialise the model wrappers.
     tmp = Wrappers(input_pars)
-    m1w, m2w, rw, cw = tmp.return_Wrappers()
+    m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
 
     tmp = Rate(input_pars, m1w, m2w, rw, cw)
     wrapper = tmp.return_Rate()
 
     # Read injections for selection effects.
-    tmp = SelectionEffects(input_pars)
+    tmp = SelectionEffects(input_pars, ref_cosmo)
     injections = tmp.return_SelectionEffects()
 
     # Read events data.
@@ -430,10 +434,11 @@ def main():
     # ----------------------------------- #
 
     print(' * Producing plots.\n')
+    # FIXME: Should define a new variable instead of overwriting the output path.
     input_pars['output'] = os.path.join(input_pars['output'], 'plots')
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
-    tmp = icarogw_postprocessing.Plots(input_pars, df, m1w, m2w, rw, priors_dict, injections)
+    tmp = icarogw_postprocessing.Plots(input_pars, df, m1w, m2w, rw, ref_cosmo, wrapper, priors_dict, injections)
     tmp.ProducePlots()
 
     print('\n * Finished.\n')

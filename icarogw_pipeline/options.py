@@ -98,9 +98,13 @@ def InitialiseOptions(Config):
         'N-points'              : 1000,
         'N-z-slices'            : 10,
         'bounds-m1'             : [1, 100],
+        'bounds-m2'             : [1, 80],
+        'bounds-q'              : [0, 1],
+        'bounds-dL'             : [0, 10000],
         'bounds-z'              : [1e-5, 0.8],
         'true-values'           : {},
         'selection-effects'     : 0,
+        'N-points-KDE'          : 1000,
     }
 
     # Read options from config file.
@@ -137,10 +141,10 @@ def InitialiseOptions(Config):
             except: pass
 
         # Plots
-        if ('N-points' in key) or ('N-z-slices' in key):
+        if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE' in key):
             try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
-        if ('bounds-m1' in key) or ('bounds-z' in key):
+        if ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
             try: input_pars[key] = Config.get('plots', key)
             except: pass
         if ('true-values' in key):
