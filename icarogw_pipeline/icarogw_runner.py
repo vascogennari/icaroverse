@@ -29,54 +29,6 @@ def print_dictionary(dictionary):
         if not key == 'all-priors': print('\t{}  {}'.format(key.ljust(max_len), dictionary[key]))
 
 
-def default_priors():
-      
-    prior = {
-        # Cosmology
-        'H0'          : 67.7,
-        'Om0'         : 0.308,
-
-        # Primary mass distribution
-        'delta_m'     : [0.1, 10. ],
-
-        'alpha'       : [1.,  6.  ],
-        'alpha_z0'    : [1.,  6.  ],
-        'alpha_z1'    : [-5., 20. ],
-
-        'mmin'        : [2. , 20. ],
-        'mmin_z0'     : [2. , 20. ],
-        'mmin_z1'     : [-5., 50. ],
-        'mmax'        : [65., 200.],
-        'mmax_z0'     : [65., 200.],
-        'mmax_z1'     : 0.,
-
-        'mu_g'        : [20., 60. ],
-        'mu_z0'       : [20., 60. ],
-        'mu_z1'       : [-80., 80.],
-        'sigma_g'     : [5. , 30. ],
-        'sigma_z0'    : [5. , 30. ],
-        'sigma_z1'    : [0.,  20. ],
-        'mix_z0'      : [0. , 1.  ],
-        'mix_z1'      : [0. , 1.  ],
-
-        'lambda_peak' : [0. , 1.  ],
-        
-        # Secondary mass distribution
-        'beta'        : [1.,  6.  ],
-        'mu_q'        : [0.4, 1.  ],
-        'sigma_q'     : [0.01, 0.9],
-
-        # Rate evolution
-        'gamma'       : [-50., 30. ],
-        'kappa'       : [-6. , 6.  ],
-        'zp'          : [0. , 4.   ],
-        'R0'          : [0. , 100. ],
-    }
-
-    return prior
-    
-
-
 
 class Wrappers:
 
@@ -411,11 +363,6 @@ def main():
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
     print('\n\n Starting  i c a r o g w  runner\n\n')
-
-    # Initialise the prior bounds.
-    input_pars['all-priors'] = default_priors()
-    if not input_pars['priors'] == {}:
-        for key in input_pars['priors']: input_pars['all-priors'][key] = input_pars['priors'][key]
 
     # Print run parameters.
     print(' * I will be running with the following parameters.\n')
