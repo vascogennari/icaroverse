@@ -438,7 +438,7 @@ def main():
     input_pars['output'] = os.path.join(input_pars['output'], 'plots')
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
-    tmp = icarogw_postprocessing.Plots(input_pars, df, m1w, m2w, rw, ref_cosmo, wrapper, priors_dict, injections)
+    tmp = icarogw_postprocessing.Plots(input_pars, df, m1w, m2w, rw, cw, ref_cosmo, wrapper, priors_dict, injections)
     tmp.ProducePlots()
 
     print('\n * Finished.\n')

@@ -462,24 +462,23 @@ class ReconstructDistributions:
         return curves, plot_dict
 
 
-    def RateEvolutionFunctionProb(df, w, pars):
-
-        c = icarogw.wrappers.FlatLambdaCDM_wrap(zmax = 20.)
+    def RateEvolutionFunctionProbability(df, rw, cw, pars):
 
         z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
         curves  = np.empty(shape = (len(df), pars['N-points']))
 
         for idx, samp in df.iterrows():
 
-            samp_filt = {key: samp[key] for key in w.population_parameters}
-            w.update(**samp_filt)        
-            func = np.exp(w.rate.log_evaluate(z_array))
-            curves[idx] = func * samp.R0
+            samp_filt = {key: samp[key] for key in rw.population_parameters}
+            rw.update(**samp_filt)
+            func = np.exp(rw.rate.log_evaluate(z_array))
+            if not pars['scale-free']: curves[idx] = func * samp.R0
+            else:                      curves[idx] = func
 
             # Comoving volume and redshift (1/(1+z)*dV/dz)
-            samp_filt = {key: samp[key] for key in c.population_parameters}
-            c.update(**samp_filt)    
-            func = c.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
+            samp_filt = {key: samp[key] for key in cw.population_parameters}
+            cw.update(**samp_filt)
+            func = cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
             curves[idx] *= func
             curves[idx] = np.log(curves[idx])
             curves[idx] -= 7
@@ -489,24 +488,24 @@ class ReconstructDistributions:
         return curves, plot_dict
 
 
-    def TransitionFunction(df, p_dct, pars, prior = False):
+    def RedshiftTransitionFunction(df, p_dct, pars, prior = False):
 
         z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
 
         if prior:
-            if   pars['transition'] == 'sigmoid': tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in ['zt', 'delta_zt', 'mix_z0']}
-            elif pars['transition'] == 'linear':  tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in ['mix_z0', 'mix_z1']}
+            if   pars['redshift-transition'] == 'sigmoid': tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in ['zt', 'delta_zt', 'mix_z0']}
+            elif pars['redshift-transition'] == 'linear':  tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in ['mix_z0', 'mix_z1']}
             df  = pd.DataFrame(tmp)
             
         curves  = np.empty(shape = (len(df), pars['N-points']))
 
         for idx, samp in df.iterrows():
-            if   pars['transition'] == 'sigmoid':         curves[idx] = icarogw.priors._mixed_sigmoid_function(z_array, samp['zt'], samp['delta_zt'], samp['mix_z0'])
-            elif pars['transition'] == 'double-sigmoid':  curves[idx] = icarogw.priors._mixed_double_sigmoid_function(z_array, samp['zt'], samp['delta_zt'], samp['mix_z0'], samp['mix_z1'])
-            elif pars['transition'] == 'linear':          curves[idx] = icarogw.priors._mixed_linear_function(z_array, samp['mix_z0'], samp['mix_z1'])
-            elif pars['transition'] == 'linear-sinusoid': curves[idx] = icarogw.priors._mixed_linear_sinusoid_function(z_array, samp['mix_z0'], samp['mix_z1'], samp['amp'], samp['freq'])
+            if   pars['redshift-transition'] == 'sigmoid':         curves[idx] = icarogw.priors._mixed_sigmoid_function(        z_array, samp['zt'],     samp['delta_zt'], samp['mix_z0'])
+            elif pars['redshift-transition'] == 'double-sigmoid':  curves[idx] = icarogw.priors._mixed_double_sigmoid_function( z_array, samp['zt'],     samp['delta_zt'], samp['mix_z0'], samp['mix_z1'])
+            elif pars['redshift-transition'] == 'linear':          curves[idx] = icarogw.priors._mixed_linear_function(         z_array, samp['mix_z0'], samp['mix_z1'])
+            elif pars['redshift-transition'] == 'linear-sinusoid': curves[idx] = icarogw.priors._mixed_linear_sinusoid_function(z_array, samp['mix_z0'], samp['mix_z1'],   samp['amp'],    samp['freq'])
         
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'TransitionFunction', '#212121', '$z$', '$\\sigma(z)$')
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RedshiftTransitionFunction', '#212121', '$z$', '$\\sigma(z)$')
         
         return curves, plot_dict
 
@@ -582,13 +581,14 @@ class ReconstructDistributions:
 
 class Plots:
 
-    def __init__(self, pars, df, m1w, m2w, rw, ref_cosmo, rate_w, priors, injections):
+    def __init__(self, pars, df, m1w, m2w, rw, cw, ref_cosmo, rate_w, priors, injections):
 
         self.pars      = pars
         self.df        = df
         self.m1w       = m1w
         self.m2w       = m2w
         self.rw        = rw
+        self.cw        = cw
         self.rate_w    = rate_w
         self.ref_cosmo = ref_cosmo
         self.priors    = priors
@@ -633,6 +633,24 @@ class Plots:
             curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.priors, self.pars)
             self.plots.plot_curves(curves, plot_dict, truth = curve_true[0])
 
+    def RateEvolutionProbability(self):
+
+        curves, plot_dict = self.distributions.RateEvolutionFunctionProbability(self.df, self.rw, self.cw, self.pars)
+        if self.pars['true-values'] == {}:
+            self.plots.plot_curves(curves, plot_dict)
+        else:
+            curve_true, _ = self.distributions.RateEvolutionFunctionProbability(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.cw, self.pars)
+            self.plots.plot_curves(curves, plot_dict, truth = curve_true[0])
+    
+    def RedshiftTransition(self):
+
+        curves, plot_dict = self.distributions.RedshiftTransitionFunction(self.df, self.priors, self.pars)
+        if self.pars['true-values'] == {}:
+            self.plots.plot_curves(curves, plot_dict)
+        else:
+            curve_true, _ = self.distributions.RedshiftTransitionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.priors, self.pars)
+            self.plots.plot_curves(curves, plot_dict, truth = curve_true[0])
+
     def NoSelectionEffects(self):
 
         plots_inputs = self.distributions.RemoveSelectionEffects(self.df, self.pars, self.rate_w, self.ref_cosmo, self.inj)
@@ -649,4 +667,8 @@ class Plots:
         self.PrimaryMass()
         self.SecondaryMass()
         self.RateEvolution()
+        self.RateEvolutionProbability()
         self.NoSelectionEffects()
+
+        if not self.pars['redshift-transition'] == '':
+            self.RedshiftTransition()

@@ -62,7 +62,7 @@ def InitialiseOptions(Config):
         'model-secondary'       : 'MassRatio',
         'model-rate'            : 'PowerLaw',
 
-        'redshift-transition'   : 'linear',
+        'redshift-transition'   : '',
         'positive-peak'         : 0,
         'low-smoothing'         : 0,
         'priors'                : {},
