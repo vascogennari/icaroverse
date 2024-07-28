@@ -1,11 +1,12 @@
 import os, sys, configparser, ast, shutil
 from optparse import OptionParser
-from options import usage
 
 import pickle, h5py, pandas as pd, json
 import numpy as np
 import icarogw, bilby
-import icarogw_postprocessing
+
+# Internal imports
+import options, icarogw_postprocessing
 
 
 
@@ -379,9 +380,13 @@ class LikelihoodPrior:
 
 def main():
 
-    parser = OptionParser(usage)
+    # ------------------------------------------------ #
+    # Read config file and initialise input parameters #
+    # ------------------------------------------------ #
+
+    parser = OptionParser(options.usage)
     parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
-    (opts, args) = parser.parse_args()
+    (opts, _) = parser.parse_args()
 
     config_file = opts.config_file
     if not config_file: parser.error('Please specify a config file.\n')
@@ -390,149 +395,63 @@ def main():
     Config = configparser.ConfigParser()
     Config.read(config_file)
 
-    # INPUT PARAMETERS
-    input_pars = {
-
-        # Input
-        'output'                : 'icarogw_run',
-        'screen-output'         : 0,
-
-        # Wrappers
-        'model-primary'         : 'PowerLaw-Gaussian',                     
-        'model-secondary'       : 'MassRatio',
-        'model-rate'            : 'PowerLaw',
-
-        'redshift-transition'   : 'linear',
-        'positive-peak'         : 0,
-        'low-smoothing'         : 0,
-        'priors'                : {},
-        'conditional-prior'     : 0,
-        'scale-free'            : 0,
-
-        # Selection effects
-        'injections-path'       : '',
-        'injections-number'     : 1,
-        'snr-cut'               : 12.,
-        'ifar-cut'              : 4.,
-        'selection-effects-cut' : 'snr',
-
-        # Data
-        'O3-cosmology'          : 0,
-        'simulation'            : 1,
-        'data-path'             : '',
-    
-        # Likelihood
-        'nparallel'             : 1,
-        'neffPE'                : 1,
-        'neffINJ'               : None,
-
-        # Sampler
-        'sampler'               : 'dynesty',
-        'nlive'                 : 200,
-        'naccept'               : 60,
-        'npool'                 : 1,
-        'print_method'          : 'interval-60',
-        'sample'                : 'acceptance-walk',
-
-        # Plots
-        'N-points'              : 1000,
-        'N-z-slices'            : 10,
-        'bounds-m1'             : [1, 100],
-        'bounds-z'              : [1e-5, 0.8],
-        'true-values'           : {},
-        'selection-effects'     : 0,
-    }
-
-    # Read options from config file
-    for key in input_pars.keys():
-
-        # Input
-        if ('output' in key) or ('injections-path' in key) or ('selection-effects-cut' in key) or ('data-path' in key):
-            try: input_pars[key] = Config.get('input', key)
-            except: pass
-        if ('injections-number' in key) or ('snr-cut' in key) or ('ifar-cut' in key):
-            try: input_pars[key] = Config.getfloat('input', key)
-            except: pass
-        if ('O3-cosmology' in key) or ('simulation' in key):
-            try: input_pars[key] = Config.getboolean('input', key)
-            except: pass
-
-        # Model
-        if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
-            try: input_pars[key] = Config.get('model', key)
-            except: pass
-        if ('positive-peak' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('conditional-prior' in key):
-            try: input_pars[key] = Config.getboolean('model', key)
-            except: pass
-        if ('priors' in key):
-            try: input_pars[key] = ast.literal_eval(Config.get('model', key))
-            except: pass
-
-        # Sampler
-        if ('sampler' in key):
-            try: input_pars[key] = Config.get('sampler', key)
-            except: pass
-        if ('nparallel' in key) or ('neffPE' in key) or ('nlive' in key) or ('npool' in key):
-            try: input_pars[key] = Config.getint('sampler', key)
-            except: pass
-
-        # Plots
-        if ('N-points' in key) or ('N-z-slices' in key):
-            try: input_pars[key] = Config.getfloat('plots', key)
-            except: pass
-        if ('bounds-m1' in key) or ('bounds-z' in key):
-            try: input_pars[key] = Config.get('plots', key)
-            except: pass
-        if ('true-values' in key):
-            try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
-            except: pass
-        if ('selection-effects' in key):
-            try: input_pars[key] = Config.getboolean('plots', key)
-            except: pass
+    # Initialise input parameters dictionary.
+    input_pars = options.InitialiseOptions(Config)
 
     # Set output directory
     # FIXME: Add option to control that only one of the two between 'O3-cosmology' and 'simulation' is active.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
-    # Save the config file to output
+    # Copy config file to output.
     shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
 
-    # Deviate stdout and stderr to file
+    # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
         sys.stdout = open(os.path.join(input_pars['output'], 'stdout_icarogw.txt'), 'w')
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
     print('\n\n Starting  i c a r o g w  runner\n\n')
 
-    # Initialise the prior
+    # Initialise the prior bounds.
     input_pars['all-priors'] = default_priors()
     if not input_pars['priors'] == {}:
         for key in input_pars['priors']: input_pars['all-priors'][key] = input_pars['priors'][key]
 
-    # Print run parameters
+    # Print run parameters.
     print(' * I will be running with the following parameters.\n')
     print_dictionary(input_pars)
 
-    # Initialise the wrappers
+    # ------------------------------------------------------------------------------ #
+    # Initialise the ICAROGW run: model, data, selection effects, likelihood, priors #
+    # ------------------------------------------------------------------------------ #
+
+    # Initialise the model wrappers.
     tmp = Wrappers(input_pars)
     m1w, m2w, rw, cw = tmp.return_Wrappers()
 
     tmp = Rate(input_pars, m1w, m2w, rw, cw)
     wrapper = tmp.return_Rate()
 
+    # Read injections for selection effects.
     tmp = SelectionEffects(input_pars)
     injections = tmp.return_SelectionEffects()
 
+    # Read events data.
     tmp = Data(input_pars)
     data = tmp.return_Data()
 
+    # Initialise hierarchical likelihood and set the priors
     tmp = LikelihoodPrior(input_pars, data, injections, wrapper)
     likelihood, prior = tmp.return_LikelihoodPrior()
 
-    # Run the hierarchical analysis
+    # ----------------------------------------------- #
+    # Start the sampler and run hierarchical analysis #
+    # ----------------------------------------------- #
+
     print('\n * Running hierarchical analysis with this settings.\n')
     print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'npool', 'print_method', 'sample']})
 
+    # Start Bilby sampler.
     print('\n * Starting the sampler.\n')
     hierarchical = bilby.run_sampler(
             likelihood, prior,
@@ -547,19 +466,22 @@ def main():
     if input_pars['true-values'] == {}: hierarchical.plot_corner()
     else:                               hierarchical.plot_corner(truth = {key: input_pars['true-values'][key] for key in hierarchical.search_parameter_keys})
     
-    # Get the samples
+    # Get the samples.
     samp_path = os.path.join(input_pars['output'], 'sampler', 'label_result.json')
     with open(samp_path) as f:
         tmp = json.load(f)
         df  = pd.DataFrame(tmp['posterior']['content'])
         priors_dict = tmp['priors']
 
-    # Save the evidence
+    # Save the evidence.
     with open('{}/log_evidence.txt'.format(input_pars['output']), 'w') as f:
         f.write('{}\n'.format('# log_Z_base_e\tlog_Z_err\tmax_log_L'))
         f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), round(tmp['log_evidence_err'], 2), round(max(df['log_likelihood']), 2)))
 
-    # Plots production
+    # ----------------------------------- #
+    # Plots production and postprocessing #
+    # ----------------------------------- #
+
     print(' * Producing plots.\n')
     input_pars['output'] = os.path.join(input_pars['output'], 'plots')
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])

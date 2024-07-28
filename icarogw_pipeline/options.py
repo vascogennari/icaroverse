@@ -1,3 +1,110 @@
+import ast
+
+
+def InitialiseOptions(Config):
+
+    # Dictionary with the default options.
+    input_pars = {
+
+        # Input
+        'output'                : 'icarogw_run',
+        'screen-output'         : 0,
+
+        # Wrappers
+        'model-primary'         : 'PowerLaw-Gaussian',                     
+        'model-secondary'       : 'MassRatio',
+        'model-rate'            : 'PowerLaw',
+
+        'redshift-transition'   : 'linear',
+        'positive-peak'         : 0,
+        'low-smoothing'         : 0,
+        'priors'                : {},
+        'conditional-prior'     : 0,
+        'scale-free'            : 0,
+
+        # Selection effects
+        'injections-path'       : '',
+        'injections-number'     : 1,
+        'snr-cut'               : 12.,
+        'ifar-cut'              : 4.,
+        'selection-effects-cut' : 'snr',
+
+        # Data
+        'O3-cosmology'          : 0,
+        'simulation'            : 1,
+        'data-path'             : '',
+    
+        # Likelihood
+        'nparallel'             : 1,
+        'neffPE'                : 1,
+        'neffINJ'               : None,
+
+        # Sampler
+        'sampler'               : 'dynesty',
+        'nlive'                 : 200,
+        'naccept'               : 60,
+        'npool'                 : 1,
+        'print_method'          : 'interval-60',
+        'sample'                : 'acceptance-walk',
+
+        # Plots
+        'N-points'              : 1000,
+        'N-z-slices'            : 10,
+        'bounds-m1'             : [1, 100],
+        'bounds-z'              : [1e-5, 0.8],
+        'true-values'           : {},
+        'selection-effects'     : 0,
+    }
+
+    # Read options from config file.
+    for key in input_pars.keys():
+
+        # Input
+        if ('output' in key) or ('injections-path' in key) or ('selection-effects-cut' in key) or ('data-path' in key):
+            try: input_pars[key] = Config.get('input', key)
+            except: pass
+        if ('injections-number' in key) or ('snr-cut' in key) or ('ifar-cut' in key):
+            try: input_pars[key] = Config.getfloat('input', key)
+            except: pass
+        if ('O3-cosmology' in key) or ('simulation' in key):
+            try: input_pars[key] = Config.getboolean('input', key)
+            except: pass
+
+        # Model
+        if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
+            try: input_pars[key] = Config.get('model', key)
+            except: pass
+        if ('positive-peak' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('conditional-prior' in key):
+            try: input_pars[key] = Config.getboolean('model', key)
+            except: pass
+        if ('priors' in key):
+            try: input_pars[key] = ast.literal_eval(Config.get('model', key))
+            except: pass
+
+        # Sampler
+        if ('sampler' in key):
+            try: input_pars[key] = Config.get('sampler', key)
+            except: pass
+        if ('nparallel' in key) or ('neffPE' in key) or ('nlive' in key) or ('npool' in key):
+            try: input_pars[key] = Config.getint('sampler', key)
+            except: pass
+
+        # Plots
+        if ('N-points' in key) or ('N-z-slices' in key):
+            try: input_pars[key] = Config.getfloat('plots', key)
+            except: pass
+        if ('bounds-m1' in key) or ('bounds-z' in key):
+            try: input_pars[key] = Config.get('plots', key)
+            except: pass
+        if ('true-values' in key):
+            try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
+            except: pass
+        if ('selection-effects' in key):
+            try: input_pars[key] = Config.getboolean('plots', key)
+            except: pass
+    
+    return input_pars
+
 
 usage = """
 
