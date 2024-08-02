@@ -43,29 +43,31 @@ def plot_injections(true_param, plot_dir):
 
 # Injections set 
 dic_param ={
-    'alpha':       1.,
-    'beta':        1.,
-    'mmin':        1.,
-    'mmax':        300.,
+    'alpha':       0.,
+    'beta':        0.,
+    'mmin':        0.,
+    'mmax':        200.,
     'delta_m':     1.,
     'mu_g':        30.,
     'sigma_g':     10.,
     'lambda_peak': 0.8,
 }
 
-m_model  = 'PowerLawPeak'
-Ninj     = 100000  #200000
-Ndet_inj = 0
-N_ext    = 10e6
-snr_thr  = 12
-fgw_cut  = 15
-additional_text = ''
+m_model   = 'PowerLaw'
+Ninj      = 100000  #200000
+Ndet_inj  = 0
+N_ext     = 10e4
+snr_thr   = 0
+fgw_cut   = 1
+unif_dist = 1
+zmax      = 2.
+additional_text = '_cosmology'
 
 print('\n * Generating injections for selection effects.\n')
 
-inj_name = 'inj_{}_N{}_SNR{}_fGW{}{}'.format(m_model, int(N_ext), snr_thr, fgw_cut, additional_text)
+inj_name = 'inj_{}_N{}_SNR{}_fGW{}{}'.format(m_model, int(Ninj), snr_thr, fgw_cut, additional_text)
 
-base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/scripts/injection_campaign'
+base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
 results_dir = os.path.join(base_dir,    'injections_selection_effects', inj_name)
 plot_dir    = os.path.join(results_dir, 'injections_plots')
 if not os.path.exists(results_dir): os.makedirs(results_dir)
@@ -79,15 +81,20 @@ c = 0
 with tqdm(total = Ninj) as pbar:
     while Ndet_inj < Ninj:
 
-        m1s_inj, m2s_inj, pdf_m = icarosim.generate_mass_inj(Nsamp = int(N_ext), mass_model = m_model, dic_param = dic_param)
-        dL_inj, pdf_dL          = icarosim.generate_dL_inj(  Nsamp = int(N_ext), zmax = 4.)
-        z_inj                   = icarosim.dl_to_z(dL_inj)
-        jacobian                = (1 + z_inj)**(-2)
-        prior_inj               = pdf_m * pdf_dL * jacobian
+        m1s_inj, m2s_inj, pdf_m      = icarosim.generate_mass_inj(      Nsamp = int(N_ext), mass_model = m_model, dic_param = dic_param)
+        if unif_dist: dL_inj, pdf_dL = icarosim.generate_dL_inj_uniform(Nsamp = int(N_ext), zmax = zmax)
+        else:         dL_inj, pdf_dL = icarosim.generate_dL_inj(        Nsamp = int(N_ext), zmax = zmax)
+        z_inj                        = icarosim.dl_to_z(dL_inj)
 
-        theta = compute_theta(m1s_inj, 'Pw_three.dat')
-        snr_inj, _, _           = icarosim.snr_samples(m1s_inj, m2s_inj, z_inj, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
-        idx_detected_inj        = icarosim.snr_and_freq_cut(m1s_inj, m2s_inj, z_inj, snr_inj, snrthr = snr_thr, fgw_cut = fgw_cut)
+        # The injection values are extracted in the source frame, but the output values are transformed in the detector frame.
+        # This transformation needs to be tracked in the injections prior, by including the Jacobian (m1s, m2s) --> (m1d, m2d).
+        # FIXME: Implement a more general framework to account for different parameters: mass ratio or only one mass.
+        jacobian                     = (1 + z_inj)**(-2)
+        prior_inj                    = pdf_m * pdf_dL * jacobian
+
+        theta                        = compute_theta(m1s_inj, os.path.join(base_dir, 'Pw_three.dat'))
+        snr_inj, _, _                = icarosim.snr_samples(m1s_inj, m2s_inj, z_inj, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
+        idx_detected_inj             = icarosim.snr_and_freq_cut(m1s_inj, m2s_inj, z_inj, snr_inj, snrthr = snr_thr, fgw_cut = fgw_cut)
         
         m1d_inj = m1s_inj[idx_detected_inj] * (1 + z_inj[idx_detected_inj])
         m2d_inj = m2s_inj[idx_detected_inj] * (1 + z_inj[idx_detected_inj])
@@ -113,6 +120,8 @@ with open(os.path.join(results_dir, '{}.pickle'.format(inj_name)), 'wb') as hand
 
 plot_injections(true_param, plot_dir)
 print('\n * Generated {} injections.'.format(N_ext * c))
-with open(os.path.join(results_dir, 'number_generated_injections.txt'), 'w') as f: f.write('{}'.format(N_ext * c))
+with open(os.path.join(results_dir, 'number_injections.txt'), 'w') as f:
+    f.write('Generated: {}\n'.format(int(N_ext * c)))
+    f.write('Detected:  {}'.format(  int(Ndet_inj )))
 print(len(true_param['m1d']))
 print('\n * Finished.\n')

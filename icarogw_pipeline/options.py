@@ -68,6 +68,7 @@ def InitialiseOptions(Config):
         'priors'                : {},
         'conditional-prior'     : 0,
         'scale-free'            : 0,
+        'single-mass'           : 0,
 
         # Selection effects
         'injections-path'       : '',
@@ -125,7 +126,7 @@ def InitialiseOptions(Config):
         if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('positive-peak' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('conditional-prior' in key):
+        if ('positive-peak' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('conditional-prior' in key) or ('single-mass' in key):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if ('priors' in key):

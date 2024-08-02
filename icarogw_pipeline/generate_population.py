@@ -21,7 +21,13 @@ def save_truths(path, dictionary):
 
 def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     '''
-    Generate couples of (m1s,m2s,z) with a linear evolution of the PLP peak bewteen z=0 and z=1
+        Extract a set of samples from the specified probability distribution.
+
+        The event values are sampled from the source frame distribution and
+        then converted in the detector frame, assuming a reference cosmology.
+
+        The information on the prior is not present here, and Jacobians for the
+        source-detector conversion need to be handled in the running script.
     '''
 
     N = 100000
@@ -43,43 +49,43 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
 
     # Rate evolution
     update_weights(rw, truths)
-    pdf  = rw.rate.evaluate(z_array) * cosmo_ref.dVc_by_dzdOmega_at_z(z_array) / (1+z_array)
-    zdet = np.random.choice(z_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
+    pdf = rw.rate.evaluate(z_array) * cosmo_ref.dVc_by_dzdOmega_at_z(z_array) / (1+z_array)    # Convert from rate to probability distribution.
+    zs  = np.random.choice(z_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
 
     # Primary mass
     update_weights(m1w, truths)
-    m1det = np.zeros(Ndetgen)
-    for i,z in tqdm(enumerate(zdet),  total = len(zdet)):
+    m1s = np.zeros(Ndetgen)
+    for i,z in tqdm(enumerate(zs),  total = len(zs)):
         pdf = m1w.pdf(m_array, z)
-        m1det[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
+        m1s[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
     plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir)
 
     # Mass ratio
     update_weights(m2w, truths)
-    pdf   = m2w.pdf(q_array)
-    qdet  = np.random.choice(q_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
-    m2det = qdet * m1det
+    pdf = m2w.pdf(q_array)
+    qs  = np.random.choice(q_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
+    m2s = qs * m1s
 
     theta      = icarosim.rvs_theta(Ndetgen, 0., 1.4, 'Pw_three.dat')
     rand_theta = np.random.choice(theta, Ndetgen)
     thetadet   = rand_theta
     
-    rho_true_det, _, _ = icarosim.snr_samples(     m1det, m2det, zdet, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = thetadet)
-    idx_cut_det        = icarosim.snr_and_freq_cut(m1det, m2det, zdet, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
+    rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = thetadet)
+    idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
     print('\n * Number of detections: {}\n'.format(len(idx_cut_det)), flush = True)
     with open(os.path.join(results_dir, 'number_detected_events.txt'), 'w') as f: f.write('{}'.format(len(idx_cut_det)))
     
     # Detector frame
-    m1d = m1det * (1+zdet)
-    m2d = m2det * (1+zdet)
-    dL  = cosmo_ref.z2dl(zdet)
+    m1d = m1s * (1 + zs)
+    m2d = m2s * (1 + zs)
+    dL  = cosmo_ref.z2dl(zs)
     
     m1d_det = m1d[idx_cut_det]
     m2d_det = m2d[idx_cut_det]
     dL_det  = dL[ idx_cut_det]
     
     sampe_detector_dict = { 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det}
-    samps_source_dict   = { 'm1s': m1det,   'm2s': m2det,   'z':  zdet}
+    samps_source_dict   = { 'm1s': m1s,     'm2s': m2s,     'z':  zs}
     
     return samps_source_dict, sampe_detector_dict
 

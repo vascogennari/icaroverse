@@ -76,11 +76,15 @@ class Wrappers:
 
     def SecondaryMass(self, pars, m1w = None):
 
-        if   pars['model-secondary'] == 'PowerLaw-Gaussian':           w = get_wrapper('m1m2_conditioned',                                    input_wrapper = m1w)
-        elif pars['model-secondary'] == 'PowerLaw':                    w = get_wrapper('m1m2_conditioned',                                    input_wrapper = m1w)
-        elif pars['model-secondary'] == 'MassRatio':                   w = get_wrapper('mass_ratio_prior_Gaussian')
+        if not pars['single-mass']:
+            if   pars['model-secondary'] == 'PowerLaw-Gaussian':           w = get_wrapper('m1m2_conditioned',                                    input_wrapper = m1w)
+            elif pars['model-secondary'] == 'PowerLaw':                    w = get_wrapper('m1m2_conditioned',                                    input_wrapper = m1w)
+            elif pars['model-secondary'] == 'MassRatio':                   w = get_wrapper('mass_ratio_prior_Gaussian')
+            else:
+                raise ValueError('Unknown model for the secondary mass {}. Please consult the available models.'.format(pars['model-secondary']))
         else:
-            raise ValueError('Unknown model for the secondary mass {}. Please consult the available models.'.format(pars['model-secondary']))
+            print('\t * Skipping secondary mass wrapper *')
+            w = None
         return w
 
     def RateEvolution(self, pars):
@@ -121,18 +125,21 @@ class Rate():
       
     def __init__(self, pars, m1w, m2w, rw, cw):
 
-        if  (not 'Redshift' in pars['model-primary']) and (not    'MassRatio' in pars['model-secondary']):
-            self.w = icarogw.rates.CBC_vanilla_rate(             cw,      m2w, rw, scale_free = pars['scale-free'])
-            print('\t{}'.format('CBC_vanilla_rate'))
-        elif not  'Redshift' in pars['model-primary'] and     'MassRatio' in pars['model-secondary']:
-            self.w = icarogw.rates.CBC_rate_m1_q(                cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-            print('\t{}'.format('CBC_rate_m1_q'))
-        elif      'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
-            self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-            print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
-        elif      'Redshift' in pars['model-primary'] and     'MassRatio' in pars['model-secondary']:
-            self.w = icarogw.rates.CBC_rate_m1_given_redshift_q( cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-            print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
+        if not pars['single-mass']:
+            if  (not 'Redshift' in pars['model-primary']) and (not 'MassRatio' in pars['model-secondary']):
+                self.w = icarogw.rates.CBC_vanilla_rate(             cw,      m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('CBC_vanilla_rate'))
+            elif not  'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_q(                cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('CBC_rate_m1_q'))
+            elif      'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
+            elif      'Redshift' in pars['model-primary'] and     'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_given_redshift_q( cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
+        else:
+            self.w = icarogw.rates.CBC_rate_m_given_redshift(        cw, m1w,      rw, scale_free = pars['scale-free'])
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
@@ -165,7 +172,7 @@ class SelectionEffects:
             obs_time = (28519200 / 86400) / 365
             pars['injections-number'] = data_inj.attrs['total_generated']
             prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
-            prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
+            prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)   # (m_1s, m_2s, z) --> (m_1d, m_2d, d_L)
 
             tmp = np.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
             ifarmax = np.max(tmp, axis = 0)
@@ -180,11 +187,12 @@ class SelectionEffects:
             
             # If using the mass ratio, correct the prior with the Jacobian m2->q.
             if pars['model-secondary'] == 'MassRatio':
-                prior *= data_inj[mass_1][()]
+                prior *= data_inj[mass_1][()]   # (m_1, m_2) --> (m_1, q)
                 inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1][()]
 
         # Internal simulations
         elif pars['simulation']:
+
             prior = data_inj['prior']
             obs_time = 1
             mass_1 = 'm1d'
@@ -196,10 +204,16 @@ class SelectionEffects:
                 'mass_2':              data_inj[mass_2],
                 'luminosity_distance': data_inj[dist]}
             
-            # If using the mass ratio, correct the prior with the Jacobian m2->q.
-            if pars['model-secondary'] == 'MassRatio':
-                prior *= data_inj[mass_1]
-                inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1]
+            if not pars['single-mass']:
+                # If using the mass ratio, correct the prior with the Jacobian m2->q.
+                if pars['model-secondary'] == 'MassRatio':
+                    prior *= data_inj[mass_1]
+                    inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1]
+            else:
+                # If only using one mass, remove the Jacobian contribution from the secondary.
+                # This operation depends on the injection prior used to generate the injections.
+                prior *= (1 + ref_cosmo.dl2z(data_inj[dist]))
+                inj_dict.pop('mass_2')
         else:
             raise ValueError('Unknown option to compute selection effects.')
 
@@ -216,7 +230,7 @@ class SelectionEffects:
 
 class Data:
        
-    def __init__(self, pars):
+    def __init__(self, pars, ref_cosmo):
         
         print('\n * Loading data.\n\n\t{}\n'.format(pars['data-path']))
         # O3 Cosmology paper injections
@@ -238,16 +252,17 @@ class Data:
                 pos_dict  = {
                     'mass_1'             : data_evs['mass_1'][()],
                     'mass_2'             : data_evs['mass_2'][()],
-                    'luminosity_distance': data_evs['luminosity_distance'][()]
-                }
+                    'luminosity_distance': data_evs['luminosity_distance'][()]}
+                
+                # FIXME: What is that due to?
+                prior = np.power(data_evs['luminosity_distance'][()], 2.)
 
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
                 if pars['model-secondary'] == 'MassRatio':
                     pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
-
-                # FIXME: What is that due to?
-                pp_remove      = np.power(data_evs['luminosity_distance'][()], 2.) * data_evs['mass_1'][()]
-                samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = pp_remove)
+                    prior *= data_evs['mass_1'][()]
+                
+                samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
 
         # Internal simulations
         elif pars['simulation']:
@@ -261,11 +276,23 @@ class Data:
             for i in range(len(data_evs['m1d'])):
                 pos_dict = {
                     'mass_1':              np.array([data_evs['m1d'][i]]),
-                    'mass_ratio':          np.array([data_evs['m2d'][i]]) / np.array([data_evs['m1d'][i]]),
+                    'mass_2':              np.array([data_evs['m2d'][i]]),
                     'luminosity_distance': np.array([data_evs['dL'][i]])}
-                
-                pp_remove = np.array([data_evs['dL'][i]**2 * data_evs['m1d'][i]])
-                samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = pp_remove)
+
+                # FIXME: What is that due to?
+                prior = np.array([data_evs['dL'][i]**2])
+
+                if not pars['single-mass']:
+                    # If using the mass ratio, correct the prior with the Jacobian m2->q.
+                    if pars['model-secondary'] == 'MassRatio':
+                        pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
+                        prior *= np.array([data_evs['m1d'][i]])
+                else:
+                    # If only using one mass, remove the Jacobian contribution from the secondary.
+                    prior *= (1 + ref_cosmo.dl2z(np.array([data_evs['dL'][i]])))
+                    pos_dict.pop('mass_2')
+
+                samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
         else:
             raise ValueError('Unknown option to process single events data.')
         
@@ -388,7 +415,7 @@ def main():
     injections = tmp.return_SelectionEffects()
 
     # Read events data.
-    tmp = Data(input_pars)
+    tmp = Data(input_pars, ref_cosmo)
     data = tmp.return_Data()
 
     # Initialise hierarchical likelihood and set the priors
