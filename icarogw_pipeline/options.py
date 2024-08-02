@@ -146,10 +146,7 @@ def InitialiseOptions(Config):
         if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE' in key):
             try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
-        if ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
-            try: input_pars[key] = Config.get('plots', key)
-            except: pass
-        if ('true-values' in key):
+        if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
         if ('selection-effects' in key):
