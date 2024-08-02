@@ -83,7 +83,7 @@ class Wrappers:
             else:
                 raise ValueError('Unknown model for the secondary mass {}. Please consult the available models.'.format(pars['model-secondary']))
         else:
-            print('\t * Skipping secondary mass wrapper *')
+            print('\t * Skipping secondary mass wrapper')
             w = None
         return w
 
@@ -233,6 +233,9 @@ class Data:
     def __init__(self, pars, ref_cosmo):
         
         print('\n * Loading data.\n\n\t{}\n'.format(pars['data-path']))
+        if not pars['distance-prior-PE']:          print(' * Using a flat prior for PE samples on the luminosity distance.')
+        if pars['model-secondary'] == 'MassRatio': print(' * Correcting the PE samples prior for mass ratio. WARNING: Plase make sure this is correct.')
+              
         # O3 Cosmology paper injections
         if   pars['O3-cosmology']:
 
@@ -253,13 +256,16 @@ class Data:
                     'mass_1'             : data_evs['mass_1'][()],
                     'mass_2'             : data_evs['mass_2'][()],
                     'luminosity_distance': data_evs['luminosity_distance'][()]}
-                
-                # FIXME: What is that due to?
-                prior = np.power(data_evs['luminosity_distance'][()], 2.)
+
+                # This assumes that the luminosity distance prior for the single events PE is uniform in volume, thus p(d_L)=d_L^2.
+                # If not, set the prior to one.
+                if pars['distance-prior-PE']: prior = np.power(   data_evs['luminosity_distance'][()], 2.)
+                else:                         prior = np.ones(len(data_evs['luminosity_distance'][()]))
 
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
                 if pars['model-secondary'] == 'MassRatio':
                     pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
+                    # FIXME: This is the prior used for PE samples. Check that this is true.
                     prior *= data_evs['mass_1'][()]
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
@@ -279,13 +285,16 @@ class Data:
                     'mass_2':              np.array([data_evs['m2d'][i]]),
                     'luminosity_distance': np.array([data_evs['dL'][i]])}
 
-                # FIXME: What is that due to?
-                prior = np.array([data_evs['dL'][i]**2])
+                # This assumes that the luminosity distance prior for the single events PE is uniform in volume, thus p(d_L)=d_L^2.
+                # If not, set the prior to one.
+                if pars['distance-prior-PE']: prior = np.array([       data_evs['dL'][i]**2])
+                else:                         prior = 1.
 
                 if not pars['single-mass']:
                     # If using the mass ratio, correct the prior with the Jacobian m2->q.
                     if pars['model-secondary'] == 'MassRatio':
                         pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
+                        # FIXME: This is the prior used for PE samples. Check that this is true.
                         prior *= np.array([data_evs['m1d'][i]])
                 else:
                     # If only using one mass, remove the Jacobian contribution from the secondary.

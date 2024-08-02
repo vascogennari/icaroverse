@@ -81,6 +81,7 @@ def InitialiseOptions(Config):
         'O3-cosmology'          : 0,
         'simulation'            : 1,
         'data-path'             : '',
+        'distance-prior-PE'     : 1,
     
         # Likelihood
         'nparallel'             : 1,
@@ -118,7 +119,7 @@ def InitialiseOptions(Config):
         if ('injections-number' in key) or ('snr-cut' in key) or ('ifar-cut' in key):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if ('O3-cosmology' in key) or ('simulation' in key):
+        if ('O3-cosmology' in key) or ('simulation' in key) or ('distance-prior-PE' in key):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
 

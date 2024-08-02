@@ -47,13 +47,13 @@ dic_param ={
     'beta':        0.,
     'mmin':        0.,
     'mmax':        200.,
-    'delta_m':     1.,
-    'mu_g':        30.,
+    'delta_m':     0.,
+    'mu_g':        100.,
     'sigma_g':     10.,
-    'lambda_peak': 0.8,
+    'lambda_peak': 0.5,
 }
 
-m_model   = 'PowerLaw'
+m_model   = 'PowerLawPeak'
 Ninj      = 100000  #200000
 Ndet_inj  = 0
 N_ext     = 10e4
@@ -91,7 +91,6 @@ with tqdm(total = Ninj) as pbar:
         # FIXME: Implement a more general framework to account for different parameters: mass ratio or only one mass.
         jacobian                     = (1 + z_inj)**(-2)
         prior_inj                    = pdf_m * pdf_dL * jacobian
-
         theta                        = compute_theta(m1s_inj, os.path.join(base_dir, 'Pw_three.dat'))
         snr_inj, _, _                = icarosim.snr_samples(m1s_inj, m2s_inj, z_inj, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
         idx_detected_inj             = icarosim.snr_and_freq_cut(m1s_inj, m2s_inj, z_inj, snr_inj, snrthr = snr_thr, fgw_cut = fgw_cut)
@@ -123,5 +122,5 @@ print('\n * Generated {} injections.'.format(N_ext * c))
 with open(os.path.join(results_dir, 'number_injections.txt'), 'w') as f:
     f.write('Generated: {}\n'.format(int(N_ext * c)))
     f.write('Detected:  {}'.format(  int(Ndet_inj )))
-print(len(true_param['m1d']))
+
 print('\n * Finished.\n')
