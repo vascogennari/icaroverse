@@ -138,7 +138,7 @@ def InitialiseOptions(Config):
         if ('sampler' in key):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if ('nparallel' in key) or ('neffPE' in key) or ('nlive' in key) or ('npool' in key):
+        if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('npool' in key):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
 
