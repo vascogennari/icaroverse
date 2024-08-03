@@ -355,16 +355,18 @@ class ReconstructDistributions:
             injections.update_weights(rate_w)
             tmp = injections.return_reweighted_injections(Nsamp = N_samps_KDE, replace = True)
             m1d[idx,:] = tmp['mass_1']
-            # FIXME: Implement option with m2
-            m2d[idx,:] = tmp['mass_ratio']
+            if not pars['single-mass']:
+                # FIXME: Implement option with m2
+                m2d[idx,:] = tmp['mass_ratio']
             dL[idx,:]  = tmp['luminosity_distance']
 
         # Compute KDE of the distribution for each PE sample.
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing KDE detector frame distributions'):
             tmp          = kde.gaussian_kde(m1d[i,:])
             curves_m1d[i,:] = tmp.evaluate(mass_array)
-            tmp          = kde.gaussian_kde(m2d[i,:])
-            curves_m2d[i,:] = tmp.evaluate(m2_array)
+            if not pars['single-mass']:
+                tmp          = kde.gaussian_kde(m2d[i,:])
+                curves_m2d[i,:] = tmp.evaluate(m2_array)
             tmp          = kde.gaussian_kde(dL[i,:])
             curves_dL[i,:]  = tmp.evaluate(dL_array)
 
@@ -389,8 +391,9 @@ class ReconstructDistributions:
                     m1s_PDF[zi][i,:] = np.zeros(len(mass_array))
 
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing KDE source frame distributions'):
-            tmp          = kde.gaussian_kde(m2s[i,:])
-            curves_m2s[i,:] = tmp.evaluate(m2_array)
+            if not pars['single-mass']:
+                tmp          = kde.gaussian_kde(m2s[i,:])
+                curves_m2s[i,:] = tmp.evaluate(m2_array)
             tmp          = kde.gaussian_kde(zs[i,:])
             curves_z[i,:]   = tmp.evaluate(z_array_kde)
 
@@ -406,8 +409,8 @@ class ReconstructDistributions:
             'curves-z-m1s': curves_z_m1s, 'curves-m2s': curves_m2s, 'curves-z' : curves_z,
         }
         colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
-        plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] * (1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#A06399', '$m_1\ [M_{\odot}]$', '$p(m_1)$')
-        plots_inputs['plot-dict-m2d'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                           'SecondaryMassDistribution_DetectorFrame',       '#63A068', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
+        plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] * (1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', '$m_1\ [M_{\odot}]$', '$p(m_1)$')
+        plots_inputs['plot-dict-m2d'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                           'SecondaryMassDistribution_DetectorFrame',       '#6A8820', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
         plots_inputs['plot-dict-dL']  = get_plot_parameters(pars, dL_array,   pars['bounds-dL'][0], pars['bounds-dL'][1],                           'LuminosityDistranceDistribution_DetectorFrame', '#7E375B', '$d_L\ [Mpc]$',       '$p(d_L)$')
         plots_inputs['plot-dict-m1s'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1],                           'PrimaryMassDistribution_NoSelectionEffects',    '#000000', '$m_1\ [M_{\odot}]$', '$z$',     colors = colors, z_grid = z_grid)
         plots_inputs['plot-dict-m2s'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                           'SecondaryMassDistribution_NoSelectionEffects',  '#1F5623', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
@@ -436,7 +439,7 @@ class ReconstructDistributions:
             pdf = w.pdf(q_array)
             curves[idx] = pdf
 
-        plot_dict = get_plot_parameters(pars, q_array, pars['bounds-q'][0], pars['bounds-q'][1], 'SecondaryMassDistribution', '#890C0A', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
+        plot_dict = get_plot_parameters(pars, q_array, pars['bounds-q'][0], pars['bounds-q'][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
 
         return curves, plot_dict
 
@@ -457,7 +460,7 @@ class ReconstructDistributions:
             func = w.rate.log_evaluate(z_array)
             curves[idx] = func
 
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionFunction', '#0A3689', '$z$', '$ln[\Psi(z)/R_0]$')
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionFunction', '#825310', '$z$', '$ln[\Psi(z)/R_0]$')
 
         return curves, plot_dict
 
@@ -483,7 +486,7 @@ class ReconstructDistributions:
             curves[idx] = np.log(curves[idx])
             curves[idx] -= 7
 
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistributionProb', '#164B0C', '$z$', '$\propto ln[p(z)]$')
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', '$\propto ln[p(z)]$')
 
         return curves, plot_dict
 
@@ -653,19 +656,33 @@ class Plots:
 
     def NoSelectionEffects(self):
 
-        plots_inputs = self.distributions.RemoveSelectionEffects(self.df, self.pars, self.rate_w, self.ref_cosmo, self.inj)
-        self.plots.plot_curves(              plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d'])
-        self.plots.plot_curves(              plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d'])
-        self.plots.plot_curves(              plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'])
-        self.plots.plot_curves_evolving_long(plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo)
-        self.plots.plot_curves(              plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s'])
-        self.plots.plot_curves(              plots_inputs['curves-z'],     plots_inputs['plot-dict-z'])
+        plots_inputs   = self.distributions.RemoveSelectionEffects(self.df, self.pars, self.rate_w, self.ref_cosmo, self.inj)
+        if self.pars['true-values'] == {}:
+            self.plots.plot_curves(              plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d'])
+            if not self.pars['single-mass']:
+                self.plots.plot_curves(          plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d'])
+            self.plots.plot_curves(              plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'])
+            self.plots.plot_curves_evolving_long(plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo)
+            if not self.pars['single-mass']:
+                self.plots.plot_curves(          plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s'])
+            self.plots.plot_curves(              plots_inputs['curves-z'],     plots_inputs['plot-dict-z'])
+        else:
+            inputs_true = self.distributions.RemoveSelectionEffects(pd.DataFrame(self.pars['true-values'], index = [0]), self.pars, self.rate_w, self.ref_cosmo, self.inj)
+            self.plots.plot_curves(              plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d'],                 truth = inputs_true['curves-m1d'][0])
+            if not self.pars['single-mass']:
+                self.plots.plot_curves(          plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d'],                 truth = inputs_true['curves-m2d'][0])
+            self.plots.plot_curves(              plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'],                  truth = inputs_true['curves-dL'][0])
+            self.plots.plot_curves_evolving_long(plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo, truth = inputs_true['curves-z-m1s'])
+            if not self.pars['single-mass']:
+                self.plots.plot_curves(          plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s'],                 truth = inputs_true['curves-m2s'][0])
+            self.plots.plot_curves(              plots_inputs['curves-z'],     plots_inputs['plot-dict-z'],                   truth = inputs_true['curves-z'][0])
 
     # Call the class functions to generate the plots.
     def ProducePlots(self):
 
         self.PrimaryMass()
-        self.SecondaryMass()
+        if not self.pars['single-mass']:
+            self.SecondaryMass()
         self.RateEvolution()
         self.RateEvolutionProbability()
         self.NoSelectionEffects()

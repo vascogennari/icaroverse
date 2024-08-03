@@ -234,7 +234,7 @@ class Data:
         
         print('\n * Loading data.\n\n\t{}\n'.format(pars['data-path']))
         if not pars['distance-prior-PE']:          print(' * Using a flat prior for PE samples on the luminosity distance.')
-        if pars['model-secondary'] == 'MassRatio': print(' * Correcting the PE samples prior for mass ratio. WARNING: Plase make sure this is correct.')
+        if pars['model-secondary'] == 'MassRatio': print(' * Correcting the PE samples prior for mass ratio.')
               
         # O3 Cosmology paper injections
         if   pars['O3-cosmology']:
@@ -265,7 +265,6 @@ class Data:
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
                 if pars['model-secondary'] == 'MassRatio':
                     pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
-                    # FIXME: This is the prior used for PE samples. Check that this is true.
                     prior *= data_evs['mass_1'][()]
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
@@ -294,7 +293,6 @@ class Data:
                     # If using the mass ratio, correct the prior with the Jacobian m2->q.
                     if pars['model-secondary'] == 'MassRatio':
                         pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
-                        # FIXME: This is the prior used for PE samples. Check that this is true.
                         prior *= np.array([data_evs['m1d'][i]])
                 else:
                     # If only using one mass, remove the Jacobian contribution from the secondary.
