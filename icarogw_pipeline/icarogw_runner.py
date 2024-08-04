@@ -292,7 +292,7 @@ class Data:
                 if not pars['single-mass']:
                     # If using the mass ratio, correct the prior with the Jacobian m2->q.
                     if pars['model-secondary'] == 'MassRatio':
-                        pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
+                        pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / np.array([data_evs['m1d'][i]])
                         prior *= np.array([data_evs['m1d'][i]])
                 else:
                     # If only using one mass, remove the Jacobian contribution from the secondary.
