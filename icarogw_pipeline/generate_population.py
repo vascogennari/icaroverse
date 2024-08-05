@@ -31,18 +31,14 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     '''
 
     N = 100000
-    m_array = np.linspace(0.,   200., N)
-    q_array = np.linspace(0.1,  1.,   N)
-    z_array = np.linspace(1e-5, 2,    N)
+    m_array = np.linspace(0.,    200., N)
+    q_array = np.linspace(0.1,   1.,   N)
+    z_array = np.linspace(1e-6, 1.5,  N)
     
     # Initialize ICAROGW wrappers
-    # Cosmology
-    cosmo_ref = icarogw.cosmology.astropycosmology(zmax = 20.)
-    cosmo_ref.build_cosmology(FlatLambdaCDM(H0 = truths['H0'], Om0 = truths['Om0']))
-
-    # Primary, secondary, rate evolution
+    # Primary, secondary, rate evolution, reference cosmology
     tmp = icarorun.Wrappers(pars)
-    m1w, m2w, rw, _ = tmp.return_Wrappers()
+    m1w, m2w, rw, _, cosmo_ref = tmp.return_Wrappers()
 
     population_parameters = m1w.population_parameters + m2w.population_parameters + rw.population_parameters
     save_truths(pars['output'], {key: truths[key] for key in population_parameters})
@@ -66,12 +62,18 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     qs  = np.random.choice(q_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
     m2s = qs * m1s
 
-    theta      = icarosim.rvs_theta(Ndetgen, 0., 1.4, 'Pw_three.dat')
-    rand_theta = np.random.choice(theta, Ndetgen)
-    thetadet   = rand_theta
-    
-    rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = thetadet)
-    idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
+    if not pars['flat-PSD']:
+        theta      = icarosim.rvs_theta(Ndetgen, 0., 1.4, 'Pw_three.dat')
+        rand_theta = np.random.choice(theta, Ndetgen)
+        thetadet   = rand_theta
+        
+        rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = thetadet)
+        idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
+    # Simulate a detection with a flat PSD.
+    else:
+        rho_true_det = icarosim.snr_samples_flat(zs)
+        idx_cut_det  = icarosim.snr_cut_flat(rho_true_det, snrthr = pars['snr-cut'])
+
     print('\n * Number of detections: {}\n'.format(len(idx_cut_det)), flush = True)
     with open(os.path.join(results_dir, 'number_detected_events.txt'), 'w') as f: f.write('{}'.format(len(idx_cut_det)))
     
@@ -165,22 +167,24 @@ def plot_injected_distribution(m_array, zx, mw, truths, plot_dir):
 
 # MAIN
 generate_population = 1
-additional_text     = '_evolving'
-N_events            = 252000
+additional_text     = '_non-evolving_sigma-1M_flat-PSD'
+N_events            = 2000 #252000
 
 input_pars  = {
     # Model parameters
-    'model-primary'         : 'PowerLawRedshiftLinear-GaussianRedshiftLinear',                     
-    'model-secondary'       : 'MassRatio',
-    'model-rate'            : 'PowerLaw',
+    'model-primary'       : 'GaussianRedshift-order-1',                     
+    'model-secondary'     : 'MassRatio',
+    'model-rate'          : 'PowerLaw',
 
-    'redshift-transition'   : 'linear',
-    'positive-peak'         : 0,
-    'low-smoothing'         : 1,
-    'priors'                : {},
+    'redshift-transition' : 'linear',
+    'positive-peak'       : 0,
+    'low-smoothing'       : 1,
+    'priors'              : {},
+    'single-mass'         : 0,
 
-    'snr-cut'               : 12.,
-    'fgw-cut'               : 15.,
+    'snr-cut'             : 1,
+    'fgw-cut'             : 1.,
+    'flat-PSD'            : 1,
 }
 
 true_values = {
@@ -201,21 +205,21 @@ true_values = {
     'alpha_z1'    : 0.,
 
     'mmin_z0'     : 7.,
-    'mmin_z1'     : 00.,
+    'mmin_z1'     : 0.,
     'mmax_z0'     : 150.,
     'mmax_z1'     : 0.,
 
-    'mu_z0'       : 30.,
-    'mu_z1'       : 20.,
-    'sigma_z0'    : 6.,
+    'mu_z0'       : 100.,
+    'mu_z1'       : 00.,
+    'sigma_z0'    : 1.,
     'sigma_z1'    : 0.,
 
     'mix_z0'      : 0.9,
     'mix_z1'      : 0.9,
     
     # Secondary mass distribution
-    'mu_q'        : 0.8,
-    'sigma_q'     : 0.15,
+    'mu_q'        : 0.7,
+    'sigma_q'     : 0.01,
 
     # Rate evolution
     'gamma'       : 0.,
@@ -226,7 +230,7 @@ true_values = {
 
 
 filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
-base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/scripts/injection_campaign'
+base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
 results_dir = os.path.join(base_dir,    'simulated_population', filename)
 plot_dir    = os.path.join(results_dir, 'population_plots')
 if not os.path.exists(results_dir): os.makedirs(results_dir)
