@@ -392,10 +392,10 @@ class ReconstructDistributions:
 
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing KDE source frame distributions'):
             if not pars['single-mass']:
-                tmp          = kde.gaussian_kde(m2s[i,:])
+                tmp             = kde.gaussian_kde(m2s[i,:])
                 curves_m2s[i,:] = tmp.evaluate(m2_array)
-            tmp          = kde.gaussian_kde(zs[i,:])
-            curves_z[i,:]   = tmp.evaluate(z_array_kde)
+            tmp                 = kde.gaussian_kde(zs[i,:])
+            curves_z[i,:]       = tmp.evaluate(z_array_kde)
 
         # Get confidence bundles.
         percentiles = [50, 5, 16, 84, 95]
