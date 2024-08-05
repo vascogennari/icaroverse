@@ -50,18 +50,19 @@ dic_param ={
     'delta_m':     0.,
     'mu_g':        100.,
     'sigma_g':     10.,
-    'lambda_peak': 0.5,
+    'lambda_peak': 0.9,
 }
 
 m_model   = 'PowerLawPeak'
 Ninj      = 100000  #200000
 Ndet_inj  = 0
 N_ext     = 10e4
-snr_thr   = 0
+snr_thr   = 1
 fgw_cut   = 1
 unif_dist = 1
-zmax      = 2.
-additional_text = '_cosmology'
+zmax      = 1.5
+flat_PSD  = 1
+additional_text = '_cosmology_Peak_z-unif'
 
 print('\n * Generating injections for selection effects.\n')
 
@@ -86,14 +87,20 @@ with tqdm(total = Ninj) as pbar:
         else:         dL_inj, pdf_dL = icarosim.generate_dL_inj(        Nsamp = int(N_ext), zmax = zmax)
         z_inj                        = icarosim.dl_to_z(dL_inj)
 
-        # The injection values are extracted in the source frame, but the output values are transformed in the detector frame.
+        # The injection values are extracted in the source frame, but the output values are transformed in the detector frame,
+        # because the hierarchical likelihood is expressed in the detector frame, and so the input injections for selection effects.
         # This transformation needs to be tracked in the injections prior, by including the Jacobian (m1s, m2s) --> (m1d, m2d).
+        # Note that we directly extract from the luminosity distance, thus there is no ddL/dz contribution.
         # FIXME: Implement a more general framework to account for different parameters: mass ratio or only one mass.
         jacobian                     = (1 + z_inj)**(-2)
         prior_inj                    = pdf_m * pdf_dL * jacobian
-        theta                        = compute_theta(m1s_inj, os.path.join(base_dir, 'Pw_three.dat'))
-        snr_inj, _, _                = icarosim.snr_samples(m1s_inj, m2s_inj, z_inj, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
-        idx_detected_inj             = icarosim.snr_and_freq_cut(m1s_inj, m2s_inj, z_inj, snr_inj, snrthr = snr_thr, fgw_cut = fgw_cut)
+        if not flat_PSD:
+            theta                    = compute_theta(m1s_inj, os.path.join(base_dir, 'Pw_three.dat'))
+            snr_inj, _, _            = icarosim.snr_samples(m1s_inj, m2s_inj, z_inj, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
+            idx_detected_inj         = icarosim.snr_and_freq_cut(m1s_inj, m2s_inj, z_inj, snr_inj, snrthr = snr_thr, fgw_cut = fgw_cut)
+        else:
+            snr_inj                  = icarosim.snr_samples_flat(z_inj)
+            idx_detected_inj         = icarosim.snr_cut_flat(snr_inj, snrthr = snr_thr)
         
         m1d_inj = m1s_inj[idx_detected_inj] * (1 + z_inj[idx_detected_inj])
         m2d_inj = m2s_inj[idx_detected_inj] * (1 + z_inj[idx_detected_inj])
