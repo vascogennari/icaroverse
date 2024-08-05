@@ -172,7 +172,8 @@ class SelectionEffects:
             obs_time = (28519200 / 86400) / 365
             pars['injections-number'] = data_inj.attrs['total_generated']
             prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
-            prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)   # (m_1s, m_2s, z) --> (m_1d, m_2d, d_L)
+            # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m_1s, m_2s, z) --> (m_1d, m_2d, d_L).
+            prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
 
             tmp = np.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
             ifarmax = np.max(tmp, axis = 0)
@@ -233,8 +234,10 @@ class Data:
     def __init__(self, pars, ref_cosmo):
         
         print('\n * Loading data.\n\n\t{}\n'.format(pars['data-path']))
-        if not pars['distance-prior-PE']:          print(' * Using a flat prior for PE samples on the luminosity distance.')
-        if pars['model-secondary'] == 'MassRatio': print(' * Correcting the PE samples prior for mass ratio.')
+        if not pars['distance-prior-PE']:              print(' * Using a flat prior for PE samples on the luminosity distance.')
+        if not pars['single-mass']:
+            if pars['model-secondary'] == 'MassRatio': print(' * Correcting the PE samples prior for mass ratio.')
+        else:                                          print(' * Correcting the PE samples prior for mass ratio.')
               
         # O3 Cosmology paper injections
         if   pars['O3-cosmology']:
@@ -286,7 +289,7 @@ class Data:
 
                 # This assumes that the luminosity distance prior for the single events PE is uniform in volume, thus p(d_L)=d_L^2.
                 # If not, set the prior to one.
-                if pars['distance-prior-PE']: prior = np.array([       data_evs['dL'][i]**2])
+                if pars['distance-prior-PE']: prior = np.array([data_evs['dL'][i]**2])
                 else:                         prior = 1.
 
                 if not pars['single-mass']:
@@ -295,8 +298,6 @@ class Data:
                         pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / np.array([data_evs['m1d'][i]])
                         prior *= np.array([data_evs['m1d'][i]])
                 else:
-                    # If only using one mass, remove the Jacobian contribution from the secondary.
-                    prior *= (1 + ref_cosmo.dl2z(np.array([data_evs['dL'][i]])))
                     pos_dict.pop('mass_2')
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
