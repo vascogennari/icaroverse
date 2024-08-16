@@ -290,13 +290,13 @@ class Data:
                 # This assumes that the luminosity distance prior for the single events PE is uniform in volume, thus p(d_L)=d_L^2.
                 # If not, set the prior to one.
                 if pars['distance-prior-PE']: prior = np.array([data_evs['dL'][i]**2])
-                else:                         prior = 1.
+                else:                         prior = np.array([1.])
 
                 if not pars['single-mass']:
                     # If using the mass ratio, correct the prior with the Jacobian m2->q.
                     if pars['model-secondary'] == 'MassRatio':
                         pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / np.array([data_evs['m1d'][i]])
-                        prior *= np.array([data_evs['m1d'][i]])
+                        #prior *= np.array([data_evs['m1d'][i]])    # FIXME: Include this option for future simulations with PE samples.
                 else:
                     pos_dict.pop('mass_2')
 
