@@ -18,6 +18,13 @@ def save_truths(path, dictionary):
             max_len = len(max(dictionary.keys(), key = len))
             f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
 
+def save_settings(path, dictionary):
+
+    with open(os.path.join(path, 'population_settings.txt'), 'w') as f:
+        for key in dictionary.keys():
+            max_len = len(max(dictionary.keys(), key = len))
+            f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
+
 
 def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     '''
@@ -54,20 +61,19 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     for i,z in tqdm(enumerate(zs),  total = len(zs)):
         pdf = m1w.pdf(m_array, z)
         m1s[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
-    plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir)
+    plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir, redshift = True)
 
     # Mass ratio
     update_weights(m2w, truths)
     pdf = m2w.pdf(q_array)
     qs  = np.random.choice(q_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
     m2s = qs * m1s
+    plot_injected_distribution(q_array, z_array, m2w, truths, plot_dir)
 
     if not pars['flat-PSD']:
-        theta      = icarosim.rvs_theta(Ndetgen, 0., 1.4, 'Pw_three.dat')
-        rand_theta = np.random.choice(theta, Ndetgen)
-        thetadet   = rand_theta
-        
-        rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = thetadet)
+        # Average on extrinsic parameters.
+        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, 'Pw_three.dat')
+        rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
         idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
     # Simulate a detection with a flat PSD.
     else:
@@ -86,26 +92,30 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     m2d_det = m2d[idx_cut_det]
     dL_det  = dL[ idx_cut_det]
     
-    sampe_detector_dict = { 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det}
+    samps_detector_dict = { 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det}
     samps_source_dict   = { 'm1s': m1s,     'm2s': m2s,     'z':  zs}
+    inj_wrappers        = {'m1w': m1w, 'm2w': m2w, 'm_array': m_array, 'q_array': q_array, 'z_array': z_array, 'q_samps': qs}
     
-    return samps_source_dict, sampe_detector_dict
+    return samps_source_dict, samps_detector_dict, inj_wrappers
 
 
-def plot_population(source_dict, detector_dict, plot_dir):
+def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers):
 
     title   = 'm1_source_frame'
     figname = os.path.join(plot_dir, title)
-    plt.hist(source_dict['m1s'], bins = 50, color = 'k', alpha = 0.5)
+    plt.hist(source_dict['m1s'], density = 1, bins = 40, color = 'k', alpha = 0.5)
+    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][0] ))
+    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][-1]))
     plt.title(title)
     plt.xlabel('m1')
     plt.yscale('log')
+    plt.ylim(1e-5, 1)
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
 
     title   = 'm1_detector_frame'
     figname = os.path.join(plot_dir, title)
-    plt.hist(detector_dict['m1d'], bins = 50, color = 'k', alpha = 0.5)
+    plt.hist(detector_dict['m1d'], bins = 40, color = 'k', alpha = 0.5)
     plt.title(title)
     plt.xlabel('m1')
     plt.savefig('{}.pdf'.format(figname))
@@ -129,50 +139,70 @@ def plot_population(source_dict, detector_dict, plot_dir):
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
 
+    title   = 'q_distribution'
+    figname = os.path.join(plot_dir, title)
+    plt.hist(inj_wrappers['q_samps'], density = 1, bins = 40, color = 'k', alpha = 0.5)
+    plt.plot(inj_wrappers['q_array'], inj_wrappers['m2w'].pdf(inj_wrappers['q_array']))
+    plt.title(title)
+    plt.xlabel('q')
+    plt.savefig('{}.pdf'.format(figname))
+    plt.close()
+
     return 0
 
-def plot_injected_distribution(m_array, zx, mw, truths, plot_dir):
+def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = False):
 
-    N_z = 10
-    zy        = np.linspace(zx[0], zx[-1], N_z)
-    _, z_grid = np.meshgrid(zx, zy)
+    if redshift:
+        N_z = 10
+        zy        = np.linspace(zx[0], zx[-1], N_z)
+        _, z_grid = np.meshgrid(zx, zy)
 
-    _, ax = plt.subplots(1, 2, figsize=(10, 5))
-    colors = sns.color_palette('RdBu_r', N_z)
+        _, ax = plt.subplots(1, 2, figsize=(10, 5))
+        colors = sns.color_palette('RdBu_r', N_z)
 
-    for zi, z_array in enumerate(z_grid):
-        pdf = mw.pdf(m_array, z_array)
-        z = z_array[0]
-        ax[0].plot(m_array, pdf + z, color = colors[zi])
-        if not (zi == len(z_grid)-1):
-            ax[1].plot(m_array, pdf, color = colors[zi])
-        else:
-            ax[1].plot(m_array, pdf, color = colors[zi], label='$\\alpha_0={}, \\alpha_1={}, mmin_0={}, mmin_1={}, \\mu_0={}, \\mu_1={}, mix z_0={}, mix z_1={}$'.format(
-                                                                truths['alpha_z0'], truths['alpha_z1'], truths['mmin_z0'], truths['mmin_z1'], truths['mu_z0'], truths['mu_z1'], truths['mix_z0'], truths['mix_z1']))
-    ax[0].set_xlabel('$m_1\ [M_{\odot}]$')
-    ax[1].set_xlabel('$m_1\ [M_{\odot}]$')
-    ax[0].set_ylabel('$z$')
-    ax[1].set_ylabel('$p(m_1)$')
-    ax[1].set_xlim(0, 100)
-    ax[1].set_ylim(1e-5, 1)
-    ax[1].set_yscale('log')
+        for zi, z_array in enumerate(z_grid):
+            pdf = mw.pdf(m_array, z_array)
+            z = z_array[0]
+            ax[0].plot(m_array, pdf + z, color = colors[zi])
+            if not (zi == len(z_grid)-1):
+                ax[1].plot(m_array, pdf, color = colors[zi])
+            else:
+                ax[1].plot(m_array, pdf, color = colors[zi], label='$\\alpha_0={}, \\alpha_1={}, mmin_0={}, mmin_1={}, \\mu_0={}, \\mu_1={}, mix z_0={}, mix z_1={}$'.format(
+                                                                    truths['alpha_z0'], truths['alpha_z1'], truths['mmin_z0'], truths['mmin_z1'], truths['mu_z0'], truths['mu_z1'], truths['mix_z0'], truths['mix_z1']))
+        ax[0].set_xlabel('$m_1\ [M_{\odot}]$')
+        ax[1].set_xlabel('$m_1\ [M_{\odot}]$')
+        ax[0].set_ylabel('$z$')
+        ax[1].set_ylabel('$p(m_1)$')
+        ax[1].set_xlim(0, 100)
+        ax[1].set_ylim(1e-5, 1)
+        ax[1].set_yscale('log')
 
-    plt.subplots_adjust(wspace = 0.13)
-    plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, 'injected_m1.pdf'), transparent = True)
-    plt.close()
+        plt.subplots_adjust(wspace = 0.13)
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, 'injected_m1.pdf'), transparent = True)
+        plt.close()
+    
+    else:
+        # FIXME: Add option with m2 instead of q.
+        pdf = mw.pdf(m_array)
+        plt.plot(m_array, pdf)
+        plt.xlabel('$q$')
+        plt.ylabel('$p(q)$')
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, 'injected_q.pdf'), transparent = True)
+        plt.close()
 
     return 0
 
 
 # MAIN
 generate_population = 1
-additional_text     = '_non-evolving_sigma-1M_flat-PSD'
-N_events            = 2000 #252000
+additional_text     = '_non-evolving_log-mass_TEST'
+N_events            = 3000 #252000
 
 input_pars  = {
     # Model parameters
-    'model-primary'       : 'GaussianRedshift-order-1',                     
+    'model-primary'       : 'PowerLawRedshiftLinear-GaussianRedshiftLinear',
     'model-secondary'     : 'MassRatio',
     'model-rate'          : 'PowerLaw',
 
@@ -182,9 +212,9 @@ input_pars  = {
     'priors'              : {},
     'single-mass'         : 0,
 
-    'snr-cut'             : 1,
-    'fgw-cut'             : 1.,
-    'flat-PSD'            : 1,
+    'snr-cut'             : 12,
+    'fgw-cut'             : 15,
+    'flat-PSD'            : 0,
 }
 
 true_values = {
@@ -209,17 +239,17 @@ true_values = {
     'mmax_z0'     : 150.,
     'mmax_z1'     : 0.,
 
-    'mu_z0'       : 100.,
-    'mu_z1'       : 00.,
-    'sigma_z0'    : 1.,
+    'mu_z0'       : 30.,
+    'mu_z1'       : 0.,
+    'sigma_z0'    : 6.,
     'sigma_z1'    : 0.,
 
     'mix_z0'      : 0.9,
     'mix_z1'      : 0.9,
     
     # Secondary mass distribution
-    'mu_q'        : 0.7,
-    'sigma_q'     : 0.01,
+    'mu_q'        : 0.8,
+    'sigma_q'     : 0.15,
 
     # Rate evolution
     'gamma'       : 0.,
@@ -235,6 +265,7 @@ results_dir = os.path.join(base_dir,    'simulated_population', filename)
 plot_dir    = os.path.join(results_dir, 'population_plots')
 if not os.path.exists(results_dir): os.makedirs(results_dir)
 if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
+save_settings(results_dir, input_pars)
 input_pars['output'] = results_dir
 
 if not generate_population:
@@ -246,11 +277,11 @@ if not generate_population:
 
 else:
     print('\n * Generating new population.\n')
-    sample_source_dict_inj, sample_detector_dict_inj = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events)     #50000000
+    sample_source_dict_inj, sample_detector_dict_inj, inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events)     #50000000
     with open(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(filename)  ), 'wb') as handle:
         pickle.dump(sample_source_dict_inj,   handle, protocol = pickle.HIGHEST_PROTOCOL)
     with open(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)), 'wb') as handle:
         pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
-plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir)
+plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers)
 print(' * Finished.\n')
