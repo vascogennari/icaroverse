@@ -109,6 +109,7 @@ class PlotDistributions:
         plt.xlim( pl_dct['x_min'], pl_dct['x_max'])
         plt.xlabel(pl_dct['x_label'])
         plt.ylabel(pl_dct['y_label'])
+        if pl_dct['label'] == 'RateEvolutionDistribution_Probability': plt.ylim(-10, 1)
 
         plt.grid(linestyle='dotted')
         plt.legend()
@@ -308,7 +309,7 @@ class ReconstructDistributions:
                 pdf = w.pdf(mass_array)
                 curves[idx] = pdf
 
-                plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] * (1+pars['bounds-z'][1]), 'PrimaryMassDistribution', '#890C0A', '$m_1\ [M_{\odot}]$', '$p(m_1)$')
+                plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#890C0A', '$m_1\ [M_{\odot}]$', '$p(m_1)$')
 
             return curves, plot_dict
 
@@ -356,8 +357,8 @@ class ReconstructDistributions:
             tmp = injections.return_reweighted_injections(Nsamp = N_samps_KDE, replace = True)
             m1d[idx,:] = tmp['mass_1']
             if not pars['single-mass']:
-                # FIXME: Implement option with m2
-                m2d[idx,:] = tmp['mass_ratio']
+                if   pars['model-secondary'] == 'MassRatio': m2d[idx,:] = tmp['mass_ratio']
+                elif pars['model-secondary'] == 'PowerLaw' : m2d[idx,:] = tmp['mass_2']
             dL[idx,:]  = tmp['luminosity_distance']
 
         # Compute KDE of the distribution for each PE sample.
@@ -437,7 +438,8 @@ class ReconstructDistributions:
         for idx, samp in df.iterrows():
             samp_filt = {key: samp[key] for key in w.population_parameters}
             w.update(**samp_filt)
-            pdf = w.pdf(m_array)
+            if   pars['model-secondary'] == 'MassRatio': pdf = w.pdf(m_array)
+            elif pars['model-secondary'] == 'PowerLaw' : pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
             curves[idx] = pdf
 
         plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
