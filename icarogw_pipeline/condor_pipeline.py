@@ -37,9 +37,9 @@ def activate_condor_submit(config_name):
 
 # ---------------------------------------------------------------------- #
 user_name      = 'vasco.gennari'
-condor_memory  = 10 #3
-condor_disk    = 5  #1
-condor_threads = 16 #1
+condor_memory  = 10  #5
+condor_disk    = 5   #1
+condor_threads = 16  #1
 condor_executable_path = '/home/vasco.gennari/.conda/envs/icarogw_env/bin/python'
 condor_executable_file = '/home/vasco.gennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
 
@@ -63,4 +63,4 @@ for config in config_list:
     config_path = os.path.join(configs_path, config)
     activate_condor_submit(config_path)
 
-print('\nThe config files in {configs_path} are running in detached condor jobs. Good luck!'.format(configs_path = configs_path))
+print('\nThe config files in {configs_path} are running in detached condor jobs. Good luck!\n'.format(configs_path = configs_path))
