@@ -421,25 +421,26 @@ class ReconstructDistributions:
 
     def SecondaryMassFunction(df, w, p_dct, pars, prior = False):
 
-        # FIXME: Missing option with m2
-        if not pars['model-secondary'] == 'MassRatio':
-            raise ValueError('The secondary mass plot is currently implemented only for the mass ratio. Please implement with m2.')
-
+        if   pars['model-secondary'] == 'MassRatio': bound = 'bounds-q'
+        elif pars['model-secondary'] == 'PowerLaw' : bound = 'bounds-m2'
+        else:
+            raise ValueError('Unknown option for the secondary mass plot. Current implementation accounts for MassRatio and PowerLaw.')
+        
         if prior:
             tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in w.population_parameters}
             df  = pd.DataFrame(tmp)
 
-        q_array = np.linspace(pars['bounds-q'][0], pars['bounds-q'][1], pars['N-points'])
+        m_array = np.linspace(pars[bound][0], pars[bound][1], pars['N-points'])
         curves  = np.empty(shape = (len(df), pars['N-points']))
         pdf     = np.empty(shape = (pars['N-points']))
 
         for idx, samp in df.iterrows():
             samp_filt = {key: samp[key] for key in w.population_parameters}
             w.update(**samp_filt)
-            pdf = w.pdf(q_array)
+            pdf = w.pdf(m_array)
             curves[idx] = pdf
 
-        plot_dict = get_plot_parameters(pars, q_array, pars['bounds-q'][0], pars['bounds-q'][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
+        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
 
         return curves, plot_dict
 
