@@ -6,9 +6,7 @@ from tqdm import tqdm
 
 def compute_theta(m1, path):
      
-    theta      = icarosim.rvs_theta(Nsamp = len(m1), a = 0, b = 1.4, path = path)
-    rand_theta = np.random.choice(theta,len(m1))
-    theta      = rand_theta
+    theta = icarosim.rvs_theta(Nsamp = len(m1), a = 0, b = 1.4, path = path)
     return theta
 
 def save_truths(path, dictionary):
@@ -43,26 +41,27 @@ def plot_injections(true_param, plot_dir):
 
 # Injections set 
 dic_param ={
-    'alpha':       0.,
-    'beta':        0.,
-    'mmin':        0.,
-    'mmax':        200.,
-    'delta_m':     0.,
-    'mu_g':        100.,
+    'alpha':       1.,
+    'beta':        1.,
+    'mmin':        1.,
+    'mmax':        300.,
+    'delta_m':     1.,
+    'mu_g':        30.,
     'sigma_g':     10.,
-    'lambda_peak': 0.9,
+    'lambda_peak': 0.8,
 }
 
 m_model   = 'PowerLawPeak'
 Ninj      = 100000  #200000
 Ndet_inj  = 0
 N_ext     = 10e4
-snr_thr   = 1
-fgw_cut   = 1
-unif_dist = 1
+snr_thr   = 12
+fgw_cut   = 15
+unif_dist = 0
+unif_z    = 0
 zmax      = 1.5
-flat_PSD  = 1
-additional_text = '_cosmology_Peak_z-unif'
+flat_PSD  = 0
+additional_text = ''
 
 print('\n * Generating injections for selection effects.\n')
 
@@ -82,10 +81,13 @@ c = 0
 with tqdm(total = Ninj) as pbar:
     while Ndet_inj < Ninj:
 
-        m1s_inj, m2s_inj, pdf_m      = icarosim.generate_mass_inj(      Nsamp = int(N_ext), mass_model = m_model, dic_param = dic_param)
-        if unif_dist: dL_inj, pdf_dL = icarosim.generate_dL_inj_uniform(Nsamp = int(N_ext), zmax = zmax)
-        else:         dL_inj, pdf_dL = icarosim.generate_dL_inj(        Nsamp = int(N_ext), zmax = zmax)
-        z_inj                        = icarosim.dl_to_z(dL_inj)
+        m1s_inj, m2s_inj, pdf_m          = icarosim.generate_mass_inj(        Nsamp = int(N_ext), mass_model = m_model, dic_param = dic_param)
+        if not unif_z:
+            if unif_dist: dL_inj, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(N_ext), zmax = zmax)
+            else:         dL_inj, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(N_ext), zmax = zmax)
+        else:
+                          dL_inj, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(N_ext), zmax = zmax)
+        z_inj                            = icarosim.dl_to_z(dL_inj)
 
         # The injection values are extracted in the source frame, but the output values are transformed in the detector frame,
         # because the hierarchical likelihood is expressed in the detector frame, and so the input injections for selection effects.
@@ -128,6 +130,6 @@ plot_injections(true_param, plot_dir)
 print('\n * Generated {} injections.'.format(N_ext * c))
 with open(os.path.join(results_dir, 'number_injections.txt'), 'w') as f:
     f.write('Generated: {}\n'.format(int(N_ext * c)))
-    f.write('Detected:  {}'.format(  int(Ndet_inj )))
+    f.write('Detected:  {}'.format(  len(true_param['m1d'])))
 
 print('\n * Finished.\n')
