@@ -1,4 +1,4 @@
-import os, sys, configparser, shutil
+import os, sys, configparser, shutil, time
 from optparse import OptionParser
 
 import pickle, h5py, pandas as pd, json
@@ -28,6 +28,20 @@ def print_dictionary(dictionary):
         max_len = len(max(dictionary.keys(), key = len))
         if not key == 'all-priors': print('\t{}  {}'.format(key.ljust(max_len), dictionary[key]))
 
+def check_effective_number_injections(pars, likelihood, n_events):
+
+    def single_likelihood_eval():
+        count = time.time()
+        _     = likelihood.log_likelihood()
+        print('\n\tA single likelihood evaluation takes {0:.5f} [s].'.format(time.time() - count))
+
+    if pars['simulation'] and (not pars['true-values'] == {}):
+        likelihood.parameters = {key: pars['true-values'][key] for key in likelihood.rate_model.population_parameters}
+        single_likelihood_eval()
+        N_eff_inj = likelihood.injections.effective_injections_number()
+        stability = N_eff_inj / (4 * n_events)
+        print('\n\tThe effective number of injections for the injected model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability))
+        if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
 
 
 class Wrappers:
@@ -224,6 +238,8 @@ class SelectionEffects:
         else:
             raise ValueError('Unknown option to compute the selection effects cut.')
 
+        print('\n\tUsing {} injections out of {} to compute selection effects.\n'.format(len(self.injections.injections_data_original['mass_1']), len(inj_dict['mass_1'])))
+
     def return_SelectionEffects(self):
         return self.injections
 
@@ -233,11 +249,11 @@ class Data:
        
     def __init__(self, pars, ref_cosmo):
         
-        print('\n * Loading data.\n\n\t{}\n'.format(pars['data-path']))
-        if not pars['distance-prior-PE']:              print(' * Using a flat prior for PE samples on the luminosity distance.')
+        print('\n * Loading data.\n\n\t{}'.format(pars['data-path']))
+        if not pars['distance-prior-PE']:              print('\n\tUsing a flat prior for PE samples on the luminosity distance.')
         if not pars['single-mass']:
-            if pars['model-secondary'] == 'MassRatio': print(' * Correcting the PE samples prior for mass ratio.')
-        else:                                          print(' * Correcting the PE samples prior for mass ratio.')
+            if pars['model-secondary'] == 'MassRatio': print('\n\tCorrecting the PE samples prior for mass ratio.')
+        else:                                          print('\n\tCorrecting the PE samples prior for mass ratio.')
               
         # O3 Cosmology paper injections
         if   pars['O3-cosmology']:
@@ -305,6 +321,7 @@ class Data:
             raise ValueError('Unknown option to process single events data.')
         
         self.data = icarogw.posterior_samples.posterior_samples_catalog(samps_dict)
+        print('\n\tUsing a population of {} events.'.format(self.data.n_ev))
 
     def return_Data(self):
         return self.data
@@ -426,9 +443,12 @@ def main():
     tmp = Data(input_pars, ref_cosmo)
     data = tmp.return_Data()
 
-    # Initialise hierarchical likelihood and set the priors
+    # Initialise hierarchical likelihood and set the priors.
     tmp = LikelihoodPrior(input_pars, data, injections, wrapper)
     likelihood, prior = tmp.return_LikelihoodPrior()
+
+    # Control the effective number of injections on the injected model.
+    check_effective_number_injections(input_pars, likelihood, data.n_ev)
 
     # ----------------------------------------------- #
     # Start the sampler and run hierarchical analysis #
@@ -468,7 +488,7 @@ def main():
     # Plots production and postprocessing #
     # ----------------------------------- #
 
-    print(' * Producing plots.\n')
+    print('\n * Producing plots.')
     # FIXME: Should define a new variable instead of overwriting the output path.
     input_pars['output'] = os.path.join(input_pars['output'], 'plots')
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
