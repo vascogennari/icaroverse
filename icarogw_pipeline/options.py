@@ -59,7 +59,7 @@ def InitialiseOptions(Config):
 
         # Wrappers
         'model-primary'         : 'PowerLaw-Gaussian',                     
-        'model-secondary'       : 'MassRatio',
+        'model-secondary'       : 'MassRatio-Gaussian',
         'model-rate'            : 'PowerLaw',
 
         'redshift-transition'   : '',
@@ -186,7 +186,7 @@ usage = """
     # ----- #
 
         model-primary               Options: {'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear'}
-        model-secondary             Options: {'PowerLaw', 'PowerLaw-Gaussian', 'MassRatio'}
+        model-secondary             Options: {'Mass2-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-PowerLaw'}
         model-rate                  Options: {'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'PowerLaw'}
         redshift-transition         Options: {'sigmoid', 'double-sigmoid', 'linear', 'linear-sinusoid'}
 

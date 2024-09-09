@@ -23,7 +23,7 @@ from scipy.stats import kde
 # rcParams["lines.linewidth"] = 0.7
 
 
-def get_plot_parameters(pars, x_array, x_min, x_max, figname, color, x_label, y_label, colors = None, z_grid = None, y_label_R = None, y_label_L = None):
+def get_plot_parameters(pars, x_array, x_min, x_max, figname, color, x_label, y_label, label, colors = None, z_grid = None, y_label_R = None, y_label_L = None):
 
     plot_dict = {
         'x'         : x_array,
@@ -31,7 +31,7 @@ def get_plot_parameters(pars, x_array, x_min, x_max, figname, color, x_label, y_
         'figname'   : figname,
         'color'     : color,
 
-        'label'     : pars['model-rate'],
+        'label'     : label,
         'x_min'     : x_min,
         'x_max'     : x_max,
 
@@ -109,7 +109,7 @@ class PlotDistributions:
         plt.xlim( pl_dct['x_min'], pl_dct['x_max'])
         plt.xlabel(pl_dct['x_label'])
         plt.ylabel(pl_dct['y_label'])
-        if pl_dct['label'] == 'RateEvolutionDistribution_Probability': plt.ylim(-10, 1)
+        if pl_dct['figname'] == 'RateEvolutionDistribution_Probability': plt.ylim(-5, 7)
 
         plt.grid(linestyle='dotted')
         plt.legend()
@@ -290,7 +290,7 @@ class ReconstructDistributions:
                 zi += 1
 
             colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
-            plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#000000', '$m_1\ [M_{\odot}]$', '$z$', colors = colors, z_grid = z_grid, y_label_L = '$z$', y_label_R = '$p(m_1)$')
+            plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#000000', '$m_1\ [M_{\odot}]$', '$z$', pars['model-primary'], colors = colors, z_grid = z_grid, y_label_L = '$z$', y_label_R = '$p(m_1)$')
 
             return curves_z, plot_dict
 
@@ -309,7 +309,7 @@ class ReconstructDistributions:
                 pdf = w.pdf(mass_array)
                 curves[idx] = pdf
 
-                plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#890C0A', '$m_1\ [M_{\odot}]$', '$p(m_1)$')
+                plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#890C0A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'])
 
             return curves, plot_dict
 
@@ -330,7 +330,7 @@ class ReconstructDistributions:
         zy          = np.linspace(pars['bounds-z'][0],  pars['bounds-z'][1],                            pars['N-z-slices'])
         _, z_grid   = np.meshgrid(z_array, zy)
 
-        if pars['model-secondary'] == 'MassRatio':
+        if 'MassRatio' in pars['model-secondary']:
             pars['bounds-m2'] = pars['bounds-q']
             m2_array = q_array
         else:
@@ -357,8 +357,8 @@ class ReconstructDistributions:
             tmp = injections.return_reweighted_injections(Nsamp = N_samps_KDE, replace = True)
             m1d[idx,:] = tmp['mass_1']
             if not pars['single-mass']:
-                if   pars['model-secondary'] == 'MassRatio': m2d[idx,:] = tmp['mass_ratio']
-                elif pars['model-secondary'] == 'PowerLaw' : m2d[idx,:] = tmp['mass_2']
+                if   'MassRatio' in pars['model-secondary']: m2d[idx,:] = tmp['mass_ratio']
+                elif 'PowerLaw'  in pars['model-secondary']: m2d[idx,:] = tmp['mass_2']
             dL[idx,:]  = tmp['luminosity_distance']
 
         # Compute KDE of the distribution for each PE sample.
@@ -410,20 +410,20 @@ class ReconstructDistributions:
             'curves-z-m1s': curves_z_m1s, 'curves-m2s': curves_m2s, 'curves-z' : curves_z,
         }
         colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
-        plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] * (1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', '$m_1\ [M_{\odot}]$', '$p(m_1)$')
-        plots_inputs['plot-dict-m2d'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                           'SecondaryMassDistribution_DetectorFrame',       '#6A8820', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
-        plots_inputs['plot-dict-dL']  = get_plot_parameters(pars, dL_array,   pars['bounds-dL'][0], pars['bounds-dL'][1],                           'LuminosityDistranceDistribution_DetectorFrame', '#7E375B', '$d_L\ [Mpc]$',       '$p(d_L)$')
-        plots_inputs['plot-dict-m1s'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1],                           'PrimaryMassDistribution_NoSelectionEffects',    '#000000', '$m_1\ [M_{\odot}]$', '$z$',     colors = colors, z_grid = z_grid)
-        plots_inputs['plot-dict-m2s'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                           'SecondaryMassDistribution_NoSelectionEffects',  '#1F5623', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
-        plots_inputs['plot-dict-z']   = get_plot_parameters(pars, z_array,    pars['bounds-z'][0],  pars['bounds-z'][1],                            'RedshiftDistribution_NoSelectionEffects',       '#86042A', '$z$',                '$p(z)$'  )
+        plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] * (1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'])
+        plots_inputs['plot-dict-m2d'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                           'SecondaryMassDistribution_DetectorFrame',       '#6A8820', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
+        plots_inputs['plot-dict-dL']  = get_plot_parameters(pars, dL_array,   pars['bounds-dL'][0], pars['bounds-dL'][1],                           'LuminosityDistranceDistribution_DetectorFrame', '#7E375B', '$d_L\ [Mpc]$',       '$p(d_L)$', pars['model-rate'])
+        plots_inputs['plot-dict-m1s'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1],                           'PrimaryMassDistribution_NoSelectionEffects',    '#000000', '$m_1\ [M_{\odot}]$', '$z$'     , pars['model-primary'], colors = colors, z_grid = z_grid)
+        plots_inputs['plot-dict-m2s'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                           'SecondaryMassDistribution_NoSelectionEffects',  '#1F5623', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
+        plots_inputs['plot-dict-z']   = get_plot_parameters(pars, z_array,    pars['bounds-z'][0],  pars['bounds-z'][1],                            'RedshiftDistribution_NoSelectionEffects',       '#86042A', '$z$',                '$p(z)$'  , pars['model-rate'])
 
         return plots_inputs
 
 
     def SecondaryMassFunction(df, w, p_dct, pars, prior = False):
 
-        if   pars['model-secondary'] == 'MassRatio': bound = 'bounds-q'
-        elif pars['model-secondary'] == 'PowerLaw' : bound = 'bounds-m2'
+        if   'MassRatio' in pars['model-secondary']: bound = 'bounds-q'
+        elif 'PowerLaw'  in pars['model-secondary']: bound = 'bounds-m2'
         else:
             raise ValueError('Unknown option for the secondary mass plot. Current implementation accounts for MassRatio and PowerLaw.')
         
@@ -438,11 +438,11 @@ class ReconstructDistributions:
         for idx, samp in df.iterrows():
             samp_filt = {key: samp[key] for key in w.population_parameters}
             w.update(**samp_filt)
-            if   pars['model-secondary'] == 'MassRatio': pdf = w.pdf(m_array)
-            elif pars['model-secondary'] == 'PowerLaw' : pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
+            if   'MassRatio' in pars['model-secondary']: pdf = w.pdf(m_array)
+            elif 'PowerLaw'  in pars['model-secondary']: pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
             curves[idx] = pdf
 
-        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$')
+        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
 
         return curves, plot_dict
 
@@ -463,7 +463,7 @@ class ReconstructDistributions:
             func = w.rate.log_evaluate(z_array)
             curves[idx] = func
 
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionFunction', '#825310', '$z$', '$ln[\Psi(z)/R_0]$')
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionFunction', '#825310', '$z$', '$ln[\Psi(z)/R_0]$', pars['model-rate'])
 
         return curves, plot_dict
 
@@ -489,7 +489,7 @@ class ReconstructDistributions:
             curves[idx] = np.log(curves[idx])
             curves[idx] -= 7
 
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', '$\propto ln[p(z)]$')
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', '$\propto ln[p(z)]$', pars['model-rate'])
 
         return curves, plot_dict
 
@@ -511,7 +511,7 @@ class ReconstructDistributions:
             elif pars['redshift-transition'] == 'linear':          curves[idx] = icarogw.priors._mixed_linear_function(         z_array, samp['mix_z0'], samp['mix_z1'])
             elif pars['redshift-transition'] == 'linear-sinusoid': curves[idx] = icarogw.priors._mixed_linear_sinusoid_function(z_array, samp['mix_z0'], samp['mix_z1'],   samp['amp'],    samp['freq'])
         
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RedshiftTransitionFunction', '#212121', '$z$', '$\\sigma(z)$')
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RedshiftTransitionFunction', '#212121', '$z$', '$\\sigma(z)$', pars['model-primary'])
         
         return curves, plot_dict
 
@@ -576,7 +576,7 @@ class ReconstructDistributions:
                 curves[zi][perc] /= max * 10
 
         colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
-        plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'MassRedshift_JointDistribution_rescaled', '#000000', '$m_1\ [M_{\odot}]$', '$z$', colors = colors, z_grid = zY, y_label_L = '$z$', y_label_R = '$p(m_1)$')
+        plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'MassRedshift_JointDistribution_rescaled', '#000000', '$m_1\ [M_{\odot}]$', '$z$', pars['model-primary'], colors = colors, z_grid = zY, y_label_L = '$z$', y_label_R = '$p(m_1)$')
 
         return curves, plot_dict
 

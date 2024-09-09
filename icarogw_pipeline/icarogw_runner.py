@@ -63,7 +63,8 @@ class Wrappers:
             elif not pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear':
                 raise ValueError('Unknown model for the primary mass {}. See the help for the available models.'.format(pars['model-primary']))
 
-            if pars['low-smoothing']:                                  w = get_wrapper('lowSmoothedwrapper',                                  input_wrapper = w)
+            if not (pars['single-mass'] and 'Mass2' in pars['model-secondary']):
+                if pars['low-smoothing']:                              w = get_wrapper('lowSmoothedwrapper',                                  input_wrapper = w)
 
             # Evolving Gaussian.
             if 'GaussianRedshift' in pars['model-primary']:
@@ -91,9 +92,11 @@ class Wrappers:
     def SecondaryMass(self, pars, m1w = None):
 
         if not pars['single-mass']:
-            if   pars['model-secondary'] == 'PowerLaw-Gaussian':           w = get_wrapper('m1m2_conditioned',                                    input_wrapper = m1w)
-            elif pars['model-secondary'] == 'PowerLaw':                    w = get_wrapper('m1m2_conditioned',                                    input_wrapper = m1w)
-            elif pars['model-secondary'] == 'MassRatio':                   w = get_wrapper('mass_ratio_prior_Gaussian')
+            if   pars['model-secondary'] == 'Mass2-PowerLaw':          
+                if pars['low-smoothing']:                              w = get_wrapper('m1m2_conditioned_lowpass',                            input_wrapper = m1w)
+                else:                                                  w = get_wrapper('m1m2_conditioned',                                    input_wrapper = m1w)
+            elif pars['model-secondary'] == 'MassRatio-Gaussian':      w = get_wrapper('mass_ratio_prior_Gaussian')
+            elif pars['model-secondary'] == 'MassRatio-PowerLaw':      w = get_wrapper('mass_ratio_prior_Powerlaw')
             else:
                 raise ValueError('Unknown model for the secondary mass {}. Please consult the available models.'.format(pars['model-secondary']))
         else:
@@ -149,7 +152,7 @@ class Rate():
             elif      'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
                 self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
-            elif      'Redshift' in pars['model-primary'] and     'MassRatio' in pars['model-secondary']:
+            elif      'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
                 self.w = icarogw.rates.CBC_rate_m1_given_redshift_q( cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
         else:
@@ -201,7 +204,7 @@ class SelectionEffects:
                 'luminosity_distance': data_inj[dist][()]}
             
             # If using the mass ratio, correct the prior with the Jacobian m2->q.
-            if pars['model-secondary'] == 'MassRatio':
+            if 'MassRatio' in pars['model-secondary']:
                 prior *= data_inj[mass_1][()]   # (m_1, m_2) --> (m_1, q)
                 inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1][()]
 
@@ -221,7 +224,7 @@ class SelectionEffects:
             
             if not pars['single-mass']:
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
-                if pars['model-secondary'] == 'MassRatio':
+                if 'MassRatio' in pars['model-secondary']:
                     prior *= data_inj[mass_1]
                     inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1]
             else:
@@ -252,7 +255,7 @@ class Data:
         print('\n * Loading data.\n\n\t{}'.format(pars['data-path']))
         if not pars['distance-prior-PE']:              print('\n\tUsing a flat prior for PE samples on the luminosity distance.')
         if not pars['single-mass']:
-            if pars['model-secondary'] == 'MassRatio': print('\n\tCorrecting the PE samples prior for mass ratio.')
+            if 'MassRatio' in pars['model-secondary']: print('\n\tCorrecting the PE samples prior for mass ratio.')
         else:                                          print('\n\tCorrecting the PE samples prior for mass ratio.')
               
         # O3 Cosmology paper injections
@@ -282,7 +285,7 @@ class Data:
                 else:                         prior = np.ones(len(data_evs['luminosity_distance'][()]))
 
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
-                if pars['model-secondary'] == 'MassRatio':
+                if 'MassRatio' in pars['model-secondary']:
                     pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
                     prior *= data_evs['mass_1'][()]
                 
@@ -310,7 +313,7 @@ class Data:
 
                 if not pars['single-mass']:
                     # If using the mass ratio, correct the prior with the Jacobian m2->q.
-                    if pars['model-secondary'] == 'MassRatio':
+                    if 'MassRatio' in pars['model-secondary']:
                         pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / np.array([data_evs['m1d'][i]])
                         #prior *= np.array([data_evs['m1d'][i]])    # FIXME: Include this option for future simulations with PE samples.
                 else:
