@@ -1,4 +1,5 @@
 import numpy as np, pickle, pandas as pd, os
+from distutils.dir_util import copy_tree
 from astropy.cosmology import FlatLambdaCDM
 import icarogw, icarogw.simulation as icarosim
 import matplotlib.pyplot as plt, seaborn as sns
@@ -18,6 +19,14 @@ def save_truths(path, dictionary):
             max_len = len(max(dictionary.keys(), key = len))
             f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
 
+def read_truths(path):
+
+    with open(os.path.join(path, 'true_parameters.txt'), 'r') as f:
+        res = dict([line.strip().split('  ', 1) for line in f])
+    res = {key: float(res[key]) for key in res.keys()}
+
+    return res
+
 def save_settings(path, dictionary):
 
     with open(os.path.join(path, 'population_settings.txt'), 'w') as f:
@@ -25,8 +34,29 @@ def save_settings(path, dictionary):
             max_len = len(max(dictionary.keys(), key = len))
             f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
 
+def read_settings(path):
 
-def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
+    with open(os.path.join(path, 'population_settings.txt'), 'r') as f:
+        res = dict([line.strip().split('  ', 1) for line in f])
+    for key in res.keys():
+        if key == 'positive-peak' or key == 'low-smoothing' or key == 'single-mass' or key == 'flat-PSD':
+            res[key] = int(  res[key])
+        if key == 'snr-cut' or key == 'fgw-cut':
+            res[key] = float(res[key])
+        if key == 'model-primary' or key == 'model-secondary' or key == 'model-rate' or key == 'redshift-transition' or key == 'output':
+            res[key] = res[key].replace(" ", "")
+
+    return res
+
+def build_filter_subsample(N_evs, N_subset):
+
+    filt = np.full(N_evs, False, dtype = bool)
+    idxs = np.random.choice(filt.shape[0], N_subset, replace = False)
+    for idx in idxs: filt[idx] = True
+    return filt
+
+
+def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers = False):
     '''
         Extract a set of samples from the specified probability distribution.
 
@@ -38,14 +68,16 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     '''
 
     N = 100000
-    m_array = np.linspace(0.,    200., N)
-    q_array = np.linspace(0.1,   1.,   N)
+    m_array = np.linspace(0.,   200., N)
+    q_array = np.linspace(0.1,   1.,  N)
     z_array = np.linspace(1e-6, 1.5,  N)
     
     # Initialize ICAROGW wrappers
     # Primary, secondary, rate evolution, reference cosmology
     tmp = icarorun.Wrappers(pars)
     m1w, m2w, rw, _, cosmo_ref = tmp.return_Wrappers()
+    inj_wrappers               = {'m1w': m1w, 'm2w': m2w, 'm_array': m_array, 'q_array': q_array, 'z_array': z_array}
+    if return_wrappers: return inj_wrappers
 
     population_parameters = m1w.population_parameters + m2w.population_parameters + rw.population_parameters
     save_truths(pars['output'], {key: truths[key] for key in population_parameters})
@@ -68,7 +100,7 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     pdf = m2w.pdf(q_array)
     qs  = np.random.choice(q_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
     m2s = qs * m1s
-    plot_injected_distribution(q_array, z_array, m2w, truths, plot_dir)
+    plot_injected_distribution(q_array, z_array, m2w, truths, plot_dir, q_samps = qs)
 
     if not pars['flat-PSD']:
         # Average on extrinsic parameters.
@@ -92,18 +124,18 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen):
     m2d_det = m2d[idx_cut_det]
     dL_det  = dL[ idx_cut_det]
     
-    samps_detector_dict = { 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det}
-    samps_source_dict   = { 'm1s': m1s,     'm2s': m2s,     'z':  zs}
-    inj_wrappers        = {'m1w': m1w, 'm2w': m2w, 'm_array': m_array, 'q_array': q_array, 'z_array': z_array, 'q_samps': qs}
+    samps_detector_dict = {'m1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det}
+    samps_source_dict   = {'m1s': m1s,     'm2s': m2s,     'z':  zs}
     
     return samps_source_dict, samps_detector_dict, inj_wrappers
 
 
-def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers):
+def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers, truths):
 
     title   = 'm1_source_frame'
     figname = os.path.join(plot_dir, title)
     plt.hist(source_dict['m1s'], density = 1, bins = 40, color = 'k', alpha = 0.5)
+    update_weights(inj_wrappers['m1w'], truths)
     plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][0] ))
     plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][-1]))
     plt.title(title)
@@ -139,18 +171,9 @@ def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers):
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
 
-    title   = 'q_distribution'
-    figname = os.path.join(plot_dir, title)
-    plt.hist(inj_wrappers['q_samps'], density = 1, bins = 40, color = 'k', alpha = 0.5)
-    plt.plot(inj_wrappers['q_array'], inj_wrappers['m2w'].pdf(inj_wrappers['q_array']))
-    plt.title(title)
-    plt.xlabel('q')
-    plt.savefig('{}.pdf'.format(figname))
-    plt.close()
-
     return 0
 
-def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = False):
+def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = False, q_samps = 0):
 
     if redshift:
         N_z = 10
@@ -184,32 +207,36 @@ def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = Fal
     
     else:
         # FIXME: Add option with m2 instead of q.
+        title   = 'q_distribution'
+        figname = os.path.join(plot_dir, title)
         pdf = mw.pdf(m_array)
+        plt.hist(q_samps, density = 1, bins = 40, color = 'k', alpha = 0.5)
         plt.plot(m_array, pdf)
         plt.xlabel('$q$')
         plt.ylabel('$p(q)$')
         plt.tight_layout()
-        plt.savefig(os.path.join(plot_dir, 'injected_q.pdf'), transparent = True)
+        plt.savefig('{}.pdf'.format(figname), transparent = True)
         plt.close()
 
     return 0
 
 
 # MAIN
+additional_text     = '_non-evolving'
+N_events            = 10000
+
 generate_population = 1
-additional_text     = '_non-evolving_log-mass_TEST'
-N_events            = 3000 #252000
+subset_events       = 0
 
 input_pars  = {
     # Model parameters
     'model-primary'       : 'PowerLawRedshiftLinear-GaussianRedshiftLinear',
-    'model-secondary'     : 'MassRatio',
+    'model-secondary'     : 'MassRatio-Gaussian',
     'model-rate'          : 'PowerLaw',
 
     'redshift-transition' : 'linear',
     'positive-peak'       : 0,
     'low-smoothing'       : 1,
-    'priors'              : {},
     'single-mass'         : 0,
 
     'snr-cut'             : 12,
@@ -265,23 +292,40 @@ results_dir = os.path.join(base_dir,    'simulated_population', filename)
 plot_dir    = os.path.join(results_dir, 'population_plots')
 if not os.path.exists(results_dir): os.makedirs(results_dir)
 if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
-save_settings(results_dir, input_pars)
 input_pars['output'] = results_dir
 
 if not generate_population:
     try:
-        sample_source_dict_inj   = pd.read_pickle(os.path.join(results_dir, 'sample_source_dict_inj_up3_50m.pickle'  ))
-        sample_detector_dict_inj = pd.read_pickle(os.path.join(results_dir, 'sample_detector_dict_inj_up3_50m.pickle'))
+        sample_source_dict_inj   = pd.read_pickle(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(  filename)))
+        sample_detector_dict_inj = pd.read_pickle(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)))
         print('\n * Reading existing population.\n')
-    except: print('\nExisting population not found. Exiting...\n')
+    except: print('\n * Existing population not found. Exiting...\n')
+
+    if not subset_events == 0:
+        N_events = len(sample_detector_dict_inj['m1d'])
+        if subset_events > N_events: raise ValueError('The number of subset events need to be smaller than initial population.')
+        print('\n * Sampling a subset of {} events out of the initial {}.\n'.format(subset_events, N_events))
+        filter = build_filter_subsample(N_events, subset_events)
+        sample_detector_dict_inj = {key: sample_detector_dict_inj[key][filter] for key in sample_detector_dict_inj.keys()}
+        results_dir_new = results_dir + '_subset-{}'.format(subset_events)
+        plot_dir        = os.path.join(results_dir_new, 'population_plots')
+        input_pars['output'] = results_dir_new
+        copy_tree(results_dir, results_dir_new)
+        with open(os.path.join(input_pars['output'], 'events_detector_dict_{}_subset-{}.pickle'.format(filename, subset_events)), 'wb') as handle:
+            pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        
+        true_values  = read_truths(  results_dir_new)
+        input_pars   = read_settings(results_dir_new)
+        inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events, return_wrappers = True)
 
 else:
     print('\n * Generating new population.\n')
-    sample_source_dict_inj, sample_detector_dict_inj, inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events)     #50000000
-    with open(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(filename)  ), 'wb') as handle:
+    save_settings(results_dir, input_pars)
+    sample_source_dict_inj, sample_detector_dict_inj, inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events)
+    with open(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(  filename)), 'wb') as handle:
         pickle.dump(sample_source_dict_inj,   handle, protocol = pickle.HIGHEST_PROTOCOL)
     with open(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)), 'wb') as handle:
         pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
-plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers)
+plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers, true_values)
 print(' * Finished.\n')
