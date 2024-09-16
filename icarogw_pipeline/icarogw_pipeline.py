@@ -41,7 +41,7 @@ def config_writer(config, config_path, pars, inj, data, rate, secondary, primary
     with open(config_path, 'w') as f: config.write(f)
 
 
-def filter_selections(dictionary):
+def filter_selection(dictionary):
 
     return [key for key, value in dictionary.items() if value == True]
 
@@ -53,7 +53,7 @@ def Selection():
             'PowerLaw-GaussianRedshiftLinear':  1,
             'GaussianRedshiftLinear-order-1' :  0,
         }
-        return filter_selections(tmp)
+        return filter_selection(tmp)
     
     def Model_Secondary():
         tmp = {
@@ -61,26 +61,71 @@ def Selection():
             'MassRatio-Gaussian'             :  1,
             'MassRatio-PowerLaw'             :  0,
         }
-        return filter_selections(tmp)
+        return filter_selection(tmp)
 
     def Model_Rate():
         tmp = {
             'PowerLaw'                       :  1,
             'MadauDickinson'                 :  0,
         }
-        return filter_selections(tmp)
+        return filter_selection(tmp)
         
     def Data():
         tmp = {
-            'DATA_1': '1',
-            'DATA_2': '2',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_1/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_1.pickle'  : 'inj-NNN-1_rec-NNE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_2/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_2.pickle'  : 'inj-NNN-2_rec-NNE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_3/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_3.pickle'  : 'inj-NNN-3_rec-NNE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_4/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_4.pickle'  : 'inj-NNN-4_rec-NNE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_5/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_5.pickle'  : 'inj-NNN-5_rec-NNE_low-SNR',
+            
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_1/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_1.pickle': 'inj-NNN-1_rec-NNE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_2/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_2.pickle': 'inj-NNN-2_rec-NNE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_3/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_3.pickle': 'inj-NNN-3_rec-NNE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_4/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_4.pickle': 'inj-NNN-4_rec-NNE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_5/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_5.pickle': 'inj-NNN-5_rec-NNE_high-SNR',
+
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_1/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_1.pickle'  : 'inj-NEN-1_rec-NNE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_2/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_2.pickle'  : 'inj-NEN-2_rec-NNE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_3/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_3.pickle'  : 'inj-NEN-3_rec-NNE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_4/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_4.pickle'  : 'inj-NEN-4_rec-NNE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_5/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_5.pickle'  : 'inj-NEN-5_rec-NNE_low-SNR',
+
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_1/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_1.pickle': 'inj-NEN-1_rec-NNE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_2/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_2.pickle': 'inj-NEN-2_rec-NNE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_3/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_3.pickle': 'inj-NEN-3_rec-NNE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_4/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_4.pickle': 'inj-NEN-4_rec-NNE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_5/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_5.pickle': 'inj-NEN-5_rec-NNE_high-SNR',
+
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_1/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_1.pickle'  : 'inj-NNN-1_rec-NEE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_2/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_2.pickle'  : 'inj-NNN-2_rec-NEE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_3/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_3.pickle'  : 'inj-NNN-3_rec-NEE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_4/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_4.pickle'  : 'inj-NNN-4_rec-NEE_low-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_5/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_5.pickle'  : 'inj-NNN-5_rec-NEE_low-SNR',
+            
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_1/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_1.pickle': 'inj-NNN-1_rec-NEE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_2/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_2.pickle': 'inj-NNN-2_rec-NEE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_3/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_3.pickle': 'inj-NNN-3_rec-NEE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_4/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_4.pickle': 'inj-NNN-4_rec-NEE_high-SNR',
+            # '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_5/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NNN_5.pickle': 'inj-NNN-5_rec-NEE_high-SNR',
+
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_1/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_1.pickle'  : 'inj-NEN-1_rec-NEE_low-SNR',
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_2/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_2.pickle'  : 'inj-NEN-2_rec-NEE_low-SNR',
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_3/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_3.pickle'  : 'inj-NEN-3_rec-NEE_low-SNR',
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_4/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_4.pickle'  : 'inj-NEN-4_rec-NEE_low-SNR',
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_5/events_detector_dict_pop-18000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_5.pickle'  : 'inj-NEN-5_rec-NEE_low-SNR',
+
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_1/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_1.pickle': 'inj-NEN-1_rec-NEE_high-SNR',
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_2/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_2.pickle': 'inj-NEN-2_rec-NEE_high-SNR',
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_3/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_3.pickle': 'inj-NEN-3_rec-NEE_high-SNR',
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_4/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_4.pickle': 'inj-NEN-4_rec-NEE_high-SNR',
+            '/home/vasco.gennari/icarogw/data/simulations/simulated_population/simulation_evolving_PROD1/pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_5/events_detector_dict_pop-350000_PowerLawRedshiftLinear-GaussianRedshiftLinear_MassRatio-Gaussian_PowerLaw_NEN_5.pickle': 'inj-NEN-5_rec-NEE_high-SNR',
         }
         return tmp
 
     
     def Injections():
         tmp = [
-            'INJ_1',
+            '/home/vasco.gennari/icarogw/data/simulations/injections_selection_effects/inj_PowerLawPeak_N100000_SNR12_fGW15/inj_PowerLawPeak_N100000_SNR12_fGW15.pickle',
         ]
         return tmp
     
@@ -105,16 +150,16 @@ def main():
     '''
 
     config_pars  = {
-        'configs-directory'     : '/Users/vgennari/Documents/work/code/python/icarogw_pipeline/config_files/TEST',
+        'configs-directory'     : '/Users/vgennari/Documents/work/code/python/icarogw_pipeline/config_files/simulation_evolving_population_PROD1',
         'default-config'        : '/Users/vgennari/Documents/work/code/python/icarogw_pipeline/config_files/config_default.ini',
         'analysis_name'         : 'simluation-evolution-PROD1'
     }
 
     input_pars   = {
         # input
-        'output'                : 'output',
+        'output'                : '/home/vasco.gennari/public_html/icarogw/simulations/evolving_population/PROD1',
         'simulation'            : 1,
-        'injections-number'     : 1000,
+        'injections-number'     : 4430000000,
         'selection-effects-cut' : 'snr',
         'snr-cut'               : 12,
 
@@ -122,7 +167,8 @@ def main():
         'redshift-transition'   : 'linear',
         'low-smoothing'         : 1,
         'scale-free'            : 1,
-        'priors'                : {'mu_z0': [20., 60.], 'mu_z1': 0., 'sigma_z0': [1. , 30. ], 'sigma_z1': 0., 'gamma': [-20., 20.], 'mu_q': [0.1, 1.0], 'sigma_q': [0.01, 0.9], 'mix_z1': 0.9},
+        # 'priors'                : {'mu_z0': [20., 60.], 'mu_z1': 0., 'sigma_z0': [1. , 30. ], 'sigma_z1': 0., 'gamma': [-20., 20.], 'mu_q': [0.1, 1.0], 'sigma_q': [0.01, 0.9], 'mix_z1': 0.9},      # rec-NNE
+        'priors'                : {'mu_z0': [20., 60.], 'mu_z1': [-80., 80.], 'sigma_z0': [1. , 30. ], 'sigma_z1': 0., 'gamma': [-20., 20.], 'mu_q': [0.1, 1.0], 'sigma_q': [0.01, 0.9], 'mix_z1': 0.9},      # rec-NEE
 
         # sampler
         'nparallel'             : 1,
@@ -131,7 +177,10 @@ def main():
         'nlive'                 : 1000,
 
         # plots
-        'true-values'           : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 30.0, 'mu_z1': 0.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 0.0},
+        #  'true-values'           : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1':  0.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 0.0},      # inj-NNN
+        'true-values'           : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1': 30.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 0.0},      # inj-NEN
+        # 'true-values'           : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1':  0.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 3.0},      # inj-NNE
+        # 'true-values'           : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1': 30.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 3.0},      # inj-NEE
         'selection-effects'     : 1,
     }
     # Remove from the input parameters those set to False.
