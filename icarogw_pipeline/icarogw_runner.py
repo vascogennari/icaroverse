@@ -10,17 +10,27 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, pos_peak = None, smoothing = None):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
-    if order == None:
-        if not input_wrapper == None:
-            return wrap(input_wrapper)
+    if transition == None:
+        if order == None:
+            if not input_wrapper == None:
+                return wrap(input_wrapper)
+            else:
+                return wrap()
         else:
-            return wrap()
+            # GaussianRedshift-order-x model.
+            return wrap(order = order)
     else:
-        return wrap(order = order)
+        # GaussianRedshiftLinear-GaussianRedshiftLinear model.
+        if   not pos_peak and not smoothing:
+            return wrap(redshift_transition = transition)
+        # PowerLaw_GaussianRedshiftLinear and PowerLawRedshiftLinear_GaussianRedshiftLinear models.
+        else:
+            return wrap(redshift_transition = transition, flag_positive_gaussian = pos_peak, flag_powerlaw_smoothing = smoothing)
+
 
 def print_dictionary(dictionary):
       
@@ -53,40 +63,26 @@ class Wrappers:
 
     def PrimaryMass(self, pars):
 
-        # Stationary PowerLaw.
-        if not ('PowerLawRedshift' in pars['model-primary'] or 'GaussianRedshift-order-' in pars['model-primary']):
-
-            if   pars['model-primary'] == 'PowerLaw' or pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear': 
-                                                                       w = get_wrapper('massprior_PowerLaw')
-            elif pars['model-primary'] == 'PowerLaw-Gaussian':         w = get_wrapper('massprior_PowerLawPeak')
-
-            elif not pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear':
-                raise ValueError('Unknown model for the primary mass {}. See the help for the available models.'.format(pars['model-primary']))
-
-            if not (pars['single-mass'] and 'Mass2' in pars['model-secondary']):
-                if pars['low-smoothing']:                              w = get_wrapper('lowSmoothedwrapper',                                  input_wrapper = w)
-
-            # Evolving Gaussian.
-            if 'GaussianRedshift' in pars['model-primary']:
-                if pars['redshift-transition'] == '':                  w = get_wrapper('mixed_mass_redshift_evolving',                        input_wrapper = w)
-                if pars['redshift-transition'] == 'sigmoid':           w = get_wrapper('mixed_mass_redshift_evolving_sigmoid',                input_wrapper = w)
-                if pars['redshift-transition'] == 'double-sigmoid':    w = get_wrapper('double_mixed_mass_redshift_evolving_sigmoid',         input_wrapper = w)
-                if pars['redshift-transition'] == 'linear':            w = get_wrapper('double_mixed_mass_redshift_evolving_linear_prior',    input_wrapper = w)
-                if pars['redshift-transition'] == 'linear-sinusoid':   w = get_wrapper('double_mixed_mass_redshift_evolving_linear_sinusoid', input_wrapper = w)
-
-        # Evolving PowerLaw and Gaussian.
-        else:
-            if   pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear':
-                                                                       w = get_wrapper('PowerLawLinear_GaussianLinear_TransitionLinear')
-            elif 'GaussianRedshift-order-' in pars['model-primary']:
-                                                                       order = int(pars['model-primary'].split('GaussianRedshift-order-')[-1])
-                                                                       w = get_wrapper('GaussianEvolving', order = order)
+        # Non-evolving models.
+        if not 'Redshift' in pars['model-primary']:
+            if   pars['model-primary'] == 'PowerLaw':                                      w = get_wrapper('massprior_PowerLaw')
+            elif pars['model-primary'] == 'PowerLaw_Gaussian':                             w = get_wrapper('massprior_PowerLawPeak')
             else:
-                raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))          
+                raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
+            if not (pars['single-mass'] and 'Mass2' in pars['model-secondary']):
+                if pars['low-smoothing']:                                                  w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
 
-        # Only for stationary PowerLaw and Gaussian.
-        # FIXME: This model should be substituted with a conditional Bilby prior.
-        if pars['positive-peak']: w = icarogw.wrappers.massprior_PowerLawPeakPositive(w)
+        # Evolving models.
+        else:
+            if   pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear':               w = get_wrapper('PowerLaw_GaussianRedshiftLinear',               transition = pars['redshift-transition'], pos_peak = pars['positive-peak'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], pos_peak = pars['positive-peak'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'])
+
+            elif 'GaussianRedshift-order-' in pars['model-primary']:
+                                                                                           order = int(pars['model-primary'].split('GaussianRedshift-order-')[-1])
+                                                                                           w = get_wrapper('GaussianEvolving', order = order)
+            else:
+                raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
         return w
 
     def SecondaryMass(self, pars, m1w = None):

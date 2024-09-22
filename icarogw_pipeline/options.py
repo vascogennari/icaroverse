@@ -1,53 +1,6 @@
 import ast
 
 
-def default_priors():
-      
-    prior = {
-        # Cosmology
-        'H0'          : 67.7,
-        'Om0'         : 0.308,
-
-        # Primary mass distribution
-        'delta_m'     : [0.1, 10. ],
-
-        'alpha'       : [1.,  6.  ],
-        'alpha_z0'    : [1.,  6.  ],
-        'alpha_z1'    : [-5., 20. ],
-
-        'mmin'        : [2. , 20. ],
-        'mmin_z0'     : [2. , 20. ],
-        'mmin_z1'     : [-5., 50. ],
-        'mmax'        : [65., 200.],
-        'mmax_z0'     : [65., 200.],
-        'mmax_z1'     : 0.,
-
-        'mu_g'        : [20., 60. ],
-        'mu_z0'       : [20., 60. ],
-        'mu_z1'       : [-80., 80.],
-        'sigma_g'     : [5. , 30. ],
-        'sigma_z0'    : [5. , 30. ],
-        'sigma_z1'    : [0.,  20. ],
-        'mix_z0'      : [0. , 1.  ],
-        'mix_z1'      : [0. , 1.  ],
-
-        'lambda_peak' : [0. , 1.  ],
-        
-        # Secondary mass distribution
-        'beta'        : [1.,  6.  ],
-        'mu_q'        : [0.4, 1.  ],
-        'sigma_q'     : [0.01, 0.9],
-
-        # Rate evolution
-        'gamma'       : [-50., 30. ],
-        'kappa'       : [-6. , 6.  ],
-        'zp'          : [0. , 4.   ],
-        'R0'          : [0. , 100. ],
-    }
-
-    return prior
-
-
 def InitialiseOptions(Config):
 
     # Dictionary with the default options.
@@ -62,7 +15,7 @@ def InitialiseOptions(Config):
         'model-secondary'       : 'MassRatio-Gaussian',
         'model-rate'            : 'PowerLaw',
 
-        'redshift-transition'   : '',
+        'redshift-transition'   : 'linear',
         'positive-peak'         : 0,
         'low-smoothing'         : 0,
         'priors'                : {},
@@ -161,6 +114,53 @@ def InitialiseOptions(Config):
     return input_pars
 
 
+def default_priors():
+      
+    prior = {
+        # Cosmology
+        'H0'          : 67.7,
+        'Om0'         : 0.308,
+
+        # Primary mass distribution
+        'delta_m'     : [0.1, 10. ],
+
+        'alpha'       : [1.,  6.  ],
+        'alpha_z0'    : [1.,  6.  ],
+        'alpha_z1'    : [-5., 20. ],
+
+        'mmin'        : [2. , 20. ],
+        'mmin_z0'     : [2. , 20. ],
+        'mmin_z1'     : [-5., 50. ],
+        'mmax'        : [65., 200.],
+        'mmax_z0'     : [65., 200.],
+        'mmax_z1'     : 0.,
+
+        'mu_g'        : [20., 60. ],
+        'mu_z0'       : [20., 60. ],
+        'mu_z1'       : [-80., 80.],
+        'sigma_g'     : [5. , 30. ],
+        'sigma_z0'    : [5. , 30. ],
+        'sigma_z1'    : [0.,  20. ],
+        'mix_z0'      : [0. , 1.  ],
+        'mix_z1'      : [0. , 1.  ],
+
+        'lambda_peak' : [0. , 1.  ],
+        
+        # Secondary mass distribution
+        'beta'        : [1.,  6.  ],
+        'mu_q'        : [0.4, 1.  ],
+        'sigma_q'     : [0.01, 0.9],
+
+        # Rate evolution
+        'gamma'       : [-50., 30. ],
+        'kappa'       : [-6. , 6.  ],
+        'zp'          : [0. , 4.   ],
+        'R0'          : [0. , 100. ],
+    }
+
+    return prior
+
+
 usage = """
 
 \nWelcome to the ICAROGW runner helper!\n
@@ -185,10 +185,10 @@ usage = """
     # model #
     # ----- #
 
-        model-primary               Options: {'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear'}
+        model-primary               Options: {'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear'}
         model-secondary             Options: {'Mass2-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-PowerLaw'}
         model-rate                  Options: {'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'PowerLaw'}
-        redshift-transition         Options: {'sigmoid', 'double-sigmoid', 'linear', 'linear-sinusoid'}
+        redshift-transition         Options: {'linear', 'sigmoid', 'sinusoid'}
 
         positive-peak               List of parameters bounds that are used in the plots. Default: []. Syntax: [[a, b], [c, d], ...]
         low-smoothing               List of the selected parameters ordering. Default: []
