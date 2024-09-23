@@ -27,7 +27,7 @@ def config_writer(config, config_path, pars, inj, data, rate, secondary, primary
     config.set('model', 'model-secondary', secondary)
     config.set('model', 'model-rate',      rate)
 
-    for key in ['redshift-transition', 'low-smoothing', 'scale-free', 'priors', 'positive-peak', 'conditional-prior']:
+    for key in ['redshift-transition', 'low-smoothing', 'scale-free', 'priors', 'positive-peak', 'conditional-prior-peak', 'gaussians-overlap', 'conditional-prior-gaussians']:
         if key in pars.keys(): config.set('model',   key, str(pars[key]))
 
     # sampler
@@ -50,9 +50,9 @@ def Selection():
 
     def Model_Primary():
         tmp = {
-            'PowerLaw-GaussianRedshiftLinear'               :  1,
+            'PowerLaw-GaussianRedshiftLinear'               :  0,
             'PowerLawRedshiftLinear-GaussianRedshiftLinear' :  0,
-            'GaussianRedshiftLinear-GaussianRedshiftLinear' :  0,
+            'GaussianRedshiftLinear-GaussianRedshiftLinear' :  1,
             
             'GaussianRedshiftLinear-order-1'                :  0,
         }
@@ -68,7 +68,7 @@ def Selection():
 
     def Model_Rate():
         tmp = {
-            'PowerLaw'                       :  0,
+            'PowerLaw'                       :  1,
             'MadauDickinson'                 :  1,
         }
         return filter_selection(tmp)
@@ -116,21 +116,27 @@ def main():
     input_pars   = {
         # input
         'output'                      : '/home/vasco.gennari/public_html/icarogw/O3/evolving_population/PROD1',
-        #'simulation'                 : 1,
-        #'injections-number'          : 4430000000,
+        #'simulation'                  : 1,
+        #'injections-number'           : 4430000000,
         'O3-cosmology'                : 1,
         'selection-effects-cut'       : 'ifar',
         'snr-cut'                     : 4,
 
         # model
         'redshift-transition'         : 'linear',
-        'low-smoothing'               : 1,
+        'low-smoothing'               : 0,
         'positive-peak'               : 0,
-        'conditional-prior-peak'      : 1,
+        'conditional-prior-peak'      : 0,
+
+        'gaussians-overlap'           : 0,
         'conditional-prior-gaussians' : 1,
+        
         'scale-free'                  : 0,
-        # 'priors'                    : {'mu_z0': [20., 60.], 'mu_z1': 0., 'sigma_z0': [1. , 30. ], 'sigma_z1': 0., 'gamma': [-20., 20.], 'mu_q': [0.1, 1.0], 'sigma_q': [0.01, 0.9], 'mix_z1': 0.9},                           # rec-NNE
-        # 'priors'                    : {'mu_z0': [20., 60.], 'mu_z1': [-80., 80.], 'sigma_z0': [1. , 30. ], 'sigma_z1': [0., 20.], 'gamma': [-20., 20.], 'mu_q': [0.1, 1.0], 'sigma_q': [0.01, 0.9], 'mix_z1': [0., 1.]},      # rec-NEE
+        # 'priors'                      : {'mu_z0': [20., 60.], 'mu_z1': 0., 'sigma_z0': [1. , 30. ], 'sigma_z1': 0., 'gamma': [-20., 20.], 'mu_q': [0.1, 1.0], 'sigma_q': [0.01, 0.9], 'mix_z1': 0.9},                           # rec-NNE
+        # 'priors'                      : {'mu_z0': [20., 60.], 'mu_z1': [-80., 80.], 'sigma_z0': [1. , 30. ], 'sigma_z1': [0., 20.], 'gamma': [-20., 20.], 'mu_q': [0.1, 1.0], 'sigma_q': [0.01, 0.9], 'mix_z1': [0., 1.]},      # rec-NEE
+
+        # 'priors'                      : {'mu_z1_a': 0., 'sigma_z1_a': 0.},                                   # OneStationaryGaussian
+        'priors'                      : {'mu_z1_a': 0., 'sigma_z1_a': 0., 'mu_z1_b': 0., 'sigma_z1_b': 0.},  # StationaryGaussians
 
         # sampler
         'nparallel'                   : 2048,
@@ -139,23 +145,32 @@ def main():
         'nlive'                       : 1000,
 
         # plots
-        # 'true-values'               : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1':  0.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 0.0},      # inj-NNN
-        # 'true-values'               : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1': 30.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 0.0},      # inj-NEN
-        # 'true-values'               : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1':  0.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 3.0},      # inj-NNE
-        # 'true-values'               : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1': 30.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 3.0},      # inj-NEE
+        # 'true-values'                 : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1':  0.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 0.0},      # inj-NNN
+        # 'true-values'                 : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1': 30.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 0.0},      # inj-NEN
+        # 'true-values'                 : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1':  0.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 3.0},      # inj-NNE
+        # 'true-values'                 : {'H0': 67.7, 'Om0': 0.308, 'alpha': 3.8, 'mmin': 7.0, 'mmax': 150.0, 'mu_z0': 35.0, 'mu_z1': 30.0, 'sigma_z0': 6.0, 'sigma_z1': 0.0, 'mix_z0': 0.9, 'mix_z1': 0.9, 'delta_m': 5.0, 'mu_q': 0.8, 'sigma_q': 0.15, 'gamma': 3.0},      # inj-NEE
         'selection-effects'           : 1,
     }
 
     # Extra text
-    if input_pars['positive-peak'] and input_pars['conditional-prior-peak']:
+    if   input_pars['positive-peak']     and input_pars['conditional-prior-peak']:
         raise ValueError('Cannot have both positive peak and conditional prior. Exiting...\n')
+    elif input_pars['gaussians-overlap'] and input_pars['conditional-prior-gaussians']:
+        raise ValueError('Cannot have both positive peak and conditional prior. Exiting...\n')    
     else:
-        if   input_pars['positive-peak']:
-            extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'PositivePeakAllRedshifts')
-        elif input_pars['conditional-prior-peak']:
-            extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'PositivePeakRedshiftZero')
+        # if   input_pars['positive-peak']:
+        #     extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'PositivePeakAllRedshifts')
+        # elif input_pars['conditional-prior-peak']:
+        #     extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'PositivePeakRedshiftZero')
+        # else:
+        #     extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'NoPositivePeak')
+
+        if   input_pars['gaussians-overlap']:
+            extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'NoGaussiansOverlapAllRedshifts_StationaryGaussians')
+        elif input_pars['conditional-prior-gaussians']:
+            extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'NoGaussiansOverlapRedshiftZero_StationaryGaussians')
         else:
-            extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'NoPositivePeak')
+            extra_text = '{}-{}'.format(input_pars['redshift-transition'], 'GaussiansOverlap_StationaryGaussians')
 
     # Remove from the input parameters those set to False.
     input_pars = {key: input_pars[key] for key, value in input_pars.items() if not value == False}
