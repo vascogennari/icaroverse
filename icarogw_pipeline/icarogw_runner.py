@@ -10,7 +10,7 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, pos_peak = None, smoothing = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, pos_peak = None, smoothing = None, gauss_overlap = None):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -25,8 +25,8 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             return wrap(order = order)
     else:
         # GaussianRedshiftLinear-GaussianRedshiftLinear model.
-        if   not pos_peak and not smoothing:
-            return wrap(redshift_transition = transition)
+        if not pos_peak and not smoothing:
+            return wrap(redshift_transition = transition, flag_gaussians_overlap = gauss_overlap)
         # PowerLaw_GaussianRedshiftLinear and PowerLawRedshiftLinear_GaussianRedshiftLinear models.
         else:
             return wrap(redshift_transition = transition, flag_positive_gaussian = pos_peak, flag_powerlaw_smoothing = smoothing)
@@ -76,7 +76,7 @@ class Wrappers:
         else:
             if   pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear':               w = get_wrapper('PowerLaw_GaussianRedshiftLinear',               transition = pars['redshift-transition'], pos_peak = pars['positive-peak'], smoothing = pars['low-smoothing'])
             elif pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], pos_peak = pars['positive-peak'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'])
+            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], gauss_overlap = pars['gaussians-overlap'])
 
             elif 'GaussianRedshift-order-' in pars['model-primary']:
                                                                                            order = int(pars['model-primary'].split('GaussianRedshift-order-')[-1])
@@ -347,8 +347,12 @@ class LikelihoodPrior:
 
     def Prior(self, pars, w):
     
-        def conditional_prior(prior):
+        def conditional_prior_positive_peak(prior):
             prior['mean_three_sigmas'] = prior['mu_z0'] - 3 * prior['sigma_z0']
+            return prior
+        
+        def conditional_prior_gaussians_overlap(prior):
+            prior['gaussians_overlap'] = prior['mu_z0_b'] - prior['mu_z0_a']
             return prior
 
         def initialise_prior(dict_in, dict_out, w):
@@ -364,15 +368,19 @@ class LikelihoodPrior:
 
             return dict_out
 
-        # FIXME: Add option to deal with additional conditions on the prior.
-        if pars['conditional-prior']: prior = bilby.core.prior.PriorDict(conversion_function = conditional_prior)
-        else:                         prior = bilby.core.prior.PriorDict()
+        if pars['conditional-prior-peak']:      prior = bilby.core.prior.PriorDict(conversion_function = conditional_prior_positive_peak)
+        if pars['conditional-prior-gaussians']: prior = bilby.core.prior.PriorDict(conversion_function = conditional_prior_gaussians_overlap)
+        else:                                   prior = bilby.core.prior.PriorDict()
         prior = initialise_prior(pars['all-priors'], prior, w)
 
-        if pars['conditional-prior']:
+        if pars['conditional-prior-peak']:
               prior['mean_three_sigmas'] = bilby.prior.Constraint(0., 1000.)
-              print('\n * Adding conditional priors.\n')
+              print('\n * Adding conditional priors on gaussian peak positivity.\n')
               print_dictionary({'mean_three_sigmas': [0., 1000.]})
+        if pars['conditional-prior-gaussians']:
+              prior['gaussians_overlap'] = bilby.prior.Constraint(0., 1000.)
+              print('\n * Adding conditional priors on two gaussians overlap.\n')
+              print_dictionary({'gaussians_overlap': [0., 1000.]})
 
         return prior
         

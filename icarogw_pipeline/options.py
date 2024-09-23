@@ -7,59 +7,61 @@ def InitialiseOptions(Config):
     input_pars = {
 
         # Input
-        'output'                : 'icarogw_run',
-        'screen-output'         : 0,
+        'output'                      : 'icarogw_run',
+        'screen-output'               : 0,
 
         # Wrappers
-        'model-primary'         : 'PowerLaw-Gaussian',                     
-        'model-secondary'       : 'MassRatio-Gaussian',
-        'model-rate'            : 'PowerLaw',
+        'model-primary'               : 'PowerLaw-Gaussian',                     
+        'model-secondary'             : 'MassRatio-Gaussian',
+        'model-rate'                  : 'PowerLaw',
 
-        'redshift-transition'   : 'linear',
-        'positive-peak'         : 0,
-        'low-smoothing'         : 0,
-        'priors'                : {},
-        'conditional-prior'     : 0,
-        'scale-free'            : 0,
-        'single-mass'           : 0,
+        'redshift-transition'         : 'linear',
+        'positive-peak'               : 0,
+        'gaussians-overlap'           : 0,
+        'low-smoothing'               : 0,
+        'priors'                      : {},
+        'conditional-prior-peak'      : 0,
+        'conditional-prior-gaussians' : 0,
+        'scale-free'                  : 0,
+        'single-mass'                 : 0,
 
         # Selection effects
-        'injections-path'       : '',
-        'injections-number'     : 1,
-        'snr-cut'               : 12.,
-        'ifar-cut'              : 4.,
-        'selection-effects-cut' : 'snr',
+        'injections-path'             : '',
+        'injections-number'           : 1,
+        'snr-cut'                     : 12.,
+        'ifar-cut'                    : 4.,
+        'selection-effects-cut'       : 'snr',
 
         # Data
-        'O3-cosmology'          : 0,
-        'simulation'            : 1,
-        'data-path'             : '',
-        'distance-prior-PE'     : 1,
+        'O3-cosmology'                : 0,
+        'simulation'                  : 1,
+        'data-path'                   : '',
+        'distance-prior-PE'           : 1,
     
         # Likelihood
-        'nparallel'             : 1,
-        'neffPE'                : 1,
-        'neffINJ'               : None,
+        'nparallel'                   : 1,
+        'neffPE'                      : 1,
+        'neffINJ'                     : None,
 
         # Sampler
-        'sampler'               : 'dynesty',
-        'nlive'                 : 200,
-        'naccept'               : 60,
-        'npool'                 : 1,
-        'print_method'          : 'interval-60',
-        'sample'                : 'acceptance-walk',
+        'sampler'                     : 'dynesty',
+        'nlive'                       : 200,
+        'naccept'                     : 60,
+        'npool'                       : 1,
+        'print_method'                : 'interval-60',
+        'sample'                      : 'acceptance-walk',
 
         # Plots
-        'N-points'              : 1000,
-        'N-z-slices'            : 10,
-        'bounds-m1'             : [1, 100],
-        'bounds-m2'             : [1, 80],
-        'bounds-q'              : [0, 1],
-        'bounds-dL'             : [0, 10000],
-        'bounds-z'              : [1e-5, 0.8],
-        'true-values'           : {},
-        'selection-effects'     : 0,
-        'N-points-KDE'          : 1000,
+        'N-points'                    : 1000,
+        'N-z-slices'                  : 10,
+        'bounds-m1'                   : [1, 90],
+        'bounds-m2'                   : [1, 80],
+        'bounds-q'                    : [0, 1],
+        'bounds-dL'                   : [0, 10000],
+        'bounds-z'                    : [1e-5, 0.8],
+        'true-values'                 : {},
+        'selection-effects'           : 0,
+        'N-points-KDE'                : 1000,
     }
 
     # Read options from config file.
@@ -80,7 +82,7 @@ def InitialiseOptions(Config):
         if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('positive-peak' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('conditional-prior' in key) or ('single-mass' in key):
+        if ('positive-peak' in key) or ('gaussians-overlap' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('conditional-prior-peak' in key) or ('conditional-prior-gaussians' in key) or ('single-mass' in key):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if ('priors' in key):
@@ -124,13 +126,13 @@ def default_priors():
         # Primary mass distribution
         'delta_m'     : [0.1, 10. ],
 
-        'alpha'       : [1.,  6.  ],
-        'alpha_z0'    : [1.,  6.  ],
-        'alpha_z1'    : [-5., 20. ],
+        'alpha'       : [1.,  10. ],
+        'alpha_z0'    : [1.,  10. ],
+        'alpha_z1'    : [-30., 30.],
 
         'mmin'        : [2. , 20. ],
         'mmin_z0'     : [2. , 20. ],
-        'mmin_z1'     : [-5., 50. ],
+        'mmin_z1'     : [-10., 50.],
         'mmax'        : [65., 200.],
         'mmax_z0'     : [65., 200.],
         'mmax_z1'     : 0.,
@@ -138,24 +140,37 @@ def default_priors():
         'mu_g'        : [20., 60. ],
         'mu_z0'       : [20., 60. ],
         'mu_z1'       : [-80., 80.],
-        'sigma_g'     : [5. , 30. ],
-        'sigma_z0'    : [5. , 30. ],
+        'sigma_g'     : [1. , 30. ],
+        'sigma_z0'    : [1. , 30. ],
         'sigma_z1'    : [0.,  20. ],
-        'mix_z0'      : [0. , 1.  ],
-        'mix_z1'      : [0. , 1.  ],
+
+        'mu_z0_a'     : [2.,  100.],
+        'mu_z1_a'     : [-80., 80.],
+        'mu_z0_b'     : [2.,  100.],
+        'mu_z1_b'     : [-80., 80.],
+        'sigma_z0_a'  : [1. , 50. ],
+        'sigma_z1_a'  : [0.,  50. ],
+        'sigma_z0_b'  : [1. , 50. ],
+        'sigma_z1_b'  : [0.,  50. ],
 
         'lambda_peak' : [0. , 1.  ],
-        
+        'mix_z0'      : [0. , 1.  ],
+        'mix_z1'      : [0. , 1.  ],
+        'amp'         : [0. , 0.2 ],
+        'freq'        : [-20., 20.],
+        'zt'          : [0. , 1.  ],
+        'delta_zt'    : [1. , 100.],
+
         # Secondary mass distribution
         'beta'        : [1.,  6.  ],
         'mu_q'        : [0.4, 1.  ],
         'sigma_q'     : [0.01, 0.9],
 
         # Rate evolution
-        'gamma'       : [-50., 30. ],
-        'kappa'       : [-6. , 6.  ],
-        'zp'          : [0. , 4.   ],
-        'R0'          : [0. , 100. ],
+        'gamma'       : [-50., 30.],
+        'kappa'       : [-6. , 10.],
+        'zp'          : [0. , 4.  ],
+        'R0'          : [0. , 100.],
     }
 
     return prior
