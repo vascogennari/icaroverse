@@ -89,8 +89,8 @@ class Wrappers:
 
         if not pars['single-mass']:
             if   pars['model-secondary'] == 'Mass2-PowerLaw':          
-                if pars['low-smoothing']:                              w = get_wrapper('m1m2_conditioned_lowpass',                            input_wrapper = m1w)
-                else:                                                  w = get_wrapper('m1m2_conditioned',                                    input_wrapper = m1w)
+                if pars['low-smoothing']:                              w = get_wrapper('m1m2_conditioned_lowpass', input_wrapper = m1w)
+                else:                                                  w = get_wrapper('m1m2_conditioned',         input_wrapper = m1w)
             elif pars['model-secondary'] == 'MassRatio-Gaussian':      w = get_wrapper('mass_ratio_prior_Gaussian')
             elif pars['model-secondary'] == 'MassRatio-PowerLaw':      w = get_wrapper('mass_ratio_prior_Powerlaw')
             else:
@@ -237,7 +237,7 @@ class SelectionEffects:
         else:
             raise ValueError('Unknown option to compute the selection effects cut.')
 
-        print('\n\tUsing {} injections out of {} to compute selection effects.\n'.format(len(self.injections.injections_data_original['mass_1']), len(inj_dict['mass_1'])))
+        print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data_original['mass_1']), len(inj_dict['mass_1'])))
 
     def return_SelectionEffects(self):
         return self.injections
@@ -252,7 +252,6 @@ class Data:
         if not pars['distance-prior-PE']:              print('\n\tUsing a flat prior for PE samples on the luminosity distance.')
         if not pars['single-mass']:
             if 'MassRatio' in pars['model-secondary']: print('\n\tCorrecting the PE samples prior for mass ratio.')
-        else:                                          print('\n\tCorrecting the PE samples prior for mass ratio.')
               
         # O3 Cosmology paper injections
         if   pars['O3-cosmology']:
@@ -260,12 +259,13 @@ class Data:
             sys.path.append(pars['data-path'])
             from analyses_dictionaries import BBHs_O3_IFAR_4
 
+            print('')
             samps_dict = {}
             for ev in list(BBHs_O3_IFAR_4.keys()):
                 
                 # Skip the two low mass ratio events in Rinaldi+. This is to avoid problems in assuming a Gaussian distirbution in the mass ratio.
                 if ('190412' in ev) or ('190917' in ev): continue
-                else:                                    print('    {}'.format(ev))
+                else:                                    print('\t{}'.format(ev))
 
                 tmp = h5py.File(BBHs_O3_IFAR_4[ev]['PE'])
                 data_evs = tmp[BBHs_O3_IFAR_4[ev]['PE_waveform']]['posterior_samples']
