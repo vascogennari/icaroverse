@@ -1,7 +1,6 @@
-import numpy as np, pickle, pandas as pd, os
+import argparse, numpy as np, pickle, pandas as pd, os
 from distutils.dir_util import copy_tree
-from astropy.cosmology import FlatLambdaCDM
-import icarogw, icarogw.simulation as icarosim
+import icarogw.simulation as icarosim
 import matplotlib.pyplot as plt, seaborn as sns
 from tqdm import tqdm
 import icarogw_runner as icarorun
@@ -221,111 +220,123 @@ def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = Fal
     return 0
 
 
-# MAIN
-additional_text     = '_non-evolving'
-N_events            = 10000
+if __name__=='__main__':
 
-generate_population = 1
-subset_events       = 0
+    parser = argparse.ArgumentParser()
 
-input_pars  = {
-    # Model parameters
-    'model-primary'       : 'PowerLawRedshiftLinear-GaussianRedshiftLinear',
-    'model-secondary'     : 'MassRatio-Gaussian',
-    'model-rate'          : 'PowerLaw',
+    parser.add_argument('-t',   '--additional-text',     type = str, metavar = 'additional_text',     default = ''                               )
+    parser.add_argument('-g',   '--generated-events',    type = str, metavar = 'generated_events',    default = 1000                             )
+    parser.add_argument('-m1',  '--model-primary',       type = str, metavar = 'model_primary',       default = 'PowerLaw-GaussianRedshiftLinear')
+    parser.add_argument('-m2',  '--model-secondary',     type = str, metavar = 'model_secondary',     default = 'MassRatio-Gaussian'             )
+    parser.add_argument('-r',   '--model-rate',          type = str, metavar = 'model_rate',          default = 'PowerLaw'                       )
+    parser.add_argument('-tr',  '--redshift-transition', type = str, metavar = 'redshift_transition', default = 'linear'                         )
+    parser.add_argument('-snr', '--snr-cut',             type = str, metavar = 'snr_cut',             default = 12                               )
+    parser.add_argument('-fgw', '--fgw-cut',             type = str, metavar = 'fgw_cut',             default = 15                               )
 
-    'redshift-transition' : 'linear',
-    'positive-peak'       : 0,
-    'low-smoothing'       : 1,
-    'single-mass'         : 0,
+    args                = parser.parse_args()
+    additional_text     = args.additional_text
+    N_events            = args.generated_events
 
-    'snr-cut'             : 12,
-    'fgw-cut'             : 15,
-    'flat-PSD'            : 0,
-}
+    generate_population = 1
+    subset_events       = 0
 
-true_values = {
-    # Cosmology
-    'H0'          : 67.7,
-    'Om0'         : 0.308,
+    input_pars  = {
+        # Model parameters
+        'model-primary'       : args.model_primary,
+        'model-secondary'     : args.model_secondary,
+        'model-rate'          : args.model_rate,
 
-    # Primary mass distribution
-    'delta_m'     : 5.,
+        'redshift-transition' : args.redshift_transition,
+        'positive-peak'       : 0,
+        'low-smoothing'       : 1,
+        'single-mass'         : 0,
 
-    'alpha'       : 3.,
-    'mmin'        : 8.,
-    'mmax'        : 100.,
-    'mu'          : 30.,
-    'sigma'       : 5.,
+        'snr-cut'             : args.snr_cut,
+        'fgw-cut'             : args.fgw_cut,
+        'flat-PSD'            : 0,
+    }
 
-    'alpha_z0'    : 3.8,
-    'alpha_z1'    : 0.,
+    true_values = {
+        # Cosmology
+        'H0'          : 67.7,
+        'Om0'         : 0.308,
 
-    'mmin_z0'     : 7.,
-    'mmin_z1'     : 0.,
-    'mmax_z0'     : 150.,
-    'mmax_z1'     : 0.,
+        # Primary mass distribution
+        'delta_m'     : 5.,
 
-    'mu_z0'       : 30.,
-    'mu_z1'       : 0.,
-    'sigma_z0'    : 6.,
-    'sigma_z1'    : 0.,
+        'alpha'       : 3.8,
+        'mmin'        : 7.,
+        'mmax'        : 150.,
+        'mu'          : 0.,
+        'sigma'       : 0.,
 
-    'mix_z0'      : 0.9,
-    'mix_z1'      : 0.9,
-    
-    # Secondary mass distribution
-    'mu_q'        : 0.8,
-    'sigma_q'     : 0.15,
+        'alpha_z0'    : 3.8,
+        'alpha_z1'    : 0.,
 
-    # Rate evolution
-    'gamma'       : 0.,
-    'kappa'       : 3.,
-    'zp'          : 2.,
-    'R0'          : 20.,
-}
+        'mmin_z0'     : 7.,
+        'mmin_z1'     : 0.,
+        'mmax_z0'     : 150.,
+        'mmax_z1'     : 0.,
 
+        'mu_z0'       : 35.,
+        'mu_z1'       : 30.,     # <----- Gaussian evolution
+        'sigma_z0'    : 6.,
+        'sigma_z1'    : 0.,
 
-filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
-base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
-results_dir = os.path.join(base_dir,    'simulated_population', filename)
-plot_dir    = os.path.join(results_dir, 'population_plots')
-if not os.path.exists(results_dir): os.makedirs(results_dir)
-if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
-input_pars['output'] = results_dir
-
-if not generate_population:
-    try:
-        sample_source_dict_inj   = pd.read_pickle(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(  filename)))
-        sample_detector_dict_inj = pd.read_pickle(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)))
-        print('\n * Reading existing population.\n')
-    except: print('\n * Existing population not found. Exiting...\n')
-
-    if not subset_events == 0:
-        N_events = len(sample_detector_dict_inj['m1d'])
-        if subset_events > N_events: raise ValueError('The number of subset events need to be smaller than initial population.')
-        print('\n * Sampling a subset of {} events out of the initial {}.\n'.format(subset_events, N_events))
-        filter = build_filter_subsample(N_events, subset_events)
-        sample_detector_dict_inj = {key: sample_detector_dict_inj[key][filter] for key in sample_detector_dict_inj.keys()}
-        results_dir_new = results_dir + '_subset-{}'.format(subset_events)
-        plot_dir        = os.path.join(results_dir_new, 'population_plots')
-        input_pars['output'] = results_dir_new
-        copy_tree(results_dir, results_dir_new)
-        with open(os.path.join(input_pars['output'], 'events_detector_dict_{}_subset-{}.pickle'.format(filename, subset_events)), 'wb') as handle:
-            pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        'mix_z0'      : 0.9,
+        'mix_z1'      : 0.9,
         
-        true_values  = read_truths(  results_dir_new)
-        input_pars   = read_settings(results_dir_new)
-        inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events, return_wrappers = True)
+        # Secondary mass distribution
+        'mu_q'        : 0.8,
+        'sigma_q'     : 0.15,
 
-else:
-    print('\n * Generating new population.\n')
-    save_settings(results_dir, input_pars)
-    sample_source_dict_inj, sample_detector_dict_inj, inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events)
-    with open(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(  filename)), 'wb') as handle:
-        pickle.dump(sample_source_dict_inj,   handle, protocol = pickle.HIGHEST_PROTOCOL)
-    with open(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)), 'wb') as handle:
-        pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        # Rate evolution
+        'gamma'       : 3.,     # <----- Rate evolution
+        'kappa'       : 0.,
+        'zp'          : 0.,
+        'R0'          : 0.,
+    }
 
-plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers, true_values)
-print(' * Finished.\n')
+    filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
+    base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
+    results_dir = os.path.join(base_dir,    'simulated_population/TEST', filename)
+    plot_dir    = os.path.join(results_dir, 'population_plots')
+    if not os.path.exists(results_dir): os.makedirs(results_dir)
+    if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
+    input_pars['output'] = results_dir
+
+    if not generate_population:
+        try:
+            sample_source_dict_inj   = pd.read_pickle(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(  filename)))
+            sample_detector_dict_inj = pd.read_pickle(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)))
+            print('\n * Reading existing population.\n')
+        except: print('\n * Existing population not found. Exiting...\n')
+
+        if not subset_events == 0:
+            N_events = len(sample_detector_dict_inj['m1d'])
+            if subset_events > N_events: raise ValueError('The number of subset events need to be smaller than initial population.')
+            print('\n * Sampling a subset of {} events out of the initial {}.\n'.format(subset_events, N_events))
+            filter = build_filter_subsample(N_events, subset_events)
+            sample_detector_dict_inj = {key: sample_detector_dict_inj[key][filter] for key in sample_detector_dict_inj.keys()}
+            results_dir_new = results_dir + '_subset-{}'.format(subset_events)
+            plot_dir        = os.path.join(results_dir_new, 'population_plots')
+            input_pars['output'] = results_dir_new
+            copy_tree(results_dir, results_dir_new)
+            with open(os.path.join(input_pars['output'], 'events_detector_dict_{}_subset-{}.pickle'.format(filename, subset_events)), 'wb') as handle:
+                pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
+            
+            true_values  = read_truths(  results_dir_new)
+            input_pars   = read_settings(results_dir_new)
+            inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events, return_wrappers = True)
+
+    else:
+        print('\n * Generating new population.')
+        save_settings(results_dir, input_pars)
+        sample_source_dict_inj, sample_detector_dict_inj, inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events)
+        with open(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(  filename)), 'wb') as handle:
+            pickle.dump(sample_source_dict_inj,   handle, protocol = pickle.HIGHEST_PROTOCOL)
+        with open(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)), 'wb') as handle:
+            pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
+
+    plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers, true_values)
+    print(' * Finished.\n')
