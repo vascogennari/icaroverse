@@ -24,20 +24,14 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             # GaussianRedshift-order-x model.
             return wrap(order = order)
     else:
-        if   wrap == 'PowerLaw_GaussianRedshiftLinear' or wrap == 'PowerLawRedshiftLinear_GaussianRedshiftLinear':
-            if       pos_peak and not smoothing:
-                return wrap(redshift_transition = transition, flag_positive_gaussian = pos_peak)
-            elif not pos_peak and     smoothing:
-                return wrap(redshift_transition = transition,                                    flag_powerlaw_smoothing = smoothing)
-            elif     pos_peak and     smoothing:
-                return wrap(redshift_transition = transition, flag_positive_gaussian = pos_peak, flag_powerlaw_smoothing = smoothing)
-            else:
-                return wrap(redshift_transition = transition)
-        elif wrap == 'GaussianRedshiftLinear_GaussianRedshiftLinear':
-            if       gauss_overlap:
-                return wrap(redshift_transition = transition, flag_gaussians_overlap = gauss_overlap)
-            else:
-                return wrap(redshift_transition = transition)
+        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear':
+            if       pos_peak and not smoothing: return wrap(redshift_transition = transition, flag_positive_gaussian = pos_peak)
+            elif not pos_peak and     smoothing: return wrap(redshift_transition = transition,                                    flag_powerlaw_smoothing = smoothing)
+            elif     pos_peak and     smoothing: return wrap(redshift_transition = transition, flag_positive_gaussian = pos_peak, flag_powerlaw_smoothing = smoothing)
+            else:                                return wrap(redshift_transition = transition)
+        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear':
+            if       gauss_overlap:              return wrap(redshift_transition = transition, flag_gaussians_overlap = gauss_overlap)
+            else:                                return wrap(redshift_transition = transition)
 
 
 def print_dictionary(dictionary):
