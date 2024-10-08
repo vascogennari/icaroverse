@@ -10,7 +10,7 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, pos_peak = None, smoothing = None, gauss_overlap = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, pos_gauss_z0 = None, pos_gauss_z = None, sep_gauss_z0 = None, sep_gauss_z = None):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -24,14 +24,12 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             # GaussianRedshift-order-x model.
             return wrap(order = order)
     else:
-        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear':
-            if       pos_peak and not smoothing: return wrap(redshift_transition = transition, flag_positive_gaussian = pos_peak)
-            elif not pos_peak and     smoothing: return wrap(redshift_transition = transition,                                    flag_powerlaw_smoothing = smoothing)
-            elif     pos_peak and     smoothing: return wrap(redshift_transition = transition, flag_positive_gaussian = pos_peak, flag_powerlaw_smoothing = smoothing)
-            else:                                return wrap(redshift_transition = transition)
-        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear':
-            if       gauss_overlap:              return wrap(redshift_transition = transition, flag_gaussians_overlap = gauss_overlap)
-            else:                                return wrap(redshift_transition = transition)
+        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear':
+            return wrap(redshift_transition = transition, flag_powerlaw_smoothing = smoothing, flag_positive_gaussian_z0 = pos_gauss_z0, flag_positive_gaussian_z = pos_gauss_z)
+        elif wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear':
+            return wrap(redshift_transition = transition, flag_powerlaw_smoothing = smoothing, flag_positive_gaussian_z0 = pos_gauss_z0, flag_positive_gaussian_z = pos_gauss_z, flag_separates_gaussians_z0 = sep_gauss_z0, flag_separates_gaussians_z = sep_gauss_z)
+        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear':
+            return wrap(redshift_transition = transition,                                      flag_positive_gaussian_z0 = pos_gauss_z0, flag_positive_gaussian_z = pos_gauss_z, flag_separates_gaussians_z0 = sep_gauss_z0, flag_separates_gaussians_z = sep_gauss_z)
 
 
 def print_dictionary(dictionary):
@@ -76,9 +74,12 @@ class Wrappers:
 
         # Evolving models.
         else:
-            if   pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear':               w = get_wrapper('PowerLaw_GaussianRedshiftLinear',               transition = pars['redshift-transition'], pos_peak = pars['positive-peak'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], pos_peak = pars['positive-peak'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], gauss_overlap = pars['gaussians-overlap'])
+            if   pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear':                                      w = get_wrapper('PowerLaw_GaussianRedshiftLinear',                                      transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'])
+            elif pars['model-primary'] == 'PowerLawBroken-GaussianRedshiftLinear':                                w = get_wrapper('PowerLawBroken_GaussianRedshiftLinear',                                transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'])
+            elif pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('PowerLawRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'])
+            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               w = get_wrapper('PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'])
+            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'],                                    pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'])
+            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'],                                    pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'])
 
             elif 'GaussianRedshift-order-' in pars['model-primary']:
                                                                                            order = int(pars['model-primary'].split('GaussianRedshift-order-')[-1])
@@ -348,14 +349,6 @@ class LikelihoodPrior:
         return res
 
     def Prior(self, pars, w):
-    
-        def conditional_prior_positive_peak(prior):
-            prior['mean_three_sigmas'] = prior['mu_z0'] - 3 * prior['sigma_z0']
-            return prior
-        
-        def conditional_prior_gaussians_overlap(prior):
-            prior['gaussians_overlap'] = prior['mu_z0_b'] - prior['mu_z0_a']
-            return prior
 
         def initialise_prior(dict_in, dict_out, w):
               
@@ -370,19 +363,8 @@ class LikelihoodPrior:
 
             return dict_out
 
-        if pars['conditional-prior-peak']:      prior = bilby.core.prior.PriorDict(conversion_function = conditional_prior_positive_peak)
-        if pars['conditional-prior-gaussians']: prior = bilby.core.prior.PriorDict(conversion_function = conditional_prior_gaussians_overlap)
-        else:                                   prior = bilby.core.prior.PriorDict()
+        prior = bilby.core.prior.PriorDict()
         prior = initialise_prior(pars['all-priors'], prior, w)
-
-        if pars['conditional-prior-peak']:
-              prior['mean_three_sigmas'] = bilby.prior.Constraint(0., 1000.)
-              print('\n * Adding conditional priors on gaussian peak positivity.\n')
-              print_dictionary({'mean_three_sigmas': [0., 1000.]})
-        if pars['conditional-prior-gaussians']:
-              prior['gaussians_overlap'] = bilby.prior.Constraint(0., 1000.)
-              print('\n * Adding conditional priors on two gaussians overlap.\n')
-              print_dictionary({'gaussians_overlap': [0., 1000.]})
 
         return prior
         

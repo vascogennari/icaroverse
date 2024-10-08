@@ -16,12 +16,12 @@ def InitialiseOptions(Config):
         'model-rate'                  : 'PowerLaw',
 
         'redshift-transition'         : 'linear',
-        'positive-peak'               : 0,
-        'gaussians-overlap'           : 0,
+        'positive-gaussian-z0'        : 0,
+        'positive-gaussian-z'         : 0,
+        'separate-gaussians-z0'       : 0,
+        'separate-gaussians-z'        : 0,
         'low-smoothing'               : 0,
         'priors'                      : {},
-        'conditional-prior-peak'      : 0,
-        'conditional-prior-gaussians' : 0,
         'scale-free'                  : 0,
         'single-mass'                 : 0,
 
@@ -82,7 +82,7 @@ def InitialiseOptions(Config):
         if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('positive-peak' in key) or ('gaussians-overlap' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('conditional-prior-peak' in key) or ('conditional-prior-gaussians' in key) or ('single-mass' in key):
+        if ('positive-gaussian-z0' in key) or ('positive-gaussian-z' in key) or ('separate-gaussians-z0' in key) or ('separate-gaussians-z' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if ('priors' in key):
@@ -130,6 +130,10 @@ def default_priors():
         'alpha_z0'    : [1.,  10. ],
         'alpha_z1'    : [-30., 30.],
 
+        'alpha_a'     : [1.,  10. ],
+        'alpha_b'     : [1.,  10. ],
+        'break_p'     : [0.,   1. ],
+
         'mmin'        : [2. , 20. ],
         'mmin_z0'     : [2. , 20. ],
         'mmin_z1'     : [-10., 50.],
@@ -148,14 +152,22 @@ def default_priors():
         'mu_z1_a'     : [-80., 80.],
         'mu_z0_b'     : [2.,  100.],
         'mu_z1_b'     : [-80., 80.],
+        'mu_z0_c'     : [2.,  100.],
+        'mu_z1_c'     : [-80., 80.],
         'sigma_z0_a'  : [1. , 50. ],
         'sigma_z1_a'  : [0.,  50. ],
         'sigma_z0_b'  : [1. , 50. ],
         'sigma_z1_b'  : [0.,  50. ],
+        'sigma_z0_c'  : [1. , 50. ],
+        'sigma_z1_c'  : [0.,  50. ],
 
         'lambda_peak' : [0. , 1.  ],
         'mix_z0'      : [0. , 1.  ],
         'mix_z1'      : [0. , 1.  ],
+        'mix_z0_alpha': [0. , 1.  ],
+        'mix_z1_alpha': [0. , 1.  ],
+        'mix_z0_beta' : [0. , 1.  ],
+        'mix_z1_beta' : [0. , 1.  ],
         'amp'         : [0. , 0.2 ],
         'freq'        : [-20., 20.],
         'zt'          : [0. , 1.  ],
