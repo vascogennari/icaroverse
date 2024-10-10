@@ -37,9 +37,9 @@ def activate_condor_submit(config_name):
 
 # ---------------------------------------------------------------------- #
 user_name      = 'vasco.gennari'
-condor_memory  = 10  #5
-condor_disk    = 5   #1
-condor_threads = 16  #1
+condor_memory  = 5
+condor_disk    = 1
+condor_threads = 10
 condor_executable_path = '/home/vasco.gennari/.conda/envs/icarogw_env/bin/python'
 condor_executable_file = '/home/vasco.gennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
 
