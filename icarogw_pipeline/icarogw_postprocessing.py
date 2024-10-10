@@ -27,7 +27,7 @@ def get_plot_parameters(pars, x_array, x_min, x_max, figname, color, x_label, y_
 
     plot_dict = {
         'x'         : x_array,
-        'output'    : pars['output'],
+        'output'    : pars['output-plots'],
         'figname'   : figname,
         'color'     : color,
 
@@ -70,6 +70,14 @@ def selection_effects_countour_level(x, y, ref_cosmo):
     contour_level = sorted_z[np.searchsorted(cumulative_sum, credible_level)]
 
     return x_grid, y_grid, z, contour_level
+
+
+def add_curves_to_dict(dictionary, x, y, label):
+
+    dictionary[label] = {}
+    dictionary[label]['x'] = x
+    dictionary[label]['y'] = y
+
 
 
 # -------------------------------- #
@@ -603,10 +611,13 @@ class Plots:
         self.distributions = ReconstructDistributions
         self.plots         = PlotDistributions
 
+        self.curves_dict = {}
+
     def PrimaryMass(self):
 
         if not 'Redshift' in self.pars['model-primary']:
             curves, plot_dict = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
+            add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
             if self.pars['true-values'] == {}:
                 self.plots.plot_curves(curves, plot_dict, logscale = True)
             else:
@@ -614,6 +625,7 @@ class Plots:
                 self.plots.plot_curves(curves, plot_dict, truth = curve_true, logscale = True)
         else:
             curves, plot_dict = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
+            add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
             if self.pars['true-values'] == {}:
                 self.plots.plot_curves_evolving(curves, plot_dict)
             else:
@@ -624,6 +636,7 @@ class Plots:
     def SecondaryMass(self):
 
         curves, plot_dict = self.distributions.SecondaryMassFunction(self.df, self.m2w, self.priors, self.pars)
+        add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(curves, plot_dict)
         else:
@@ -633,6 +646,7 @@ class Plots:
     def RateEvolution(self):
 
         curves, plot_dict = self.distributions.RateEvolutionFunction(self.df, self.rw, self.priors, self.pars)
+        add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(curves, plot_dict)
         else:
@@ -642,6 +656,7 @@ class Plots:
     def RateEvolutionProbability(self):
 
         curves, plot_dict = self.distributions.RateEvolutionFunctionProbability(self.df, self.rw, self.cw, self.pars)
+        add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(curves, plot_dict)
         else:
@@ -651,6 +666,7 @@ class Plots:
     def RedshiftTransition(self):
 
         curves, plot_dict = self.distributions.RedshiftTransitionFunction(self.df, self.priors, self.pars)
+        add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(curves, plot_dict)
         else:
@@ -669,6 +685,15 @@ class Plots:
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s'])
             self.plots.plot_curves(              plots_inputs['curves-z'],     plots_inputs['plot-dict-z'])
+
+            add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1d']['x'], plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d']['figname'])
+            if not self.pars['single-mass']:
+                add_curves_to_dict(self.curves_dict, plots_inputs['plot-dict-m2d']['x'], plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d']['figname'])
+            add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-dL'][ 'x'], plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'][ 'figname'])
+            add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1s']['x'], plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s']['figname'])
+            if not self.pars['single-mass']:
+                add_curves_to_dict(self.curves_dict, plots_inputs['plot-dict-m2s']['x'], plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s']['figname'])
+            add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-z'][  'x'], plots_inputs['curves-z'],     plots_inputs['plot-dict-z'][  'figname'])
         else:
             inputs_true = self.distributions.RemoveSelectionEffects(pd.DataFrame(self.pars['true-values'], index = [0]), self.pars, self.rate_w, self.ref_cosmo, self.inj)
             self.plots.plot_curves(              plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d'],                 truth = inputs_true['curves-m1d'][0])
@@ -692,3 +717,6 @@ class Plots:
 
         if not self.pars['redshift-transition'] == '':
             self.RedshiftTransition()
+    
+    def return_curves(self):
+        return self.curves_dict

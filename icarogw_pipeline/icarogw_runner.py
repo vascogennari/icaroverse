@@ -496,12 +496,16 @@ def main():
     # ----------------------------------- #
 
     print('\n * Producing plots.')
-    # FIXME: Should define a new variable instead of overwriting the output path.
-    input_pars['output'] = os.path.join(input_pars['output'], 'plots')
-    if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
+    input_pars['output-plots']  = os.path.join(input_pars['output'], 'plots' )
+    if not os.path.exists(input_pars['output-plots']):  os.makedirs(input_pars['output-plots'] )
 
     tmp = icarogw_postprocessing.Plots(input_pars, df, m1w, m2w, rw, cw, ref_cosmo, wrapper, priors_dict, injections)
     tmp.ProducePlots()
+
+    # Save curves of the reconstructed distributions.
+    curves = tmp.return_curves()
+    with open(os.path.join(input_pars['output-plots'], 'curves.pkl'), 'wb') as f:
+        pickle.dump(curves, f)
 
     print('\n * Finished.\n')
 
