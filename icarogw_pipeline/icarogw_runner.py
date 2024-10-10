@@ -38,19 +38,28 @@ def print_dictionary(dictionary):
         max_len = len(max(dictionary.keys(), key = len))
         if not key == 'all-priors': print('\t{}  {}'.format(key.ljust(max_len), dictionary[key]))
 
-def check_effective_number_injections(pars, likelihood, n_events):
+def check_effective_number_injections(pars, likelihood, n_events, maxL_values = None):
 
     def single_likelihood_eval():
         count = time.time()
         _     = likelihood.log_likelihood()
         print('\n\tA single likelihood evaluation takes {0:.5f} [s].'.format(time.time() - count))
 
-    if pars['simulation'] and (not pars['true-values'] == {}):
-        likelihood.parameters = {key: pars['true-values'][key] for key in likelihood.rate_model.population_parameters}
+    tmp_dict = None
+    if maxL_values == None:
+        if pars['simulation'] and (not pars['true-values'] == {}):
+            tmp_dict = pars['true-values']
+            tmp_str  = 'injected'
+    else:
+        tmp_dict = maxL_values
+        tmp_str  = 'maximum likelihood'
+
+    if not tmp_dict == None:
+        likelihood.parameters = {key: tmp_dict[key] for key in likelihood.rate_model.population_parameters}
         single_likelihood_eval()
         N_eff_inj = likelihood.injections.effective_injections_number()
         stability = N_eff_inj / (4 * n_events)
-        print('\n\tThe effective number of injections for the injected model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability))
+        print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, tmp_str))
         if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
 
 
@@ -475,6 +484,12 @@ def main():
     with open('{}/log_evidence.txt'.format(input_pars['output']), 'w') as f:
         f.write('{}\n'.format('# log_Z_base_e\tlog_Z_err\tmax_log_L'))
         f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), round(tmp['log_evidence_err'], 2), round(max(df['log_likelihood']), 2)))
+
+    # Control the effective number of injections on the maximum likelihood model.
+    print('\n * Computing effective number of injections.')
+    maxL_index  = np.argmax(df['log_likelihood'])
+    maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
+    check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
 
     # ----------------------------------- #
     # Plots production and postprocessing #
