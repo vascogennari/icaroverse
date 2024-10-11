@@ -59,7 +59,9 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
         single_likelihood_eval()
         N_eff_inj = likelihood.injections.effective_injections_number()
         stability = N_eff_inj / (4 * n_events)
+        N_eff_PE  = np.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
         print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, tmp_str))
+        print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
         if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
 
 
