@@ -20,6 +20,7 @@ def InitialiseOptions(Config):
         'positive-gaussian-z'         : 0,
         'separate-gaussians-z0'       : 0,
         'separate-gaussians-z'        : 0,
+        'redshift-mixture'            : 1,
         'low-smoothing'               : 0,
         'priors'                      : {},
         'scale-free'                  : 0,
@@ -44,7 +45,7 @@ def InitialiseOptions(Config):
         'neffINJ'                     : None,
 
         # Sampler
-        'sampler'                     : 'dynesty',
+        'sampler'                     : 'nessai',
         'nlive'                       : 200,
         'naccept'                     : 60,
         'npool'                       : 1,
@@ -82,7 +83,7 @@ def InitialiseOptions(Config):
         if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('positive-gaussian-z0' in key) or ('positive-gaussian-z' in key) or ('separate-gaussians-z0' in key) or ('separate-gaussians-z' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
+        if ('positive-gaussian-z0' in key) or ('positive-gaussian-z' in key) or ('separate-gaussians-z0' in key) or ('separate-gaussians-z' in key) or ('redshift-mixture' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if ('priors' in key):
@@ -149,6 +150,7 @@ def default_priors():
         'sigma_z0'    : [1. , 30. ],
         'sigma_z1'    : [0.,  20. ],
         'sigma_z2'    : [0.,  20. ],
+        'mmin_g'      : [2. , 50. ],
 
         'mu_z0_a'     : [2.,  100.],
         'mu_z1_a'     : [-80., 80.],

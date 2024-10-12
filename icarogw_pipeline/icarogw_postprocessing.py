@@ -715,8 +715,8 @@ class Plots:
         self.RateEvolutionProbability()
         self.NoSelectionEffects()
 
-        if not self.pars['redshift-transition'] == '':
+        if self.pars['redshift-mixture']:
             self.RedshiftTransition()
-    
+
     def return_curves(self):
         return self.curves_dict
