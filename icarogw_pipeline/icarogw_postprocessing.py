@@ -708,15 +708,18 @@ class Plots:
     # Call the class functions to generate the plots.
     def ProducePlots(self):
 
-        self.PrimaryMass()
-        if not self.pars['single-mass']:
-            self.SecondaryMass()
-        self.RateEvolution()
-        self.RateEvolutionProbability()
-        self.NoSelectionEffects()
-
-        if self.pars['redshift-mixture']:
-            self.RedshiftTransition()
+        try:    self.PrimaryMass()
+        except: pass
+        try:    self.SecondaryMass()
+        except: pass
+        try:    self.RateEvolution()
+        except: pass
+        try:    self.RateEvolutionProbability()
+        except: pass
+        try:    self.NoSelectionEffects()
+        except: pass
+        try:    self.RedshiftTransition()
+        except: pass
 
     def return_curves(self):
         return self.curves_dict
