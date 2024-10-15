@@ -53,7 +53,7 @@ def InitialiseOptions(Config):
         'sample'                      : 'acceptance-walk',
 
         # Plots
-        'N-points'                    : 1000,
+        'N-points'                    : 500,
         'N-z-slices'                  : 10,
         'bounds-m1'                   : [1, 90],
         'bounds-m2'                   : [1, 80],
@@ -62,7 +62,9 @@ def InitialiseOptions(Config):
         'bounds-z'                    : [1e-5, 0.8],
         'true-values'                 : {},
         'selection-effects'           : 0,
-        'N-points-KDE'                : 1000,
+        'plot-prior'                  : 0,
+        'N-points-KDE'                : 500,
+        'N-samps-prior'               : 1000,
     }
 
     # Read options from config file.
@@ -99,13 +101,13 @@ def InitialiseOptions(Config):
             except: pass
 
         # Plots
-        if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE' in key):
+        if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE' in key) or ('N-samps-prior' in key):
             try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
         if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if ('selection-effects' in key):
+        if ('selection-effects' in key) or ('plot-prior' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
     

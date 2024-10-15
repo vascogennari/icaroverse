@@ -94,8 +94,7 @@ class PlotDistributions:
         _, ax = plt.subplots(figsize = figsize)
 
         percentiles = [50, 5, 16, 84, 95]
-
-        if not curves_prior == 0:
+        if hasattr(curves_prior, "__len__"):
             MF = {}
             for perc in percentiles: MF[perc] = np.percentile(curves_prior, perc, axis = 0)
             ax.fill_between(pl_dct['x'], MF[5] , MF[95], color = '#AB7C41', alpha = 0.15)
@@ -269,7 +268,7 @@ class ReconstructDistributions:
 
         if 'Redshift' in pars['model-primary']:
             if prior:
-                tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in w.population_parameters}
+                tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
                 df  = pd.DataFrame(tmp)
 
             pdf = np.empty(shape = (pars['N-points'], pars['N-points']))
@@ -304,7 +303,7 @@ class ReconstructDistributions:
 
         else:
             if prior:
-                tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in w.population_parameters}
+                tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
                 df  = pd.DataFrame(tmp)
 
             pdf = np.empty(shape = (pars['N-points'], pars['N-points']))
@@ -436,7 +435,7 @@ class ReconstructDistributions:
             raise ValueError('Unknown option for the secondary mass plot. Current implementation accounts for MassRatio and PowerLaw.')
         
         if prior:
-            tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in w.population_parameters}
+            tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
             df  = pd.DataFrame(tmp)
 
         m_array = np.linspace(pars[bound][0], pars[bound][1], pars['N-points'])
@@ -458,7 +457,7 @@ class ReconstructDistributions:
     def RateEvolutionFunction(df, w, p_dct, pars, prior = False):
 
         if prior:
-            tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in w.population_parameters}
+            tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
             df  = pd.DataFrame(tmp)
 
         z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
@@ -507,8 +506,8 @@ class ReconstructDistributions:
         z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
 
         if prior:
-            if   pars['redshift-transition'] == 'sigmoid': tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in ['zt', 'delta_zt', 'mix_z0']}
-            elif pars['redshift-transition'] == 'linear':  tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N_samp_prior']) for key in ['mix_z0', 'mix_z1']}
+            if   pars['redshift-transition'] == 'sigmoid': tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['zt', 'delta_zt', 'mix_z0']}
+            elif pars['redshift-transition'] == 'linear':  tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1']}
             df  = pd.DataFrame(tmp)
             
         curves  = np.empty(shape = (len(df), pars['N-points']))
@@ -616,13 +615,16 @@ class Plots:
     def PrimaryMass(self):
 
         if not 'Redshift' in self.pars['model-primary']:
-            curves, plot_dict = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
+            curves_prior = 0
+            if self.pars['plot-prior']:
+                curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
+            curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
             add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
             if self.pars['true-values'] == {}:
-                self.plots.plot_curves(curves, plot_dict, logscale = True)
+                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, logscale = True)
             else:
                 curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
-                self.plots.plot_curves(curves, plot_dict, truth = curve_true, logscale = True)
+                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true, logscale = True)
         else:
             curves, plot_dict = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
             add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
@@ -635,43 +637,55 @@ class Plots:
 
     def SecondaryMass(self):
 
-        curves, plot_dict = self.distributions.SecondaryMassFunction(self.df, self.m2w, self.priors, self.pars)
+        curves_prior = 0
+        if self.pars['plot-prior']:
+            curves_prior, _ = self.distributions.SecondaryMassFunction(self.df, self.m2w, self.priors, self.pars, prior = True)
+        curves, plot_dict   = self.distributions.SecondaryMassFunction(self.df, self.m2w, self.priors, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
-            self.plots.plot_curves(curves, plot_dict)
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior,)
         else:
             curve_true, _ = self.distributions.SecondaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m2w, self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
 
     def RateEvolution(self):
 
-        curves, plot_dict = self.distributions.RateEvolutionFunction(self.df, self.rw, self.priors, self.pars)
+        curves_prior = 0
+        if self.pars['plot-prior']:
+            curves_prior, _ = self.distributions.RateEvolutionFunction(self.df, self.rw, self.priors, self.pars, prior = True)
+        curves, plot_dict   = self.distributions.RateEvolutionFunction(self.df, self.rw, self.priors, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
-            self.plots.plot_curves(curves, plot_dict)
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
 
     def RateEvolutionProbability(self):
 
+        curves_prior = 0
+        if self.pars['plot-prior']:
+            curves_prior, _ = self.distributions.RateEvolutionFunctionProbability(self.df, self.rw, self.cw, self.pars, prior = True)
         curves, plot_dict = self.distributions.RateEvolutionFunctionProbability(self.df, self.rw, self.cw, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
-            self.plots.plot_curves(curves, plot_dict)
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RateEvolutionFunctionProbability(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.cw, self.pars)
-            self.plots.plot_curves(curves, plot_dict, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
     
     def RedshiftTransition(self):
 
+        curves_prior = 0
+        if self.pars['plot-prior']:
+            curves_prior, _ = self.distributions.RedshiftTransitionFunction(self.df, self.priors, self.pars, prior = True)
         curves, plot_dict = self.distributions.RedshiftTransitionFunction(self.df, self.priors, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
-            self.plots.plot_curves(curves, plot_dict)
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RedshiftTransitionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
 
     def NoSelectionEffects(self):
 
