@@ -676,6 +676,16 @@ class Plots:
     def NoSelectionEffects(self):
 
         plots_inputs   = self.distributions.RemoveSelectionEffects(self.df, self.pars, self.rate_w, self.ref_cosmo, self.inj)
+        
+        add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1d']['x'], plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d']['figname'])
+        if not self.pars['single-mass']:
+            add_curves_to_dict(self.curves_dict, plots_inputs['plot-dict-m2d']['x'], plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d']['figname'])
+        add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-dL'][ 'x'], plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'][ 'figname'])
+        add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1s']['x'], plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s']['figname'])
+        if not self.pars['single-mass']:
+            add_curves_to_dict(self.curves_dict, plots_inputs['plot-dict-m2s']['x'], plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s']['figname'])
+        add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-z'][  'x'], plots_inputs['curves-z'],     plots_inputs['plot-dict-z'][  'figname'])
+
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(              plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d'])
             if not self.pars['single-mass']:
@@ -686,14 +696,6 @@ class Plots:
                 self.plots.plot_curves(          plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s'])
             self.plots.plot_curves(              plots_inputs['curves-z'],     plots_inputs['plot-dict-z'])
 
-            add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1d']['x'], plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d']['figname'])
-            if not self.pars['single-mass']:
-                add_curves_to_dict(self.curves_dict, plots_inputs['plot-dict-m2d']['x'], plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d']['figname'])
-            add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-dL'][ 'x'], plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'][ 'figname'])
-            add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1s']['x'], plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s']['figname'])
-            if not self.pars['single-mass']:
-                add_curves_to_dict(self.curves_dict, plots_inputs['plot-dict-m2s']['x'], plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s']['figname'])
-            add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-z'][  'x'], plots_inputs['curves-z'],     plots_inputs['plot-dict-z'][  'figname'])
         else:
             inputs_true = self.distributions.RemoveSelectionEffects(pd.DataFrame(self.pars['true-values'], index = [0]), self.pars, self.rate_w, self.ref_cosmo, self.inj)
             self.plots.plot_curves(              plots_inputs['curves-m1d'],   plots_inputs['plot-dict-m1d'],                 truth = inputs_true['curves-m1d'][0])
