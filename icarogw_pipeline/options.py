@@ -127,7 +127,9 @@ def default_priors():
         'Om0'         : 0.308,
 
         # Primary mass distribution
-        'delta_m'     : [0.1, 10. ],
+        'delta_m'     : [0.,  10. ],
+        'delta_m_a'   : [0.,  30. ],
+        'delta_m_b'   : [0.,  30. ],
 
         'alpha'       : [1.,  10. ],
         'alpha_z0'    : [1.,  10. ],
@@ -143,6 +145,11 @@ def default_priors():
         'mmax'        : [30., 200.],
         'mmax_z0'     : [30., 200.],
         'mmax_z1'     : 0.,
+
+        'mmin_a'      : [2. , 100.],
+        'mmin_b'      : [2. , 100.],
+        'mmax_a'      : [30., 200.],
+        'mmax_b'      : [30., 200.],
 
         'mu_g'        : [20., 60. ],
         'mu_z0'       : [20., 60. ],
@@ -174,6 +181,8 @@ def default_priors():
         'mix_z1_alpha': [0. , 1.  ],
         'mix_z0_beta' : [0. , 1.  ],
         'mix_z1_beta' : [0. , 1.  ],
+        'mix'         : [0. , 1.  ],
+
         'amp'         : [0. , 0.2 ],
         'freq'        : [-20., 20.],
         'zt'          : [0. , 1.  ],

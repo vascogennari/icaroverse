@@ -18,6 +18,8 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
         if order == None:
             if not input_wrapper == None:
                 return wrap(input_wrapper)
+            elif wrap_name == 'PowerLaw_PowerLaw':
+                return wrap(flag_powerlaw_smoothing = smoothing)
             else:
                 return wrap()
         else:
@@ -78,6 +80,7 @@ class Wrappers:
         if not 'Redshift' in pars['model-primary']:
             if   pars['model-primary'] == 'PowerLaw':                                      w = get_wrapper('massprior_PowerLaw')
             elif pars['model-primary'] == 'PowerLaw-Gaussian':                             w = get_wrapper('massprior_PowerLawPeak')
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw':                             w = get_wrapper('PowerLaw_PowerLaw', smoothing = pars['low-smoothing'])
             else:
                 raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
             if not (pars['single-mass'] and 'Mass2' in pars['model-secondary']):
