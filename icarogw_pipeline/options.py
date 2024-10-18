@@ -102,7 +102,7 @@ def InitialiseOptions(Config):
 
         # Plots
         if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE' in key) or ('N-samps-prior' in key):
-            try: input_pars[key] = Config.getfloat('plots', key)
+            try: input_pars[key] = Config.getint('plots', key)
             except: pass
         if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
@@ -134,6 +134,7 @@ def default_priors():
         'alpha'       : [1.,  10. ],
         'alpha_z0'    : [1.,  10. ],
         'alpha_z1'    : [-30., 30.],
+        'mu_alpha'    : [0.,  100.],
 
         'alpha_a'     : [1.,  10. ],
         'alpha_b'     : [1.,  10. ],
@@ -145,6 +146,11 @@ def default_priors():
         'mmax'        : [30., 200.],
         'mmax_z0'     : [30., 200.],
         'mmax_z1'     : 0.,
+
+        'mu_zt'       : [0. , 1.  ],
+        'mu_delta_zt' : [1. , 100.],
+        'sigma_zt'    : [0. , 1.  ],
+        'sigma_delta_zt': [1. , 100.],
 
         'mmin_a'      : [2. , 100.],
         'mmin_b'      : [2. , 100.],

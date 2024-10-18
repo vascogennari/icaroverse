@@ -125,7 +125,7 @@ class PlotDistributions:
         plt.close()
 
 
-    def plot_curves_evolving_long(curves, pl_dct, ref_cosmo, truth = {}, curves_prior = {}, selection_effects = {}):
+    def plot_curves_evolving(curves, pl_dct, ref_cosmo, truth = {}, curves_prior = {}, selection_effects = {}):
 
         _, ax = plt.subplots(figsize = (5, 9))
 
@@ -158,73 +158,38 @@ class PlotDistributions:
         plt.close()
 
 
-    def plot_curves_evolving(curves, pl_dct, truth = {}, curves_prior = {}):
+    def plot_curves_evolving_log(curves, pl_dct, truth = {}, curves_prior = 0):
 
-        fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+        nz = np.shape(pl_dct['z_grid'])[0]
+        fig, ax = plt.subplots(nz, 1, figsize=(5, 2 * nz), sharex = True, constrained_layout = True)
+        fig.set_constrained_layout_pads(hspace = 0.0, h_pad = 0.0) 
 
         if bool(curves_prior):
             for zi, z_array in enumerate(pl_dct['z_grid']):
                 z = z_array[0]
-                ax[0].fill_between(pl_dct['x'], curves_prior[zi][5] +z, curves_prior[zi][95]+z, color = '#AB7C41', alpha = 0.05)
-                ax[0].fill_between(pl_dct['x'], curves_prior[zi][16]+z, curves_prior[zi][84]+z, color = '#AB7C41', alpha = 0.15)
-                if zi == 0:
-                    ax[1].fill_between(pl_dct['x'], curves_prior[zi][5],  curves_prior[zi][95], color = '#AB7C41', alpha = 0.05)
-                    ax[1].fill_between(pl_dct['x'], curves_prior[zi][16], curves_prior[zi][84], color = '#AB7C41', alpha = 0.15, label = '$\mathrm{Prior}$')
-                if zi == len(pl_dct['z_grid'])-1:
-                    ax[1].fill_between(pl_dct['x'], curves_prior[zi][5],  curves_prior[zi][95], color = '#AB7C41', alpha = 0.05)
-                    ax[1].fill_between(pl_dct['x'], curves_prior[zi][16], curves_prior[zi][84], color = '#AB7C41', alpha = 0.15)           
+                zi_inv = nz-1 - zi
+                ax[zi_inv].fill_between(pl_dct['x'], curves_prior[zi][5] , curves_prior[zi][95], color = '#AB7C41', alpha = 0.05)
+                ax[zi_inv].fill_between(pl_dct['x'], curves_prior[zi][16], curves_prior[zi][84], color = '#AB7C41', alpha = 0.15, label = '$\mathrm{Prior}$')       
     
         for zi, z_array in enumerate(pl_dct['z_grid']):
             z = z_array[0]
-            ax[0].fill_between(pl_dct['x'], curves[zi][5] +z, curves[zi][95]+z, color = pl_dct['colors'][zi], alpha = 0.25)
-            ax[0].fill_between(pl_dct['x'], curves[zi][16]+z, curves[zi][84]+z, color = pl_dct['colors'][zi], alpha = 0.5)
-            ax[0].plot(        pl_dct['x'], curves[zi][50]+z, lw = 0.7,         color = pl_dct['colors'][zi])
-            ax[1].plot(        pl_dct['x'], curves[zi][50],   lw = 1,           color = pl_dct['colors'][zi])
+            zi_inv = nz-1 - zi
+            ax[zi_inv].fill_between(pl_dct['x'], curves[zi][5] , curves[zi][95], color = pl_dct['colors'][zi], alpha = 0.25)
+            ax[zi_inv].fill_between(pl_dct['x'], curves[zi][16], curves[zi][84], color = pl_dct['colors'][zi], alpha = 0.5)
+            ax[zi_inv].plot(        pl_dct['x'], curves[zi][50], lw = 0.7,       color = pl_dct['colors'][zi], label = '$z={}$'.format(round(z, 2)))
         
             if not truth == {}:
-                ax[0].plot(    pl_dct['x'], truth[zi][50]+z,  lw = 0.3,         color = '#494949')
-                ax[1].plot(    pl_dct['x'], truth[zi][50],    lw = 0.3,         color = '#494949')
+                ax[zi_inv].plot(    pl_dct['x'], truth[zi][50],  lw = 0.3,       color = '#494949')
         
-        # ------------------------------------------------------------------ #
-        # White plot slides/poster
-        # for zi, z_array in enumerate(pl_dct['z_grid']):
-        #     z = z_array[0]
-        #     #ax[0].fill_between(pl_dct['x'], curves[zi][16]+z, curves[zi][84]+z, color = '#E5E3C8', alpha = 0.2)
-        #     ax[0].plot(        pl_dct['x'], curves[zi][50]+z, lw = 1.5,         color = pl_dct['colors'][zi])
-        #     ax[1].plot(        pl_dct['x'], curves[zi][50],   lw = 1,           color = pl_dct['colors'][zi])
+            ax[zi_inv].set_xlim(-3, 90)
+            ax[zi_inv].set_yscale('log')
+            ax[zi_inv].set_ylim(1e-5, 0.5)
+            ax[zi_inv].set_ylabel(pl_dct['y_label_R'])
+            ax[zi_inv].grid(linestyle = 'dotted', linewidth = 0.3)
+            ax[zi_inv].legend(loc = 'best')
+        ax[-1].set_xlabel(pl_dct['x_label'])
 
-        # ax[0].grid(False)
-        # #ax[1].grid(False)
-        # import matplotlib.colors as clr
-        # cmap = clr.LinearSegmentedColormap.from_list('custom blue', ['#E5E3C8','#914E63'], N=256)
-        # sm = plt.cm.ScalarMappable(cmap = cmap, norm = plt.Normalize(vmin = 0, vmax = 1))
-        # cb = plt.colorbar(sm, aspect = 40)
-        # cb.outline.set_edgecolor('#E5E3C8')
-        # cb.ax.yaxis.set_tick_params(color = '#E5E3C8')
-        # cbar_yticks = plt.getp(cb.ax.axes, 'yticklabels')
-        # plt.setp(cbar_yticks, color = '#E5E3C8')
-
-        # for a in ax:
-        #     a.tick_params(color = '#E5E3C8', labelcolor = '#E5E3C8')
-        #     for spine in a.spines.values():
-        #         spine.set_edgecolor('#E5E3C8')
-        # ax[1].tick_params(color = '#E5E3C8', labelcolor = '#E5E3C8')
-        # ax[1].patch.set_facecolor('#E5E3C8')
-        # ------------------------------------------------------------------ #
-
-        ax[0].set_xlim(  pl_dct['x_min'], pl_dct['x_max'])
-        ax[0].set_xlabel(pl_dct['x_label'])
-        ax[0].set_ylabel(pl_dct['y_label_L'])
-
-        ax[1].set_xlim(-3, 90)
-        ax[1].set_xlabel(pl_dct['x_label'])
-        ax[1].set_ylabel(pl_dct['y_label_R'])
-        ax[1].set_yscale('log')
-        ax[1].set_ylim(1e-5, 0.5)
-
-        plt.legend()
-        plt.tight_layout()
-        fig.savefig('{}/{}.pdf'.format(pl_dct['output'], pl_dct['figname']), transparent = True)
+        fig.savefig('{}/{}.pdf'.format(pl_dct['output'], pl_dct['figname'] + '_logscale'), transparent = True)
         plt.close()
 
 
@@ -626,14 +591,21 @@ class Plots:
                 curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
                 self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true, logscale = True)
         else:
-            curves, plot_dict = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
+            curves_prior = 0
+            if self.pars['plot-prior']:
+                curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
+            curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
+            # FIXME: Save evolving curves.
             add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
             if self.pars['true-values'] == {}:
-                self.plots.plot_curves_evolving(curves, plot_dict)
+                self.plots.plot_curves_evolving_log(curves, plot_dict, curves_prior = curves_prior)
+                if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo)
+                else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, selection_effects = self.inj.injections_data)                    
             else:
                 curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
-                if not self.pars['selection-effects']: self.plots.plot_curves_evolving_long(curves, plot_dict, self.ref_cosmo, truth = curve_true)
-                else:                                  self.plots.plot_curves_evolving_long(curves, plot_dict, self.ref_cosmo, truth = curve_true, selection_effects = self.inj.injections_data)
+                self.plots.plot_curves_evolving_log( curves, plot_dict, curves_prior = curves_prior, truth = curve_true)
+                if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true)
+                else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true, selection_effects = self.inj.injections_data)
 
     def SecondaryMass(self):
 
@@ -705,7 +677,7 @@ class Plots:
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d'])
             self.plots.plot_curves(              plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'])
-            self.plots.plot_curves_evolving_long(plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo)
+            self.plots.plot_curves_evolving(     plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo)
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s'])
             self.plots.plot_curves(              plots_inputs['curves-z'],     plots_inputs['plot-dict-z'])
@@ -716,7 +688,7 @@ class Plots:
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d'],                 truth = inputs_true['curves-m2d'][0])
             self.plots.plot_curves(              plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'],                  truth = inputs_true['curves-dL'][0])
-            self.plots.plot_curves_evolving_long(plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo, truth = inputs_true['curves-z-m1s'])
+            self.plots.plot_curves_evolving(     plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo, truth = inputs_true['curves-z-m1s'])
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s'],                 truth = inputs_true['curves-m2s'][0])
             self.plots.plot_curves(              plots_inputs['curves-z'],     plots_inputs['plot-dict-z'],                   truth = inputs_true['curves-z'][0])
