@@ -321,6 +321,7 @@ class ReconstructDistributions:
         z_array_kde = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
 
         # Remove selection effects from the PE samples.
+        # Use the samples distributions to re-weught the  
         for idx, samp in tqdm.tqdm(df.iterrows(), total = len(df.index), desc = 'Removing selection effects'):
             samp_filt = {key: samp[key] for key in rate_w.population_parameters}
             rate_w.update(**samp_filt)
@@ -471,17 +472,18 @@ class ReconstructDistributions:
         z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
 
         if prior:
-            if   pars['redshift-transition'] == 'sigmoid': tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['zt', 'delta_zt', 'mix_z0']}
-            elif pars['redshift-transition'] == 'linear':  tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1']}
-            df  = pd.DataFrame(tmp)
+            if   pars['redshift-transition'] == 'linear':   tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1']}
+            elif pars['redshift-transition'] == 'sigmoid':  tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1', 'zt',  'delta_zt']}
+            elif pars['redshift-transition'] == 'sinusoid': tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1', 'amp', 'freq']}
+
+            df = pd.DataFrame(tmp)
             
-        curves  = np.empty(shape = (len(df), pars['N-points']))
+        curves = np.empty(shape = (len(df), pars['N-points']))
 
         for idx, samp in df.iterrows():
-            if   pars['redshift-transition'] == 'sigmoid':         curves[idx] = icarogw.priors._mixed_sigmoid_function(        z_array, samp['zt'],     samp['delta_zt'], samp['mix_z0'])
-            elif pars['redshift-transition'] == 'double-sigmoid':  curves[idx] = icarogw.priors._mixed_double_sigmoid_function( z_array, samp['zt'],     samp['delta_zt'], samp['mix_z0'], samp['mix_z1'])
-            elif pars['redshift-transition'] == 'linear':          curves[idx] = icarogw.priors._mixed_linear_function(         z_array, samp['mix_z0'], samp['mix_z1'])
-            elif pars['redshift-transition'] == 'linear-sinusoid': curves[idx] = icarogw.priors._mixed_linear_sinusoid_function(z_array, samp['mix_z0'], samp['mix_z1'],   samp['amp'],    samp['freq'])
+            if   pars['redshift-transition'] == 'linear':   curves[idx] = icarogw.priors._mixed_linear_function(         z_array, samp['mix_z0'], samp['mix_z1'])
+            elif pars['redshift-transition'] == 'sigmoid':  curves[idx] = icarogw.priors._mixed_double_sigmoid_function( z_array, samp['mix_z0'], samp['mix_z1'], samp['zt'],  samp['delta_zt'])
+            elif pars['redshift-transition'] == 'sinusoid': curves[idx] = icarogw.priors._mixed_linear_sinusoid_function(z_array, samp['mix_z0'], samp['mix_z1'], samp['amp'], samp['freq'])
         
         plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RedshiftTransitionFunction', '#212121', '$z$', '$\\sigma(z)$', pars['model-primary'])
         
