@@ -72,12 +72,14 @@ def selection_effects_countour_level(x, y, ref_cosmo):
     return x_grid, y_grid, z, contour_level
 
 
-def add_curves_to_dict(dictionary, x, y, label):
+def add_curves_to_dict(dictionary, x, y, label, z = 0):
 
     dictionary[label] = {}
     dictionary[label]['x'] = x
     dictionary[label]['y'] = y
 
+    if hasattr(z, "__len__"):
+        dictionary[label]['z'] = z
 
 
 # -------------------------------- #
@@ -240,13 +242,13 @@ class ReconstructDistributions:
             curves = np.empty(shape = (len(df), pars['N-points']))
 
             percentiles = [50, 5, 16, 84, 95]
-            curves_z = {zi: {pi: np.empty(pars['N-points']) for pi in percentiles} for zi in range(pars['N-z-slices'])}
+            curves_z = {zi: {pi: np.empty(pars['N-points']) for pi in percentiles} for zi in range(pars['N-z-slices-log'])}
 
             zx         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
-            zy         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-z-slices'])
+            zy         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-z-slices-log'])
             _, z_grid  = np.meshgrid(zx, zy)
 
-            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])   # 'RdBu_r'
+            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices-log'])   # 'RdBu_r'
             zi = 0
 
             for z_array in tqdm.tqdm(z_grid, desc = 'Reconstructing primary distribution'):
@@ -261,7 +263,7 @@ class ReconstructDistributions:
                 for perc in percentiles: curves_z[zi][perc] = np.percentile(curves, perc, axis = 0)
                 zi += 1
 
-            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
+            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices-log'])
             plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#000000', '$m_1\ [M_{\odot}]$', '$z$', pars['model-primary'], colors = colors, z_grid = z_grid, y_label_L = '$z$', y_label_R = '$p(m_1)$')
 
             return curves_z, plot_dict
@@ -321,28 +323,35 @@ class ReconstructDistributions:
         z_array_kde = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
 
         # Remove selection effects from the PE samples.
-        # Use the samples distributions to re-weught the  
         for idx, samp in tqdm.tqdm(df.iterrows(), total = len(df.index), desc = 'Removing selection effects'):
             samp_filt = {key: samp[key] for key in rate_w.population_parameters}
             rate_w.update(**samp_filt)
 
+            # Use the samples distributions to re-weight the injections.
+            # This way we project the source frame distributions on the observed paramter space.
             injections.update_weights(rate_w)
-            tmp = injections.return_reweighted_injections(Nsamp = N_samps_KDE, replace = True)
-            m1d[idx,:] = tmp['mass_1']
-            if not pars['single-mass']:
-                if   'MassRatio' in pars['model-secondary']: m2d[idx,:] = tmp['mass_ratio']
-                elif 'PowerLaw'  in pars['model-secondary']: m2d[idx,:] = tmp['mass_2']
-            dL[idx,:]  = tmp['luminosity_distance']
+            try:
+                tmp = injections.return_reweighted_injections(Nsamp = N_samps_KDE, replace = True)
+                m1d[idx,:] = tmp['mass_1']
+                if not pars['single-mass']:
+                    if   'MassRatio' in pars['model-secondary']: m2d[idx,:] = tmp['mass_ratio']
+                    elif 'PowerLaw'  in pars['model-secondary']: m2d[idx,:] = tmp['mass_2']
+                dL[idx,:]  = tmp['luminosity_distance']
+            except:
+                m1d[idx,:] = np.full(N_samps_KDE, np.nan)
+                dL[idx,:]  = np.full(N_samps_KDE, np.nan)
 
         # Compute KDE of the distribution for each PE sample.
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing KDE detector frame distributions'):
-            tmp          = kde.gaussian_kde(m1d[i,:])
-            curves_m1d[i,:] = tmp.evaluate(mass_array)
-            if not pars['single-mass']:
-                tmp          = kde.gaussian_kde(m2d[i,:])
-                curves_m2d[i,:] = tmp.evaluate(m2_array)
-            tmp          = kde.gaussian_kde(dL[i,:])
-            curves_dL[i,:]  = tmp.evaluate(dL_array)
+            if np.isnan(np.min(m1d[i,:])): pass
+            else:
+                tmp          = kde.gaussian_kde(m1d[i,:])
+                curves_m1d[i,:] = tmp.evaluate(mass_array)
+                if not pars['single-mass']:
+                    tmp          = kde.gaussian_kde(m2d[i,:])
+                    curves_m2d[i,:] = tmp.evaluate(m2_array)
+                tmp          = kde.gaussian_kde(dL[i,:])
+                curves_dL[i,:]  = tmp.evaluate(dL_array)
 
         # Get the source frame distribution.
         m1s, m2s, zs = icarogw.conversions.detector2source(m1d, m2d, dL, ref_cosmo)
@@ -358,18 +367,23 @@ class ReconstructDistributions:
         # Compute KDE of the distribution for each PE sample and redshift bin.
         for zi in range(pars['N-z-slices']):
             for i in range(N_samps):
-                try:
-                    tmp = kde.gaussian_kde(m1s_z_binned[i][zi])
-                    m1s_PDF[zi][i,:] = tmp.evaluate(mass_array)
-                except:
-                    m1s_PDF[zi][i,:] = np.zeros(len(mass_array))
+                if np.isnan(np.min(m1s_z_binned[i][zi])): pass
+                else:
+                    try:
+                        tmp = kde.gaussian_kde(m1s_z_binned[i][zi])
+                        m1s_PDF[zi][i,:] = tmp.evaluate(mass_array)
+                    except: pass
 
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing KDE source frame distributions'):
             if not pars['single-mass']:
-                tmp             = kde.gaussian_kde(m2s[i,:])
-                curves_m2s[i,:] = tmp.evaluate(m2_array)
-            tmp                 = kde.gaussian_kde(zs[i,:])
-            curves_z[i,:]       = tmp.evaluate(z_array_kde)
+                if np.isnan(np.min(m2s[i,:])): pass
+                else:
+                    tmp             = kde.gaussian_kde(m2s[i,:])
+                    curves_m2s[i,:] = tmp.evaluate(m2_array)
+            if np.isnan(np.min(zs[i,:])): pass
+            else:
+                tmp                 = kde.gaussian_kde(zs[i,:])
+                curves_z[i,:]       = tmp.evaluate(z_array_kde)
 
         # Get confidence bundles.
         percentiles = [50, 5, 16, 84, 95]
@@ -597,8 +611,7 @@ class Plots:
             if self.pars['plot-prior']:
                 curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
             curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
-            # FIXME: Save evolving curves.
-            add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
+            add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'], z = np.linspace(self.pars['bounds-z'][0], self.pars['bounds-z'][1], self.pars['N-z-slices-log']))
             if self.pars['true-values'] == {}:
                 self.plots.plot_curves_evolving_log(curves, plot_dict, curves_prior = curves_prior)
                 if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo)
@@ -669,7 +682,7 @@ class Plots:
         if not self.pars['single-mass']:
             add_curves_to_dict(self.curves_dict, plots_inputs['plot-dict-m2d']['x'], plots_inputs['curves-m2d'],   plots_inputs['plot-dict-m2d']['figname'])
         add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-dL'][ 'x'], plots_inputs['curves-dL'],    plots_inputs['plot-dict-dL'][ 'figname'])
-        add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1s']['x'], plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s']['figname'])
+        add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1s']['x'], plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s']['figname'], z = np.linspace(self.pars['bounds-z'][0], self.pars['bounds-z'][1], self.pars['N-z-slices']))
         if not self.pars['single-mass']:
             add_curves_to_dict(self.curves_dict, plots_inputs['plot-dict-m2s']['x'], plots_inputs['curves-m2s'],   plots_inputs['plot-dict-m2s']['figname'])
         add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-z'][  'x'], plots_inputs['curves-z'],     plots_inputs['plot-dict-z'][  'figname'])
