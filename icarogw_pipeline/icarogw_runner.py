@@ -18,7 +18,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
         if order == None:
             if not input_wrapper == None:
                 return wrap(input_wrapper)
-            elif wrap_name == 'PowerLaw_PowerLaw':
+            elif wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
                 return wrap(flag_powerlaw_smoothing = smoothing)
             else:
                 return wrap()
@@ -32,7 +32,8 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             return wrap(redshift_transition = transition, flag_powerlaw_smoothing = smoothing, flag_positive_gaussian_z0 = pos_gauss_z0, flag_positive_gaussian_z = pos_gauss_z, flag_separates_gaussians_z0 = sep_gauss_z0, flag_separates_gaussians_z = sep_gauss_z, flag_redshift_mixture = z_mixture)
         elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear':
             return wrap(redshift_transition = transition,                                      flag_positive_gaussian_z0 = pos_gauss_z0, flag_positive_gaussian_z = pos_gauss_z, flag_separates_gaussians_z0 = sep_gauss_z0, flag_separates_gaussians_z = sep_gauss_z, flag_redshift_mixture = z_mixture)
-
+        elif wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear':
+            return wrap(redshift_transition = transition,                                                                                                                                                                                                              flag_redshift_mixture = z_mixture)
 
 def print_dictionary(dictionary):
       
@@ -80,10 +81,12 @@ class Wrappers:
         if not 'Redshift' in pars['model-primary']:
             if   pars['model-primary'] == 'PowerLaw':                                      w = get_wrapper('massprior_PowerLaw')
             elif pars['model-primary'] == 'PowerLaw-Gaussian':                             w = get_wrapper('massprior_PowerLawPeak')
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw':                             w = get_wrapper('PowerLaw_PowerLaw', smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw':                             w = get_wrapper('PowerLaw_PowerLaw',          smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw':                    w = get_wrapper('PowerLaw_PowerLaw_PowerLaw', smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian':                    w = get_wrapper('PowerLaw_PowerLaw_Gaussian', smoothing = pars['low-smoothing'])
             else:
                 raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
-            if not ( (pars['single-mass'] and 'Mass2' in pars['model-secondary']) or (pars['model-primary'] == 'PowerLaw-PowerLaw') ):
+            if not ( (pars['single-mass'] and 'Mass2' in pars['model-secondary']) or (pars['model-primary'] == 'PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian') ):
                 if pars['low-smoothing']:                                                  w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
 
         # Evolving models.
@@ -97,6 +100,8 @@ class Wrappers:
             elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               w = get_wrapper('PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'], z_mixture = pars['redshift-mixture'])
             elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'],                                    pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'], z_mixture = pars['redshift-mixture'])
             elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'],                                    pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'], z_mixture = pars['redshift-mixture'])
+            elif pars['model-primary'] == 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', transition = pars['redshift-transition'], smoothing = pars['low-smoothing'],                                                                                                                                                                                   z_mixture = pars['redshift-mixture'])
+            elif pars['model-primary'] == 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], smoothing = pars['low-smoothing'],                                                                                                                                                                                   z_mixture = pars['redshift-mixture'])
 
             elif 'GaussianRedshift-order-' in pars['model-primary']:
                                                                                            order = int(pars['model-primary'].split('GaussianRedshift-order-')[-1])
@@ -284,7 +289,7 @@ class Data:
             for ev in list(BBHs_O3_IFAR_4.keys()):
                 
                 # Skip the two low mass ratio events in Rinaldi+. This is to avoid problems in assuming a Gaussian distirbution in the mass ratio.
-                if ('190412' in ev) or ('190917' in ev): continue
+                if ('190412' in ev) or ('190917' in ev) or ('030229' in ev): continue
                 else:                                    print('\t{}'.format(ev))
 
                 tmp = h5py.File(BBHs_O3_IFAR_4[ev]['PE'])
@@ -463,7 +468,12 @@ def main():
     # ----------------------------------------------- #
 
     print('\n * Running hierarchical analysis with this settings.\n')
-    print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'npool', 'print_method', 'sample']})
+    if   input_pars['sampler'] == 'dynesty' or input_pars['sampler'] == 'nessai':
+        print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'npool', 'print_method', 'sample']})
+    elif input_pars['sampler'] == 'ptemcee':
+         print_dictionary({key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print_method']})
+    else:
+         raise ValueError('Sampler not available.')
 
     # Start Bilby sampler.
     print('\n * Starting the sampler.\n')
@@ -473,7 +483,11 @@ def main():
             nlive        = input_pars['nlive'],
             naccept      = input_pars['naccept'],
             npool        = input_pars['npool'],
+            nwalkers     = input_pars['nwalkers'],
+            nsteps       = input_pars['nsteps'],
+            ntemps       = input_pars['ntemps'],
             print_method = input_pars['print_method'],
+            threads      = input_pars['threads'],
             sample       = input_pars['sample'],
             outdir       = os.path.join(input_pars['output'], 'sampler'),
     )

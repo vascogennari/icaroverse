@@ -51,6 +51,10 @@ def InitialiseOptions(Config):
         'npool'                       : 1,
         'print_method'                : 'interval-60',
         'sample'                      : 'acceptance-walk',
+        'nwalkers'                    : 64,
+        'nsteps'                      : 1000,
+        'ntemps'                      : 10,
+        'threads'                     : 10,
 
         # Plots
         'N-points'                    : 500,
@@ -63,7 +67,7 @@ def InitialiseOptions(Config):
         'bounds-z'                    : [1e-5, 0.8],
         'true-values'                 : {},
         'selection-effects'           : 0,
-        'plot-prior'                  : 0,
+        'plot-prior'                  : 1,
         'N-points-KDE'                : 500,
         'N-samps-prior'               : 1000,
     }
@@ -97,7 +101,7 @@ def InitialiseOptions(Config):
         if ('sampler' in key):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('npool' in key):
+        if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('npool' in key) or ('nwalkers' in key) or ('nsteps' in key) or ('ntemps' in key):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
 
@@ -131,19 +135,40 @@ def default_priors():
         'delta_m'     : [0.,  10. ],
         'delta_m_a'   : [0.,  30. ],
         'delta_m_b'   : [0.,  30. ],
+        'delta_m_c'   : [0.,  30. ],
 
-        'alpha'       : [1.,  10. ],
-        'alpha_z0'    : [1.,  10. ],
-        'alpha_z1'    : [-30., 30.],
+        'alpha'       : [-4., 120.],
+        'alpha_z0'    : [-4., 120.],
+        'alpha_z1'    : [-100.,100.],
         'mu_alpha'    : [0.,  100.],
 
-        'alpha_a'     : [1.,  10. ],
-        'alpha_b'     : [1.,  10. ],
+        'alpha_a'     : [-4., 120.],
+        'alpha_b'     : [-4.,  20.],
+        'alpha_c'     : [-4.,  20.],
         'break_p'     : [0.,   1. ],
 
-        'mmin'        : [2. , 20. ],
-        'mmin_z0'     : [2. , 20. ],
-        'mmin_z1'     : [-10., 50.],
+        'alpha_a_z0'  : [-4., 120.],
+        'alpha_b_z0'  : [-4., 120.],
+        'alpha_c_z0'  : [-4., 120.],
+        'alpha_a_z1'  : [-100.,100.],
+        'alpha_b_z1'  : [-100.,100.],
+        'alpha_c_z1'  : [-100.,100.],
+        'mmin_a_z0'   : [1. , 100.],
+        'mmin_b_z0'   : [1. , 100.],
+        'mmin_c_z0'   : [1. , 100.],
+        'mmin_a_z1'   : [-100.,100.],
+        'mmin_b_z1'   : [-100.,100.],
+        'mmin_c_z1'   : [-100.,100.],
+        'mmax_a_z0'   : [30., 200.],
+        'mmax_b_z0'   : [30., 200.],
+        'mmax_c_z0'   : [30., 200.],
+        'mmax_a_z1'   : 0.,
+        'mmax_b_z1'   : 0.,
+        'mmax_c_z1'   : 0.,
+
+        'mmin'        : [1. , 100.],
+        'mmin_z0'     : [1. , 100.],
+        'mmin_z1'     : [-100.,100.],
         'mmax'        : [30., 200.],
         'mmax_z0'     : [30., 200.],
         'mmax_z1'     : 0.,
@@ -153,10 +178,12 @@ def default_priors():
         'sigma_zt'    : [0. , 1.  ],
         'sigma_delta_zt': [1. , 100.],
 
-        'mmin_a'      : [2. , 100.],
-        'mmin_b'      : [2. , 100.],
+        'mmin_a'      : [1. , 100.],
+        'mmin_b'      : [1. , 100.],
+        'mmin_c'      : [1. , 100.],
         'mmax_a'      : [30., 200.],
         'mmax_b'      : [30., 200.],
+        'mmax_c'      : [30., 200.],
 
         'mu_g'        : [20., 60. ],
         'mu_z0'       : [20., 60. ],
@@ -168,27 +195,29 @@ def default_priors():
         'sigma_z2'    : [0.,  20. ],
         'mmin_g'      : [2. , 50. ],
 
-        'mu_z0_a'     : [2.,  100.],
-        'mu_z1_a'     : [-80., 80.],
-        'mu_z0_b'     : [2.,  100.],
-        'mu_z1_b'     : [-80., 80.],
-        'mu_z0_c'     : [2.,  100.],
-        'mu_z1_c'     : [-80., 80.],
+        'mu_z0_a'     : [1.,  100.],
+        'mu_z0_b'     : [1.,  100.],
+        'mu_z0_c'     : [1.,  100.],
+        'mu_z1_a'     : [-100.,100.],
+        'mu_z1_b'     : [-100.,100.],
+        'mu_z1_c'     : [-100.,100.],
         'sigma_z0_a'  : [1. , 50. ],
-        'sigma_z1_a'  : [0.,  50. ],
         'sigma_z0_b'  : [1. , 50. ],
-        'sigma_z1_b'  : [0.,  50. ],
         'sigma_z0_c'  : [1. , 50. ],
-        'sigma_z1_c'  : [0.,  50. ],
+        'sigma_z1_a'  : [0.,  100.],
+        'sigma_z1_b'  : [0.,  100.],
+        'sigma_z1_c'  : [0.,  100.],
 
         'lambda_peak' : [0. , 1.  ],
         'mix_z0'      : [0. , 1.  ],
         'mix_z1'      : [0. , 1.  ],
-        'mix_z0_alpha': [0. , 1.  ],
-        'mix_z1_alpha': [0. , 1.  ],
-        'mix_z0_beta' : [0. , 1.  ],
-        'mix_z1_beta' : [0. , 1.  ],
+        'mix_alpha_z0': [0. , 1.  ],
+        'mix_alpha_z1': [0. , 1.  ],
+        'mix_beta_z0' : [0. , 1.  ],
+        'mix_beta_z1' : [0. , 1.  ],
         'mix'         : [0. , 1.  ],
+        'mix_alpha'   : [0. , 1.  ],
+        'mix_beta'    : [0. , 1.  ],
 
         'amp'         : [0. , 0.2 ],
         'freq'        : [-20., 20.],
@@ -197,12 +226,12 @@ def default_priors():
 
         # Secondary mass distribution
         'beta'        : [1.,  6.  ],
-        'mu_q'        : [0.4, 1.  ],
+        'mu_q'        : [0.1, 1.  ],
         'sigma_q'     : [0.01, 0.9],
 
         # Rate evolution
         'gamma'       : [-50., 30.],
-        'kappa'       : [-6. , 10.],
+        'kappa'       : [-10., 10.],
         'zp'          : [0. , 4.  ],
         'R0'          : [0. , 100.],
     }
