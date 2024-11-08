@@ -127,7 +127,7 @@ class PlotDistributions:
         plt.close()
 
 
-    def plot_curves_evolving(curves, pl_dct, ref_cosmo, truth = {}, curves_prior = {}, selection_effects = {}):
+    def plot_curves_evolving(curves, pl_dct, ref_cosmo, truth = {}, curves_prior = 0, selection_effects = {}):
 
         _, ax = plt.subplots(figsize = (5, 9))
 
@@ -135,7 +135,7 @@ class PlotDistributions:
             m1_grid, z_grid, height, contour_level = selection_effects_countour_level(selection_effects['mass_1'], selection_effects['luminosity_distance'], ref_cosmo)
             ax.contourf(m1_grid, z_grid, height, levels = [contour_level, height.max()], colors = '#C4B692', alpha = 0.2)
 
-        if bool(curves_prior):
+        if hasattr(curves_prior, "__len__"):
             for zi, z_array in enumerate(pl_dct['z_grid']):
                 z = z_array[0]
                 ax.fill_between(pl_dct['x'], curves_prior[zi][5] +z, curves_prior[zi][95]+z, color = '#AB7C41', alpha = 0.05)
@@ -166,7 +166,7 @@ class PlotDistributions:
         fig, ax = plt.subplots(nz, 1, figsize=(5, 2 * nz), sharex = True, constrained_layout = True)
         fig.set_constrained_layout_pads(hspace = 0.0, h_pad = 0.0) 
 
-        if bool(curves_prior):
+        if hasattr(curves_prior, "__len__"):
             for zi, z_array in enumerate(pl_dct['z_grid']):
                 z = z_array[0]
                 zi_inv = nz-1 - zi
@@ -235,7 +235,11 @@ class ReconstructDistributions:
 
         if 'Redshift' in pars['model-primary']:
             if prior:
-                tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
+                tmp = {}
+                for key in w.population_parameters:
+                    if 'peak' in p_dct[key]['kwargs'].keys(): tmp[key] = np.full(pars['N-samps-prior'], p_dct[key]['kwargs']['peak'])   # Take care of fixed parameters.
+                    else:                                     tmp[key] = bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior'])
+                #tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
                 df  = pd.DataFrame(tmp)
 
             pdf = np.empty(shape = (pars['N-points'], pars['N-points']))
@@ -355,6 +359,7 @@ class ReconstructDistributions:
 
         # Get the source frame distribution.
         m1s, m2s, zs = icarogw.conversions.detector2source(m1d, m2d, dL, ref_cosmo)
+        if 'MassRatio' in pars['model-secondary']: m2s = m2d
 
         # Redshift binning to plot the distribution p(m1|z) on redshift slices.
         m1s_z_binned = [{zi: np.empty([]) for zi in range(pars['N-z-slices'])} for i in range(N_samps)]
