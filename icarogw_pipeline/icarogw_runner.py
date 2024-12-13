@@ -288,9 +288,9 @@ class Data:
             samps_dict = {}
             for ev in list(BBHs_O3_IFAR_4.keys()):
                 
-                # Skip the two low mass ratio events in Rinaldi+. This is to avoid problems in assuming a Gaussian distirbution in the mass ratio.
-                if ('190412' in ev) or ('190917' in ev) or ('030229' in ev): continue
-                else:                                    print('\t{}'.format(ev))
+                # Skip the events to be removed.
+                if ev in pars['remove-events']: continue
+                else:                           print('\t{}'.format(ev))
 
                 tmp = h5py.File(BBHs_O3_IFAR_4[ev]['PE'])
                 data_evs = tmp[BBHs_O3_IFAR_4[ev]['PE_waveform']]['posterior_samples']
