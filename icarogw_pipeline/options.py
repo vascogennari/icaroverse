@@ -49,8 +49,8 @@ def InitialiseOptions(Config):
         'sampler'                     : 'nessai',
         'nlive'                       : 200,
         'naccept'                     : 60,
-        'npool'                       : 1,
-        'print_method'                : 'interval-60',
+        'queue-size'                  : 1,
+        'print-method'                : 'interval-60',
         'sample'                      : 'acceptance-walk',
         'nwalkers'                    : 64,
         'nsteps'                      : 1000,
@@ -105,7 +105,7 @@ def InitialiseOptions(Config):
         if ('sampler' in key):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('npool' in key) or ('nwalkers' in key) or ('nsteps' in key) or ('ntemps' in key):
+        if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('queue-size' in key) or ('nwalkers' in key) or ('nsteps' in key) or ('ntemps' in key):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
 
@@ -297,9 +297,9 @@ usage = """
 
         sampler                     Type of sampler to be used to draw samples from the likelihood. Options: 'dynesty', 'nessai', 'ptemcee'. Default: 'dynesty'
         nlive                       Number of live points used by the nested sampler. Option not available for the MCMC samplers. Default: 200
-        npool                       Default: 1
+        queue-size                  Number of parallel process to be executed (see dunesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1
         naccept                     Default: 60
-        print_method                Default: 'interval-60'
+        print-method                Default: 'interval-60'
         sample                      Default: 'acceptance-walk'
         nwalkers                    Default: 64
         nsteps                      Default: 1000
