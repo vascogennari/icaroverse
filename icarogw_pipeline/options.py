@@ -32,6 +32,7 @@ def InitialiseOptions(Config):
         'snr-cut'                     : 12.,
         'ifar-cut'                    : 4.,
         'selection-effects-cut'       : 'snr',
+        'reverse_q'                   : 0,
 
         # Data
         'O3-cosmology'                : 0,
@@ -83,7 +84,7 @@ def InitialiseOptions(Config):
         if ('injections-number' in key) or ('snr-cut' in key) or ('ifar-cut' in key):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if ('O3-cosmology' in key) or ('simulation' in key) or ('distance-prior-PE' in key):
+        if ('O3-cosmology' in key) or ('simulation' in key) or ('distance-prior-PE' in key) or ('reverse_q' in key):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if ('remove-events' in key):
@@ -140,6 +141,7 @@ def default_priors():
         'delta_m_a'   : [0.,  30. ],
         'delta_m_b'   : [0.,  30. ],
         'delta_m_c'   : [0.,  30. ],
+        'delta'       : [0.,  0.15],
 
         'alpha'       : [-4., 120.],
         'alpha_z0'    : [-4., 120.],
@@ -149,7 +151,8 @@ def default_priors():
         'alpha_a'     : [-4., 120.],
         'alpha_b'     : [-4.,  20.],
         'alpha_c'     : [-4.,  20.],
-        'break_p'     : [0.,   1. ],
+        'break_p'     : [0.,    1.],
+        'm_b'         : [5.,    7.],
 
         'alpha_a_z0'  : [-4., 120.],
         'alpha_b_z0'  : [-4., 120.],
@@ -233,6 +236,9 @@ def default_priors():
         'mu_q'        : [0.1, 1.  ],
         'sigma_q'     : [0.01, 0.9],
         'alpha_q'     : [-20., 20.],
+
+        'a_gamma'     : [  1., 10.],
+        'theta'       : [0.01,  1.],
 
         # Rate evolution
         'gamma'       : [-50., 30.],

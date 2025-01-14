@@ -84,6 +84,7 @@ class Wrappers:
             elif pars['model-primary'] == 'PowerLaw-PowerLaw':                             w = get_wrapper('PowerLaw_PowerLaw',          smoothing = pars['low-smoothing'])
             elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw':                    w = get_wrapper('PowerLaw_PowerLaw_PowerLaw', smoothing = pars['low-smoothing'])
             elif pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian':                    w = get_wrapper('PowerLaw_PowerLaw_Gaussian', smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'DoublePowerlaw':                                w = get_wrapper('DoublePowerlaw')
             else:
                 raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
             if not ( (pars['single-mass'] and 'Mass2' in pars['model-secondary']) or (pars['model-primary'] == 'PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian') ):
@@ -118,6 +119,7 @@ class Wrappers:
                 else:                                                  w = get_wrapper('m1m2_conditioned',         input_wrapper = m1w)
             elif pars['model-secondary'] == 'MassRatio-Gaussian':      w = get_wrapper('mass_ratio_prior_Gaussian')
             elif pars['model-secondary'] == 'MassRatio-PowerLaw':      w = get_wrapper('mass_ratio_prior_Powerlaw')
+            elif pars['model-secondary'] == 'MassRatio-Gamma':         w = get_wrapper('Gamma')
             else:
                 raise ValueError('Unknown model for the secondary mass {}. Please consult the available models.'.format(pars['model-secondary']))
         else:
@@ -167,6 +169,9 @@ class Rate():
             if  (not 'Redshift' in pars['model-primary']) and (not 'MassRatio' in pars['model-secondary']):
                 self.w = icarogw.rates.CBC_vanilla_rate(             cw,      m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_vanilla_rate'))
+            elif not  'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary']:
+                self.w = icarogw.rates.MBH_rate(                     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('MBH_rate'))
             elif not  'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
                 self.w = icarogw.rates.CBC_rate_m1_q(                cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_q'))
@@ -248,6 +253,7 @@ class SelectionEffects:
                 if 'MassRatio' in pars['model-secondary']:
                     prior *= data_inj[mass_1]
                     inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1]
+                    if pars['reverse_q']: inj_dict['mass_ratio'] = 1 / inj_dict['mass_ratio']
             else:
                 # If only using one mass, remove the Jacobian contribution from the secondary.
                 # This operation depends on the injection prior used to generate the injections.
@@ -336,6 +342,7 @@ class Data:
                     # If using the mass ratio, correct the prior with the Jacobian m2->q.
                     if 'MassRatio' in pars['model-secondary']:
                         pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / np.array([data_evs['m1d'][i]])
+                        if pars['reverse_q']: pos_dict['mass_ratio'] = 1 / pos_dict['mass_ratio']
                         #prior *= np.array([data_evs['m1d'][i]])    # FIXME: Include this option for future simulations with PE samples.
                 else:
                     pos_dict.pop('mass_2')
