@@ -90,16 +90,17 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     update_weights(m1w, truths)
     m1s = np.zeros(Ndetgen)
     for i,z in tqdm(enumerate(zs),  total = len(zs)):
-        pdf = m1w.pdf(m_array, z)
+        if 'Redshift' in pars['model-primary']: pdf = m1w.pdf(m_array, z)
+        else:                                   pdf = m1w.pdf(m_array)
         m1s[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
-    plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir, redshift = True)
+    plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir, pars['model-primary'], redshift = True)
 
     # Mass ratio
     update_weights(m2w, truths)
     pdf = m2w.pdf(q_array)
     qs  = np.random.choice(q_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
     m2s = qs * m1s
-    plot_injected_distribution(q_array, z_array, m2w, truths, plot_dir, q_samps = qs)
+    plot_injected_distribution(q_array, z_array, m2w, truths, plot_dir, pars['model-secondary'], q_samps = qs)
 
     if not pars['flat-PSD']:
         # Average on extrinsic parameters.
@@ -129,14 +130,18 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     return samps_source_dict, samps_detector_dict, inj_wrappers
 
 
-def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers, truths):
+def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers, truths, model_primary):
 
     title   = 'm1_source_frame'
     figname = os.path.join(plot_dir, title)
     plt.hist(source_dict['m1s'], density = 1, bins = 40, color = 'k', alpha = 0.5)
     update_weights(inj_wrappers['m1w'], truths)
-    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][0] ))
-    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][-1]))
+    if 'Redshift' in model_primary:
+        plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][0] ))
+        plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][-1]))
+    else:
+        plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array']))
+        plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array']))
     plt.title(title)
     plt.xlabel('m1')
     plt.yscale('log')
@@ -172,7 +177,7 @@ def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers, truths):
 
     return 0
 
-def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = False, q_samps = 0):
+def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, wrap_name, redshift = False, q_samps = 0):
 
     if redshift:
         N_z = 10
@@ -183,7 +188,8 @@ def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = Fal
         colors = sns.color_palette('RdBu_r', N_z)
 
         for zi, z_array in enumerate(z_grid):
-            pdf = mw.pdf(m_array, z_array)
+            if 'Redshift' in wrap_name: pdf = mw.pdf(m_array, z_array)
+            else:                       pdf = mw.pdf(m_array)
             z = z_array[0]
             ax[0].plot(m_array, pdf + z, color = colors[zi])
             if not (zi == len(z_grid)-1):
@@ -203,6 +209,7 @@ def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = Fal
         plt.tight_layout()
         plt.savefig(os.path.join(plot_dir, 'injected_m1.pdf'), transparent = True)
         plt.close()
+        np.savetxt(os.path.join(plot_dir, 'injected_distribution.txt'), np.stack([m_array, pdf], axis=1), delimiter="\t", header="m_array\tpdf")
     
     else:
         # FIXME: Add option with m2 instead of q.
@@ -224,14 +231,14 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-t',   '--additional-text',     type = str, metavar = 'additional_text',     default = ''                               )
-    parser.add_argument('-g',   '--generated-events',    type = str, metavar = 'generated_events',    default = 1000                             )
-    parser.add_argument('-m1',  '--model-primary',       type = str, metavar = 'model_primary',       default = 'PowerLaw-GaussianRedshiftLinear')
-    parser.add_argument('-m2',  '--model-secondary',     type = str, metavar = 'model_secondary',     default = 'MassRatio-Gaussian'             )
-    parser.add_argument('-r',   '--model-rate',          type = str, metavar = 'model_rate',          default = 'PowerLaw'                       )
-    parser.add_argument('-tr',  '--redshift-transition', type = str, metavar = 'redshift_transition', default = 'linear'                         )
-    parser.add_argument('-snr', '--snr-cut',             type = str, metavar = 'snr_cut',             default = 12                               )
-    parser.add_argument('-fgw', '--fgw-cut',             type = str, metavar = 'fgw_cut',             default = 15                               )
+    parser.add_argument('-t',   '--additional-text',     type = str,   metavar = 'additional_text',     default = ''                               )
+    parser.add_argument('-g',   '--generated-events',    type = int,   metavar = 'generated_events',    default = 1000                             )
+    parser.add_argument('-m1',  '--model-primary',       type = str,   metavar = 'model_primary',       default = 'PowerLawRedshiftLinear'         )
+    parser.add_argument('-m2',  '--model-secondary',     type = str,   metavar = 'model_secondary',     default = 'MassRatio-Gaussian'             )
+    parser.add_argument('-r',   '--model-rate',          type = str,   metavar = 'model_rate',          default = 'MadauDickinson'                 )
+    parser.add_argument('-tr',  '--redshift-transition', type = str,   metavar = 'redshift_transition', default = 'linear'                         )
+    parser.add_argument('-snr', '--snr-cut',             type = float, metavar = 'snr_cut',             default = 12                               )
+    parser.add_argument('-fgw', '--fgw-cut',             type = float, metavar = 'fgw_cut',             default = 15                               )
 
     args                = parser.parse_args()
     additional_text     = args.additional_text
@@ -242,18 +249,22 @@ if __name__=='__main__':
 
     input_pars  = {
         # Model parameters
-        'model-primary'       : args.model_primary,
-        'model-secondary'     : args.model_secondary,
-        'model-rate'          : args.model_rate,
+        'model-primary'        : args.model_primary,
+        'model-secondary'      : args.model_secondary,
+        'model-rate'           : args.model_rate,
 
-        'redshift-transition' : args.redshift_transition,
-        'positive-peak'       : 0,
-        'low-smoothing'       : 1,
-        'single-mass'         : 0,
+        'redshift-transition'  : args.redshift_transition,
+        'positive-gaussian-z0' : 0,
+        'positive-gaussian-z'  : 0,
+        'separate-gaussians-z0': 0,
+        'separate-gaussians-z' : 0,
+        'redshift-mixture'     : 0,
+        'low-smoothing'        : 1  ,
+        'single-mass'          : 0,
 
-        'snr-cut'             : args.snr_cut,
-        'fgw-cut'             : args.fgw_cut,
-        'flat-PSD'            : 0,
+        'snr-cut'              : args.snr_cut,
+        'fgw-cut'              : args.fgw_cut,
+        'flat-PSD'             : 0,
     }
 
     true_values = {
@@ -262,44 +273,79 @@ if __name__=='__main__':
         'Om0'         : 0.308,
 
         # Primary mass distribution
-        'delta_m'     : 5.,
+        'delta_m'     : 3.0,
 
-        'alpha'       : 3.8,
-        'mmin'        : 7.,
-        'mmax'        : 150.,
+        'alpha'       : 50.,
+        'mmin'        : 10.,
+        'mmax'        : 100.,
         'mu'          : 0.,
         'sigma'       : 0.,
 
-        'alpha_z0'    : 3.8,
-        'alpha_z1'    : 0.,
+        'mu_g'        : 35.,
+        'sigma_g'     : 2.,
 
-        'mmin_z0'     : 7.,
+        'alpha_z0'    : 50.,
+        'alpha_z1'    : 20.,
+
+        'alpha_a'     : 40.,
+        'alpha_b'     : 18.,
+        'alpha_c'     : 7.,
+        'mmin_a'      : 10.,
+        'mmin_b'      : 16.,
+        'mmin_c'      : 28.,
+        'mmax_a'      : 100.,
+        'mmax_b'      : 100.,
+        'mmax_c'      : 100.,
+
+        'delta_m_a'   : 0.5,
+        'delta_m_b'   : 10.,
+        'delta_m_c'   : 8.,
+
+        'mmin_z0'     : 10.,
         'mmin_z1'     : 0.,
-        'mmax_z0'     : 150.,
+        'mmax_z0'     : 100.,
         'mmax_z1'     : 0.,
 
-        'mu_z0'       : 35.,
-        'mu_z1'       : 30.,     # <----- Gaussian evolution
-        'sigma_z0'    : 6.,
-        'sigma_z1'    : 0.,
+        'mu_z0'       : 20.,
+        'mu_z1'       : -80.,     # <----- Gaussian evolution
+        'sigma_z0'    : 15.,
+        'sigma_z1'    : 20.,
 
-        'mix_z0'      : 0.9,
-        'mix_z1'      : 0.9,
+        'mix_z0'      : 0.8,
+        'mix_z1'      : 0.6,
         
         # Secondary mass distribution
-        'mu_q'        : 0.8,
-        'sigma_q'     : 0.15,
+        'mu_q'        : 0.7,
+        'sigma_q'     : 0.1,
 
         # Rate evolution
         'gamma'       : 3.,     # <----- Rate evolution
         'kappa'       : 0.,
-        'zp'          : 0.,
+        'zp'          : 3.,
         'R0'          : 0.,
+
+        # Double peak
+        'mu_z0_a'     : 25.,
+        'mu_z1_a'     : 0.,
+        'sigma_z0_a'  : 15.,
+        'sigma_z1_a'  : 0.,
+        'mu_z0_b'     : 35.,
+        'mu_z1_b'     : 0.,
+        'sigma_z0_b'  : 2.5,
+        'sigma_z1_b'  : 0.,
+
+        'mix_alpha_z0': 0.85,
+        'mix_alpha_z1': 0.85,
+        'mix_beta_z0' : 0.05,
+        'mix_beta_z1' : 0.05,
+
+        'mix_alpha'   : 0.8,
+        'mix_beta'    : 0.1,
     }
 
     filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
     base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
-    results_dir = os.path.join(base_dir,    'simulated_population/TEST', filename)
+    results_dir = os.path.join(base_dir,    'simulated_population/alpha-sigma_priors', filename)
     plot_dir    = os.path.join(results_dir, 'population_plots')
     if not os.path.exists(results_dir): os.makedirs(results_dir)
     if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
@@ -338,5 +384,5 @@ if __name__=='__main__':
         with open(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)), 'wb') as handle:
             pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
-    plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers, true_values)
+    plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers, true_values, input_pars['model-primary'])
     print(' * Finished.\n')
