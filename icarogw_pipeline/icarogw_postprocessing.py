@@ -287,7 +287,9 @@ class ReconstructDistributions:
                 pdf = w.pdf(mass_array)
                 curves[idx] = pdf
 
-                plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#890C0A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'])
+                if not 'DoublePowerlaw' in pars['model-primary']: label = '$m_1\ [M_{\odot}]$'
+                else:                                             label = '$log_{10}(m_1/M_{\odot})$'
+                plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#890C0A', label, '$p(m_1)$', pars['model-primary'])
 
             return curves, plot_dict
 
@@ -434,7 +436,9 @@ class ReconstructDistributions:
             elif 'PowerLaw'  in pars['model-secondary']: pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
             curves[idx] = pdf
 
-        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
+        if not 'MassRatio-Gamma' in pars['model-secondary']: label = '$m_2\ [M_{\odot}]$'
+        else:                                                label = '$log_{10}(q)$'
+        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', label, '$p(m_2)$', pars['model-secondary'])
 
         return curves, plot_dict
 
@@ -607,10 +611,10 @@ class Plots:
             curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
             add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
             if self.pars['true-values'] == {}:
-                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, logscale = True)
+                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, logscale = self.pars['m1-logscale'])
             else:
                 curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
-                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true, logscale = True)
+                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true, logscale = self.pars['m1-logscale'])
         else:
             curves_prior = 0
             if self.pars['plot-prior']:
