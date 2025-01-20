@@ -71,6 +71,7 @@ def InitialiseOptions(Config):
         'plot-prior'                  : 1,
         'N-points-KDE'                : 500,
         'N-samps-prior'               : 1000,
+        'downsample-postprocessing'   : 1,
     }
 
     # Read options from config file.
@@ -118,6 +119,9 @@ def InitialiseOptions(Config):
             except: pass
         if ('selection-effects' in key) or ('plot-prior' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
+            except: pass
+        if ('downsample-postprocessing' in key):
+            try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
     
     # Initialise the prior bounds.
