@@ -1,8 +1,15 @@
 import argparse, numpy as np, pickle, pandas as pd, os
-from distutils.dir_util import copy_tree
-import icarogw.simulation as icarosim
 import matplotlib.pyplot as plt, seaborn as sns
 from tqdm import tqdm
+from distutils.dir_util import copy_tree
+
+import pycbc.psd # PYCBC MUST BE IMPORTED BEFORE ICAROGW
+from pycbc.waveform import get_fd_waveform
+from pycbc.filter import get_cutoff_indices
+from pycbc.detector import Detector
+
+
+import icarogw.simulation as icarosim
 import icarogw_runner as icarorun
 
 
@@ -90,7 +97,7 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     update_weights(m1w, truths)
     m1s = np.zeros(Ndetgen)
     for i,z in tqdm(enumerate(zs),  total = len(zs)):
-        pdf = m1w.pdf(m_array, z)
+        pdf = m1w.pdf(m_array)#, z)
         m1s[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
     plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir, redshift = True)
 
@@ -101,9 +108,32 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     m2s = qs * m1s
     plot_injected_distribution(q_array, z_array, m2w, truths, plot_dir, q_samps = qs)
 
-    if not pars['flat-PSD']:
+    # Detector frame
+    m1d = m1s * (1 + zs)
+    m2d = m2s * (1 + zs)
+    dL  = cosmo_ref.z2dl(zs)
+
+    if not pars['snr-approx']:
+        print("\nCOMPUTING SNR WITH FULL FORMULA\n")
+        snr_computer =  SignaltoNoiseRatio(
+            flow=pars['fgw-cut'],
+            fhigh=1024., # similar values as in odw-2024
+            delta_f=1./128., # similar values as in odw-2024
+            psd_str='aLIGOZeroDetHighPower'
+        )
+        rho_true_det = np.zeros_like(m1d)
+        for i, source_params in tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d)):
+            snr_computer.set_wf_params(*source_params)
+            snr_computer.generate_waveform(approximant='IMRPhenomXHM')
+            rho_true_det[i] = snr_computer.compute_optimal_snr(
+                dets_ifos=['H1'], 
+                t_gps= 1240215503.0, #GW190425
+            )
+        idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
+
+    elif not pars['flat-PSD']:
         # Average on extrinsic parameters.
-        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, 'Pw_three.dat')
+        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, os.path.join('/Users/tbertheas/Documents/icarogw_pipeline/data/simulations', 'Pw_three.dat'))
         rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
         idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
     # Simulate a detection with a flat PSD.
@@ -113,11 +143,6 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
 
     print('\n * Number of detections: {}\n'.format(len(idx_cut_det)), flush = True)
     with open(os.path.join(results_dir, 'number_detected_events.txt'), 'w') as f: f.write('{}'.format(len(idx_cut_det)))
-    
-    # Detector frame
-    m1d = m1s * (1 + zs)
-    m2d = m2s * (1 + zs)
-    dL  = cosmo_ref.z2dl(zs)
     
     m1d_det = m1d[idx_cut_det]
     m2d_det = m2d[idx_cut_det]
@@ -129,14 +154,146 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     return samps_source_dict, samps_detector_dict, inj_wrappers
 
 
+class SignaltoNoiseRatio():
+    """
+    A class to compute SNR from CBC waveform and detector's PSD in FD
+    """
+
+    def __init__(self, flow, fhigh, delta_f, psd_str='aLIGOZeroDetHighPower'):
+        """
+        Initialize the class: sampling frequencies and PSD
+        """
+        self.flow = flow
+        self.fhigh = fhigh
+        self.delta_f = delta_f
+        self.generate_psd_from_pycbc(psd_str=psd_str)
+        self.dets = {ifo: Detector(ifo) for ifo in ['H1', 'L1', 'V1', 'K1']}
+        self.opt_snr_per_det = {ifo: 0. for ifo in ['H1', 'L1', 'V1', 'K1']}
+        pass
+
+    def generate_psd_from_pycbc(self, psd_str):
+        sample_rate = 1024
+        flen = int(sample_rate / self.delta_f) + 1
+        self.psd = pycbc.psd.from_string(psd_str, flen, self.delta_f, self.flow)
+
+    def set_wf_params(self, m1, m2, dL):
+        """
+        Events are labeled by their (m1, m2, dL)
+        Other event parameters (intrinsic and extrinsinc) are drawn randomly:
+        - spins are drawn randomly on the unit sphere 
+          (azimuthal angle is uniform in [0, 2*pi], 
+          cos(colatitude) is uniform in [-1, 1])
+        - inclination is drawn such that the binary orientation is
+          uniform on the unit sphere (so cos(inclination) is uniform in [-1, 1])
+        
+        Parameters
+        ----------
+        m1: float
+            primary mass (detector frame) [solar mass]
+        m2: float
+            secondary mass (detector frame) [solar mass]
+        dL: float
+            luminosity distance [Mpc]
+        """
+        theta_s1, phi_s1 = np.arccos(2*np.random.rand() - 1), 2 * np.pi * np.random.rand()
+        theta_s2, phi_s2 = np.arccos(2*np.random.rand() - 1), 2 * np.pi * np.random.rand()
+        incl = np.arccos(2*np.random.rand() - 1)
+        self.wf_params = {
+            'mass1'         : m1,
+            'mass2'         : m2,
+            # 'spin1x'        : np.sin(theta_s1) * np.cos(phi_s1),
+            # 'spin1y'        : np.sin(theta_s1) * np.cos(phi_s1),
+            'spin1z'        : np.cos(theta_s1),
+            # 'spin2x'        : np.sin(theta_s2) * np.cos(phi_s2),
+            # 'spin2y'        : np.sin(theta_s2) * np.cos(phi_s2),
+            'spin2z'        : np.cos(theta_s2),
+            'distance'      : dL,
+            'inclination'   : incl,
+            'f_lower'       : self.flow,
+            'delta_f'       : self.delta_f
+        }
+
+    def generate_waveform(self, approximant='IMRPhenomXHM'):
+        """
+        Computes the h_+ and h_x polarizations in FD using the specified approximant
+        and the stored source parameters (see pycbc.waveform.get_fd_waveform)
+
+        Parameters
+        ----------
+        approximant: str
+            waveform model (see pycbc for available models.
+            default='IMRPhenomXHM')
+        """
+        try:
+            self.wf_params['approximant'] = approximant
+        except AttributeError:
+            self.set_wf_params(2**(1./5)*30, 2**(1./5)*30, 1500)
+            self.wf_params['approximant'] = approximant
+        self.hptilde, self.hctilde = get_fd_waveform(**self.wf_params)
+
+    def compute_optimal_snr_single_det(self, det_ifo, projection_params):
+        """
+        Computes the optimal SNR (see e.g. Maggiore's GW Vol. 1, Eq 7.51)
+        with stored waveform and psd, performing the computation in the range 
+        [self.flow, self.fhigh].
+
+        Parameters
+        ----------
+        det_ifo: str
+            detector 2 characters id ['H1', 'L1', 'V1', 'K1']
+        projection_params: dict
+            keys : 
+        """
+        # Project the GW prolarisations onto the detector response
+        fp, fc = self.dets[det_ifo].antenna_pattern(**projection_params)
+        htilde = fp * self.hptilde + fc * self.hctilde
+
+        # Retrieve the index range in which to compute the SNR
+        N = (len(htilde) - 1) * 2
+        kmin, kmax = get_cutoff_indices(self.flow, self.fhigh, self.delta_f, N)
+
+        # Computing the suaqre of the SNR. Note the factor 4 because 
+        # of the definition of the psd which is the single-sided one.
+        snr_sqr = 4 * ((htilde[kmin:kmax] / self.psd[kmin:kmax]).inner( htilde[kmin:kmax] ) * htilde.delta_f).real
+        
+        # Store and return the SNR (sqrt of above result)
+        snr = np.sqrt(snr_sqr)
+        self.opt_snr_per_det[det_ifo] = snr
+
+    def compute_optimal_snr_multiple_dets(self, dets_ifos, t_gps):
+        """
+        Computes separately the SNR for each given detector. 
+        The projection parameters are computed once : 
+        - the sky localisation is drawn uniformly on the unit sphere, 
+        - the polarization angle is drawn uniformly in [0, 2*pi]
+        """
+        projection_params = {
+            'right_ascension'     : 2 *np.pi/2 * np.random.rand(), 
+            'declination'         : np.pi/2 - np.arccos(2*np.random.rand() - 1), 
+            'polarization'        : 2 *np.pi/2 * np.random.rand(), 
+            'polarization_type'   : 'tensor', 
+            't_gps'               : t_gps,
+        }
+        for ifo in dets_ifos:
+            self.compute_optimal_snr_single_det(ifo, projection_params)
+
+    def compute_optimal_snr(self, dets_ifos, t_gps):
+        """
+        Computes the SNR for any given network of LVK detector
+        """
+        self.compute_optimal_snr_multiple_dets(dets_ifos, t_gps)
+        self.opt_snr = np.sqrt( sum(self.opt_snr_per_det[ifo]**2 for ifo in dets_ifos) )
+        return self.opt_snr
+
+
 def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers, truths):
 
     title   = 'm1_source_frame'
     figname = os.path.join(plot_dir, title)
     plt.hist(source_dict['m1s'], density = 1, bins = 40, color = 'k', alpha = 0.5)
     update_weights(inj_wrappers['m1w'], truths)
-    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][0] ))
-    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][-1]))
+    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array']))#, inj_wrappers['z_array'][0] ))
+    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array']))#, inj_wrappers['z_array'][-1]))
     plt.title(title)
     plt.xlabel('m1')
     plt.yscale('log')
@@ -183,7 +340,7 @@ def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = Fal
         colors = sns.color_palette('RdBu_r', N_z)
 
         for zi, z_array in enumerate(z_grid):
-            pdf = mw.pdf(m_array, z_array)
+            pdf = mw.pdf(m_array)#, z_array)
             z = z_array[0]
             ax[0].plot(m_array, pdf + z, color = colors[zi])
             if not (zi == len(z_grid)-1):
@@ -224,14 +381,15 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-t',   '--additional-text',     type = str, metavar = 'additional_text',     default = ''                               )
-    parser.add_argument('-g',   '--generated-events',    type = str, metavar = 'generated_events',    default = 1000                             )
-    parser.add_argument('-m1',  '--model-primary',       type = str, metavar = 'model_primary',       default = 'PowerLaw-GaussianRedshiftLinear')
-    parser.add_argument('-m2',  '--model-secondary',     type = str, metavar = 'model_secondary',     default = 'MassRatio-Gaussian'             )
-    parser.add_argument('-r',   '--model-rate',          type = str, metavar = 'model_rate',          default = 'PowerLaw'                       )
-    parser.add_argument('-tr',  '--redshift-transition', type = str, metavar = 'redshift_transition', default = 'linear'                         )
-    parser.add_argument('-snr', '--snr-cut',             type = str, metavar = 'snr_cut',             default = 12                               )
-    parser.add_argument('-fgw', '--fgw-cut',             type = str, metavar = 'fgw_cut',             default = 15                               )
+    parser.add_argument('-t',   '--additional-text',     type = str,   metavar = 'additional_text',     default = ''                               )
+    parser.add_argument('-g',   '--generated-events',    type = int,   metavar = 'generated_events',    default = 1000                             )
+    parser.add_argument('-m1',  '--model-primary',       type = str,   metavar = 'model_primary',       default = 'PowerLaw-GaussianRedshiftLinear')
+    parser.add_argument('-m2',  '--model-secondary',     type = str,   metavar = 'model_secondary',     default = 'MassRatio-Gaussian'             )
+    parser.add_argument('-r',   '--model-rate',          type = str,   metavar = 'model_rate',          default = 'PowerLaw'                       )
+    parser.add_argument('-tr',  '--redshift-transition', type = str,   metavar = 'redshift_transition', default = 'linear'                         )
+    parser.add_argument('-snr', '--snr-cut',             type = float, metavar = 'snr_cut',             default = 12                               )
+    parser.add_argument('-fgw', '--fgw-cut',             type = float, metavar = 'fgw_cut',             default = 15                               )
+    parser.add_argument('-apx', '--snr-approx',          type = int,   metavar = 'snr_approx',          default = 1                           )
 
     args                = parser.parse_args()
     additional_text     = args.additional_text
@@ -239,6 +397,8 @@ if __name__=='__main__':
 
     generate_population = 1
     subset_events       = 0
+
+    print(args.snr_approx, type(args.snr_approx))
 
     input_pars  = {
         # Model parameters
@@ -254,6 +414,7 @@ if __name__=='__main__':
         'snr-cut'             : args.snr_cut,
         'fgw-cut'             : args.fgw_cut,
         'flat-PSD'            : 0,
+        'snr-approx'          : args.snr_approx
     }
 
     true_values = {
@@ -264,11 +425,15 @@ if __name__=='__main__':
         # Primary mass distribution
         'delta_m'     : 5.,
 
-        'alpha'       : 3.8,
-        'mmin'        : 7.,
-        'mmax'        : 150.,
+        'alpha'       : 3.68,
+        'mmin'        : 6.86,
+        'mmax'        : 144.05,
         'mu'          : 0.,
         'sigma'       : 0.,
+
+        'mu_g'        : 35.85,
+        'sigma_g'     : 3.87,
+        'lambda_peak' : 0.04,
 
         'alpha_z0'    : 3.8,
         'alpha_z1'    : 0.,
@@ -291,15 +456,15 @@ if __name__=='__main__':
         'sigma_q'     : 0.15,
 
         # Rate evolution
-        'gamma'       : 3.,     # <----- Rate evolution
-        'kappa'       : 0.,
-        'zp'          : 0.,
-        'R0'          : 0.,
+        'gamma'       : -17.31,     # <----- Rate evolution
+        'kappa'       : -2.17,
+        'zp'          : 2.17,
+        'R0'          : 19.04,
     }
 
     filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
-    base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
-    results_dir = os.path.join(base_dir,    'simulated_population/TEST', filename)
+    base_dir = '/Users/tbertheas/Documents/icarogw_pipeline/data/simulations'
+    results_dir = os.path.join(base_dir,    'TEST', filename)
     plot_dir    = os.path.join(results_dir, 'population_plots')
     if not os.path.exists(results_dir): os.makedirs(results_dir)
     if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
