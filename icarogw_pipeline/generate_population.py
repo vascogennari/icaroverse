@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt, seaborn as sns
 from tqdm import tqdm
 from distutils.dir_util import copy_tree
 
-from snr_computation import SignaltoNoiseRatio
+from snr_computation import SignaltoNoiseRatio, DetectorNetwork
 
 import icarogw.simulation as icarosim
 import icarogw_runner as icarorun
@@ -110,20 +110,35 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     dL  = cosmo_ref.z2dl(zs)
 
     if not pars['snr-approx']:
-        print("\nCOMPUTING SNR WITH FULL FORMULA\n")
-        snr_computer =  SignaltoNoiseRatio(
-            flow=pars['fgw-cut'],
-            fhigh=1024., # similar values as in odw-2024
-            delta_f=1./128., # similar values as in odw-2024
-            psd_str='aLIGOZeroDetHighPower'
-        )
+        # print("\nCOMPUTING SNR WITH FULL FORMULA\n")
+        # snr_computer =  SignaltoNoiseRatio(
+        #     flow=pars['fgw-cut'],
+        #     fhigh=1024., # similar values as in odw-2024
+        #     delta_f=1./128., # similar values as in odw-2024
+        #     psd_str='aLIGOZeroDetHighPower'
+        # )
         rho_true_det = np.zeros_like(m1d)
-        for i, source_params in tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d)):
-            snr_computer.set_wf_params(*source_params)
-            snr_computer.generate_waveform(approximant='IMRPhenomXHM')
-            rho_true_det[i] = snr_computer.compute_optimal_snr(
-                dets_ifos=['H1'], 
-                t_gps= 1240215503.0, #GW190425
+        # for i, source_params in tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d)):
+        #     snr_computer.set_wf_params(*source_params)
+        #     snr_computer.generate_waveform(approximant='IMRPhenomXHM')
+        #     rho_true_det[i] = snr_computer.compute_optimal_snr(
+        #         dets_ifos=['H1'], 
+        #         t_gps= 1240215503.0, #GW190425
+        #     )
+        detector_network = DetectorNetwork(
+            observing_run   = 'O4', 
+            flow            = 16., 
+            delta_f         = 1./128.,
+            sample_rate     = 1024.,
+            network         = ['H1'],
+        )
+        detector_network.load_psds()
+        for i, (_m1, _m2, _dL) in tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d)):
+            rho_true_det[i] = detector_network.hit_network(
+                m1=_m1, m2=_m2, dL=_dL,
+                t_gps = 1240215503.0, #GW190425
+                approximant = 'IMRPhenomXHM',
+                precessing  = False,
             )
         idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
 
