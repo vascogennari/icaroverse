@@ -366,13 +366,15 @@ class ReconstructDistributions:
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing KDE detector frame distributions'):
             if np.isnan(np.min(m1d[i,:])): pass
             else:
-                tmp          = kde.gaussian_kde(m1d[i,:])
-                curves_m1d[i,:] = tmp.evaluate(mass_array)
-                if not pars['single-mass']:
-                    tmp          = kde.gaussian_kde(m2d[i,:])
-                    curves_m2d[i,:] = tmp.evaluate(m2_array)
-                tmp          = kde.gaussian_kde(dL[i,:])
-                curves_dL[i,:]  = tmp.evaluate(dL_array)
+                try:
+                    tmp          = kde.gaussian_kde(m1d[i,:])
+                    curves_m1d[i,:] = tmp.evaluate(mass_array)
+                    if not pars['single-mass']:
+                        tmp          = kde.gaussian_kde(m2d[i,:])
+                        curves_m2d[i,:] = tmp.evaluate(m2_array)
+                    tmp          = kde.gaussian_kde(dL[i,:])
+                    curves_dL[i,:]  = tmp.evaluate(dL_array)
+                except: pass
 
         # Get the source frame distribution.
         m1s, m2s, zs = icarogw.conversions.detector2source(m1d, m2d, dL, ref_cosmo)
@@ -400,12 +402,16 @@ class ReconstructDistributions:
             if not pars['single-mass']:
                 if np.isnan(np.min(m2s[i,:])): pass
                 else:
-                    tmp             = kde.gaussian_kde(m2s[i,:])
-                    curves_m2s[i,:] = tmp.evaluate(m2_array)
+                    try:
+                        tmp             = kde.gaussian_kde(m2s[i,:])
+                        curves_m2s[i,:] = tmp.evaluate(m2_array)
+                    except: pass
             if np.isnan(np.min(zs[i,:])): pass
             else:
-                tmp                 = kde.gaussian_kde(zs[i,:])
-                curves_z[i,:]       = tmp.evaluate(z_array_kde)
+                try:
+                    tmp                 = kde.gaussian_kde(zs[i,:])
+                    curves_z[i,:]       = tmp.evaluate(z_array_kde)
+                except: pass
 
         # Get confidence bundles.
         percentiles = [50, 5, 16, 84, 95]
