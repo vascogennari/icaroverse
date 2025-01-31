@@ -10,11 +10,13 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, pos_gauss_z0 = None, pos_gauss_z = None, sep_gauss_z0 = None, sep_gauss_z = None, z_mixture = None):
+def get_wrapper(wrap_name, cosmo_wrap=False, input_wrapper = None, order = None, transition = None, smoothing = None, pos_gauss_z0 = None, pos_gauss_z = None, sep_gauss_z0 = None, sep_gauss_z = None, z_mixture = None):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
-    if transition == None:
+    if cosmo_wrap:
+        return wrap(zmax=10)
+    elif transition == None:
         if order == None:
             if not input_wrapper == None:
                 return wrap(input_wrapper)
@@ -136,10 +138,17 @@ class Wrappers:
             raise ValueError('Unknown model for the rate evolution {}. Please consult the available models.'.format(pars['model-rate']))   
         return w
     
-    def Cosmology(self):
+    def Cosmology(self, pars):
 
-        w = icarogw.wrappers.FlatLambdaCDM_wrap(zmax = 20.)
+        if   pars['model-cosmology'] == 'FlatLambdaCDM': w = get_wrapper('FlatLambdaCDM_wrap', cosmo_wrap=True)
+        elif pars['model-cosmology'] == 'FlatwCDM':      w = get_wrapper('FlatwCDM_wrap',      cosmo_wrap=True)
+        elif pars['model-cosmology'] == 'wIDE1':         w = get_wrapper('wIDE1_wrap',         cosmo_wrap=True)
+        else:
+            raise ValueError('Unknown model for the cosmology {}. Please consult the available models.'.format(pars['model-cosmology']))   
         return w
+
+        # w = icarogw.wrappers.FlatLambdaCDM_wrap(zmax = 20.)
+        # return w
 
     def ReferenceCosmology(self):
           
@@ -152,7 +161,7 @@ class Wrappers:
         self.Wrapper_PrimaryMass   = self.PrimaryMass(self.pars)
         self.Wrapper_SecondaryMass = self.SecondaryMass(self.pars, self.Wrapper_PrimaryMass)
         self.Wrapper_RateEvolution = self.RateEvolution(self.pars)
-        self.Wrapper_Cosmology     = self.Cosmology()
+        self.Wrapper_Cosmology     = self.Cosmology(self.pars)
         self.Wrapper_RefCosmology  = self.ReferenceCosmology()
 
         return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
@@ -289,7 +298,7 @@ class Data:
             for ev in list(BBHs_O3_IFAR_4.keys()):
                 
                 # Skip the two low mass ratio events in Rinaldi+. This is to avoid problems in assuming a Gaussian distirbution in the mass ratio.
-                if ('190412' in ev) or ('190917' in ev) or ('030229' in ev): continue
+                if ('190412' in ev) or ('190917' in ev): continue # or ('030229' in ev)
                 else:                                    print('\t{}'.format(ev))
 
                 tmp = h5py.File(BBHs_O3_IFAR_4[ev]['PE'])

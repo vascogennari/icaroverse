@@ -14,6 +14,7 @@ def InitialiseOptions(Config):
         'model-primary'               : 'PowerLaw-Gaussian',                     
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
+        'model-cosmology'             : 'FlatLambdaCDM',
 
         'redshift-transition'         : 'linear',
         'positive-gaussian-z0'        : 0,
@@ -130,6 +131,8 @@ def default_priors():
         # Cosmology
         'H0'          : 67.7,
         'Om0'         : 0.308,
+        'w0'          : -1.,
+        'xi'          : 0.,
 
         # Primary mass distribution
         'delta_m'     : [0.,  10. ],
