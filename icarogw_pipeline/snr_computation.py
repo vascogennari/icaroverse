@@ -355,7 +355,7 @@ class DetectorNetwork():
         for det in self.network:
             self.network[det].load_psd(self.run)
 
-    def hit_network(self, m1, m2, dL, t_gps, approximant='IMRPhenomXHM', precessing=False):
+    def hit_network(self, m1, m2, dL, t_gps, approximant='IMRPhenomXHM', precessing=False, snr_method='opt'):
         """
         Generate Event() object with source parameter (m1, m2, dL). 
         Give the event as an imput to each detector of the network.
@@ -383,26 +383,37 @@ class DetectorNetwork():
             SNR for of the event in the network of detector 
             (SNR_network^2 = SNR_det1^2 + SNR_det2^2 + ...) 
         """
-        self.event = Event(
-            flow=self.flow,
-            fhigh=self.fhigh,
-            delta_f=self.delta_f,
-            m1=m1,
-            m2=m2,
-            dL=dL,
-        )
-        self.event.generate_waveform(approximant=approximant, precessing=precessing)
 
-        projection_params = {
-            'right_ascension'     : 2 *np.pi/2 * np.random.rand(), 
-            'declination'         : np.pi/2 - np.arccos(2*np.random.rand() - 1), 
-            'polarization'        : 2 *np.pi/2 * np.random.rand(), 
-            'polarization_type'   : 'tensor', 
-            't_gps'               : t_gps,
-        }
+        if snr_method == 'opt' or snr_method == 'mf_fast':
 
-        for det in self.network:
-            self.snrs[det] = self.network[det].hit_detector(self.event, projection_params)
+            self.event = Event(
+                flow=self.flow,
+                fhigh=self.fhigh,
+                delta_f=self.delta_f,
+                m1=m1,
+                m2=m2,
+                dL=dL,
+            )
+            self.event.generate_waveform(approximant=approximant, precessing=precessing)
+
+            projection_params = {
+                'right_ascension'     : 2 *np.pi/2 * np.random.rand(), 
+                'declination'         : np.pi/2 - np.arccos(2*np.random.rand() - 1), 
+                'polarization'        : 2 *np.pi/2 * np.random.rand(), 
+                'polarization_type'   : 'tensor', 
+                't_gps'               : t_gps,
+            }
+
+            for det in self.network:
+                self.snrs[det] = self.network[det].hit_detector(self.event, projection_params)
+                if snr_method == 'mf_fast': self.snrs[det] += np.random.normal()
+            
+            snr_network = np.sqrt( sum( self.snrs[det]**2 for det in self.network ) )
+            return snr_network
         
-        snr_network = np.sqrt( sum( self.snrs[det]**2 for det in self.network ) )
-        return snr_network
+        elif snr_method == 'mf_full':
+            # YET TO IMPLEMENT
+            return 0.
+        
+        else:
+            raise AssertionError(f"Unknown snr computation method: {snr_method}")
