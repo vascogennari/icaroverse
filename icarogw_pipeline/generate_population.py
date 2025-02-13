@@ -124,7 +124,8 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
                 m1=_m1, m2=_m2, dL=_dL,
                 t_gps = 1240215503.0, #GW190425
                 approximant = 'IMRPhenomXHM',
-                precessing  = False,
+                precessing = False,
+                snr_method = 'mf_fast',
             )
         idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
 

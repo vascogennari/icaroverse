@@ -69,6 +69,19 @@ class Event():
         self.wf_params['mass1'] = m1
         self.wf_params['mass2'] = m2
         self.wf_params['distance'] = dL
+    
+    def set_projection_params(self, t_gps=0):
+        self.projection_params = {
+            'polarization_type'   : 'tensor', 
+            't_gps'               : t_gps,
+        }
+        self.draw_skyloc_polarization()
+
+    def draw_skyloc_polarization(self):
+        self.projection_params['right_ascension'] = 2 *np.pi/2 * np.random.rand(), 
+        self.projection_params['declination']     = np.pi/2 - np.arccos(2*np.random.rand() - 1), 
+        self.projection_params['polarization']    = 2 *np.pi/2 * np.random.rand(), 
+
 
     def draw_spins(self):
         """
@@ -144,7 +157,7 @@ class Detector_custom(Detector):
             is_asd_file=True,
         )
     
-    def hit_detector(self, event, projection_params):
+    def compute_optimal_snr(self, event):
         """
         The given event's waveform is put against the detector's PSD
         and the (optimal) SNR is computed. The event object must have generated waveforms.
@@ -162,7 +175,7 @@ class Detector_custom(Detector):
         snr: float
             SNR of the event on the detector
         """
-        fp, fc = self.antenna_pattern(**projection_params)
+        fp, fc = self.antenna_pattern(**event.projection_params)
         htilde = fp * event.hptilde + fc * event.hctilde
 
         # Retrieve the index range in which to compute the SNR
@@ -262,25 +275,21 @@ class DetectorNetwork():
                 m2=m2,
                 dL=dL,
             )
+            # the other single event parameters are initialized in the following line:
             self.event.generate_waveform(approximant=approximant, precessing=precessing)
 
-            projection_params = {
-                'right_ascension'     : 2 *np.pi/2 * np.random.rand(), 
-                'declination'         : np.pi/2 - np.arccos(2*np.random.rand() - 1), 
-                'polarization'        : 2 *np.pi/2 * np.random.rand(), 
-                'polarization_type'   : 'tensor', 
-                't_gps'               : t_gps,
-            }
+            # the skylocaliszation and polarization are initilized in the following line
+            self.event.set_projection_params(t_gps=t_gps)
 
             for det in self.network:
-                self.snrs[det] = self.network[det].hit_detector(self.event, projection_params)
+                self.snrs[det] = self.network[det].compute_optimal_snr(self.event)
                 if snr_method == 'mf_fast': self.snrs[det] += np.random.normal()
             
             snr_network = np.sqrt( sum( self.snrs[det]**2 for det in self.network ) )
             return snr_network
         
         elif snr_method == 'mf_full':
-            # YET TO IMPLEMENT
+            ################################## YET TO IMPLEMENT
             return 0.
         
         else:
