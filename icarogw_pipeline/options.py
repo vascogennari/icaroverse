@@ -246,6 +246,9 @@ def default_priors():
         'kappa'       : [-20., 10.],
         'zp'          : [0. , 4.  ],
         'R0'          : [0. , 100.],
+        'mu_r'        : [-10000.,0.],
+        'sigma_r'     : [1. , 100.],
+        'amp_r'       : [1. , 200.],
     }
 
     return prior

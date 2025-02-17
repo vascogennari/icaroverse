@@ -134,6 +134,7 @@ class Wrappers:
         elif pars['model-rate'] == 'BetaDistribution-Line':            w = get_wrapper('rateevolution_beta_line')
         elif pars['model-rate'] == 'MadauDickinson-GammaDistribution': w = get_wrapper('rateevolution_Madau_gamma')
         elif pars['model-rate'] == 'PowerLaw':                         w = get_wrapper('rateevolution_PowerLaw')
+        elif pars['model-rate'] == 'Gaussian':                         w = get_wrapper('rateevolution_Gaussian')
         else:
             raise ValueError('Unknown model for the rate evolution {}. Please consult the available models.'.format(pars['model-rate']))   
         return w
