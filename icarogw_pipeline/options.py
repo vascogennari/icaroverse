@@ -44,6 +44,7 @@ def InitialiseOptions(Config):
         'nparallel'                   : 1,
         'neffPE'                      : 1,
         'neffINJ'                     : None,
+        'loglike-var'                 : 0,
 
         # Sampler
         'sampler'                     : 'nessai',
@@ -108,6 +109,9 @@ def InitialiseOptions(Config):
             except: pass
         if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('queue-size' in key) or ('nwalkers' in key) or ('nsteps' in key) or ('ntemps' in key):
             try: input_pars[key] = Config.getint('sampler', key)
+            except: pass
+        if ('loglike-var' in key):
+            try: input_pars[key] = Config.getfloat('sampler', key)
             except: pass
 
         # Plots
@@ -298,6 +302,7 @@ usage = """
         nparallel                   Default: 1
         neffPE                      Number of effective PE samples per event contributing to the numerical evaluation of the likelihood. Default: 1
         neffINJ                     Number of effective injections contributing to the numerical evaluation of the likelihood. Default: None
+        loglike-var                 Cut the likelihood using the variance of the log-likelihood. If set to zero, the option is deactivated, otherwise we use the float passed. If not zero, the option superseed the Neff PE and injections. Default: 0
 
         sampler                     Type of sampler to be used to draw samples from the likelihood. Options: 'dynesty', 'nessai', 'ptemcee'. Default: 'dynesty'
         nlive                       Number of live points used by the nested sampler. Option not available for the MCMC samplers. Default: 200
