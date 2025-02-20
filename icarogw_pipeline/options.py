@@ -88,7 +88,7 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
+        if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('model-cosmology' in key) or ('redshift-transition' in key):
             try: input_pars[key] = Config.get('model', key)
             except: pass
         if ('positive-gaussian-z0' in key) or ('positive-gaussian-z' in key) or ('separate-gaussians-z0' in key) or ('separate-gaussians-z' in key) or ('redshift-mixture' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
