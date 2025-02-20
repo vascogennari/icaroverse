@@ -78,6 +78,13 @@ class Event():
         self.draw_skyloc_polarization()
 
     def draw_skyloc_polarization(self):
+        """
+        Draw sky localization uniformly on the sphere (see http://corysimon.github.io/articles/uniformdistn-on-sphere/)
+        - right ascension is uniform in [0, 2*pi], 
+        - cos(pi/2 - declination) is uniform in [-1, 1]
+
+        Draw polarization angle uniformly in [0, 2*pi]
+        """
         self.projection_params['right_ascension'] = 2 *np.pi/2 * np.random.rand(), 
         self.projection_params['declination']     = np.pi/2 - np.arccos(2*np.random.rand() - 1), 
         self.projection_params['polarization']    = 2 *np.pi/2 * np.random.rand(), 
@@ -85,9 +92,9 @@ class Event():
 
     def draw_spins(self):
         """
-        Draw spins of each binary component uniformly on the sphere. 
+        Draw spins of each binary component uniformly on the sphere (see http://corysimon.github.io/articles/uniformdistn-on-sphere/). 
         - azimuthal angle is uniform in [0, 2*pi], 
-        - cos(colatitude) is uniform in [-1, 1])
+        - cos(colatitude) is uniform in [-1, 1]
 
         If the chosen appoximant is a non-precessing one, transverse components are set to 0
         """
@@ -211,13 +218,6 @@ class DetectorNetwork():
             List of 2-characters detectors' names 
             (default full 4 detectors network: ['H1', 'L1', 'V1', 'K1'])
         """
-        # self.network = {
-        #     'H1': Detector_custom('H1'), # LIGO-Handford
-        #     'L1': Detector_custom('L1'), # LIGO-Livingstone
-        #     'V1': Detector_custom('V1'), # Virgo
-        #     'K1': Detector_custom('K1'), # KAGRA
-        # }
-        # self.snrs = {'H1': 0., 'L1': 0., 'V1': 0., 'K1': 0.}
         self.flow = flow
         self.delta_f = delta_f
         self.sample_rate = sample_rate
@@ -261,7 +261,7 @@ class DetectorNetwork():
         Returns
         -------
         snr_network: float
-            SNR for of the event in the network of detector 
+            SNR of the event in the network of detector 
             (SNR_network^2 = SNR_det1^2 + SNR_det2^2 + ...) 
         """
 
