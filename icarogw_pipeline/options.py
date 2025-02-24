@@ -71,6 +71,7 @@ def InitialiseOptions(Config):
         'selection-effects'           : 0,
         'plot-prior'                  : 1,
         'N-points-KDE'                : 500,
+        'use-GMM'                     : 0, 
         'N-samps-prior'               : 1000,
         'downsample-postprocessing'   : 1,
     }
@@ -121,7 +122,7 @@ def InitialiseOptions(Config):
         if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if ('selection-effects' in key) or ('plot-prior' in key):
+        if ('selection-effects' in key) or ('plot-prior' in key) or ('use-GMM' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
         if ('downsample-postprocessing' in key):
