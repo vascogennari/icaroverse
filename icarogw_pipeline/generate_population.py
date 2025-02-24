@@ -112,22 +112,23 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     if not pars['snr-approx']:
         rho_true_det = np.zeros_like(m1d)
         detector_network = DetectorNetwork(
-            observing_run   = 'O3', 
-            flow            = 16., 
-            delta_f         = 1./128.,
-            sample_rate     = 1024.,
-            network         = ['H1'],
+            observing_run = 'O3', 
+            flow          = 16., 
+            delta_f       = 1./128.,
+            sample_rate   = 1024.,
+            network       = ['H1', 'L1', 'V1'],
         )
         detector_network.load_psds()
+        print('\n * Computing the SNR with the full waveform.')
         for i, (_m1, _m2, _dL) in tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d)):
             rho_true_det[i] = detector_network.hit_network(
                 m1=_m1, m2=_m2, dL=_dL,
-                t_gps = 1240215503.0, #GW190425
+                t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), #GW190425
                 approximant = 'IMRPhenomXHM',
-                precessing = False,
-                snr_method = 'mf_fast',
+                precessing  = False,
+                snr_method  = 'mf_fast',
             )
-        idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
+        idx_cut_det = icarosim.snr_cut_flat(rho_true_det, snrthr = pars['snr-cut'])
 
     elif not pars['flat-PSD']:
         # Average on extrinsic parameters.
@@ -256,7 +257,7 @@ if __name__=='__main__':
     parser.add_argument('-tr',  '--redshift-transition', type = str,   metavar = 'redshift_transition', default = 'linear'                         )
     parser.add_argument('-snr', '--snr-cut',             type = float, metavar = 'snr_cut',             default = 12                               )
     parser.add_argument('-fgw', '--fgw-cut',             type = float, metavar = 'fgw_cut',             default = 15                               )
-    parser.add_argument('-apx', '--snr-approx',          type = int,   metavar = 'snr_approx',          default = 1                           )
+    parser.add_argument('-apx', '--snr-approx',          type = int,   metavar = 'snr_approx',          default = 1                                )
 
     args                = parser.parse_args()
     additional_text     = args.additional_text
@@ -280,8 +281,8 @@ if __name__=='__main__':
 
         'snr-cut'             : args.snr_cut,
         'fgw-cut'             : args.fgw_cut,
+        'snr-approx'          : args.snr_approx,
         'flat-PSD'            : 0,
-        'snr-approx'          : args.snr_approx
     }
 
     true_values = {
@@ -290,48 +291,79 @@ if __name__=='__main__':
         'Om0'         : 0.308,
 
         # Primary mass distribution
-        'delta_m'     : 5.,
+        'delta_m'     : 3.0,
 
-        'alpha'       : 3.68,
-        'mmin'        : 6.86,
-        'mmax'        : 144.05,
+        'alpha'       : 50.,
+        'mmin'        : 10.,
+        'mmax'        : 100.,
         'mu'          : 0.,
         'sigma'       : 0.,
 
-        'mu_g'        : 35.85,
-        'sigma_g'     : 3.87,
-        'lambda_peak' : 0.04,
+        'mu_g'        : 35.,
+        'sigma_g'     : 2.,
 
-        'alpha_z0'    : 3.8,
-        'alpha_z1'    : 0.,
+        'alpha_z0'    : 50.,
+        'alpha_z1'    : 20.,
 
-        'mmin_z0'     : 7.,
+        'alpha_a'     : 185.897875,
+        'alpha_b'     : 40.166612,
+        'alpha_c'     : 6.175777,
+        'mmin_a'      : 10.815449,
+        'mmin_b'      : 17.961703,
+        'mmin_c'      : 31.508523,
+        'mmax_a'      : 40.424315,
+        'mmax_b'      : 102.703774,
+        'mmax_c'      : 62.315738,
+
+        'delta_m_a'   : 0.000555,
+        'delta_m_b'   : 8.898135,
+        'delta_m_c'   : 1.598921,
+
+        'mmin_z0'     : 10.,
         'mmin_z1'     : 0.,
-        'mmax_z0'     : 150.,
+        'mmax_z0'     : 100.,
         'mmax_z1'     : 0.,
 
-        'mu_z0'       : 35.,
-        'mu_z1'       : 30.,     # <----- Gaussian evolution
-        'sigma_z0'    : 6.,
-        'sigma_z1'    : 0.,
+        'mu_z0'       : 20.,
+        'mu_z1'       : -80.,     # <----- Gaussian evolution
+        'sigma_z0'    : 15.,
+        'sigma_z1'    : 20.,
 
-        'mix_z0'      : 0.9,
-        'mix_z1'      : 0.9,
+        'mix_z0'      : 0.8,
+        'mix_z1'      : 0.6,
         
         # Secondary mass distribution
-        'mu_q'        : 0.8,
-        'sigma_q'     : 0.15,
+        'mu_q'        : 0.722427,
+        'sigma_q'     : 0.123636,
 
         # Rate evolution
-        'gamma'       : -17.31,     # <----- Rate evolution
-        'kappa'       : -2.17,
-        'zp'          : 2.17,
-        'R0'          : 19.04,
+        'gamma'       : -8.877444,     # <----- Rate evolution
+        'kappa'       : -3.522539,
+        'zp'          : 3.155209,
+        'R0'          : 15.176471,
+
+        # Double peak
+        'mu_z0_a'     : 25.,
+        'mu_z1_a'     : 0.,
+        'sigma_z0_a'  : 15.,
+        'sigma_z1_a'  : 0.,
+        'mu_z0_b'     : 35.,
+        'mu_z1_b'     : 0.,
+        'sigma_z0_b'  : 2.5,
+        'sigma_z1_b'  : 0.,
+
+        'mix_alpha_z0': 0.85,
+        'mix_alpha_z1': 0.85,
+        'mix_beta_z0' : 0.05,
+        'mix_beta_z1' : 0.05,
+
+        'mix_alpha'   : 0.817856,
+        'mix_beta'    : 0.102476,
     }
 
     filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
-    base_dir = '/Users/tbertheas/Documents/icarogw_pipeline/data/simulations'
-    results_dir = os.path.join(base_dir,    'TEST', filename)
+    base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
+    results_dir = os.path.join(base_dir,    'simulated_population/H0_prospects', filename)
     plot_dir    = os.path.join(results_dir, 'population_plots')
     if not os.path.exists(results_dir): os.makedirs(results_dir)
     if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
