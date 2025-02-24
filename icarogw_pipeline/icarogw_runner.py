@@ -15,7 +15,7 @@ def get_wrapper(wrap_name, cosmo_wrap=False, input_wrapper = None, order = None,
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
     if cosmo_wrap:
-        return wrap(zmax=10)
+        return wrap(zmax=20)
     elif transition == None:
         if order == None:
             if not input_wrapper == None:

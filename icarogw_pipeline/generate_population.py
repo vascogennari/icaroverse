@@ -90,20 +90,21 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     update_weights(m1w, truths)
     m1s = np.zeros(Ndetgen)
     for i,z in tqdm(enumerate(zs),  total = len(zs)):
-        pdf = m1w.pdf(m_array, z)
+        if pars['redshift-evolution']: pdf = m1w.pdf(m_array, z)
+        else: pdf = m1w.pdf(m_array)
         m1s[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
-    plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir, redshift = True)
+    plot_injected_distribution(pars, m_array, z_array, m1w, truths, plot_dir, redshift = True)
 
     # Mass ratio
     update_weights(m2w, truths)
     pdf = m2w.pdf(q_array)
     qs  = np.random.choice(q_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
     m2s = qs * m1s
-    plot_injected_distribution(q_array, z_array, m2w, truths, plot_dir, q_samps = qs)
+    plot_injected_distribution(pars, q_array, z_array, m2w, truths, plot_dir, q_samps = qs)
 
     if not pars['flat-PSD']:
         # Average on extrinsic parameters.
-        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, 'Pw_three.dat')
+        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, '/sps/virgo/USERS/tbertheas/icarogw_pipeline/data/simulations/Pw_three.dat')
         rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
         idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
     # Simulate a detection with a flat PSD.
@@ -129,14 +130,18 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     return samps_source_dict, samps_detector_dict, inj_wrappers
 
 
-def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers, truths):
+def plot_population(pars, source_dict, detector_dict, plot_dir, inj_wrappers, truths):
 
     title   = 'm1_source_frame'
     figname = os.path.join(plot_dir, title)
     plt.hist(source_dict['m1s'], density = 1, bins = 40, color = 'k', alpha = 0.5)
     update_weights(inj_wrappers['m1w'], truths)
-    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][0] ))
-    plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][-1]))
+    if pars['redshift-evolution']:
+        plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][0] ))
+        plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array'], inj_wrappers['z_array'][-1]))
+    else:
+        plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array']))
+        plt.plot(inj_wrappers['m_array'], inj_wrappers['m1w'].pdf(inj_wrappers['m_array']))
     plt.title(title)
     plt.xlabel('m1')
     plt.yscale('log')
@@ -172,7 +177,7 @@ def plot_population(source_dict, detector_dict, plot_dir, inj_wrappers, truths):
 
     return 0
 
-def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = False, q_samps = 0):
+def plot_injected_distribution(pars, m_array, zx, mw, truths, plot_dir, redshift = False, q_samps = 0):
 
     if redshift:
         N_z = 10
@@ -183,7 +188,8 @@ def plot_injected_distribution(m_array, zx, mw, truths, plot_dir, redshift = Fal
         colors = sns.color_palette('RdBu_r', N_z)
 
         for zi, z_array in enumerate(z_grid):
-            pdf = mw.pdf(m_array, z_array)
+            if pars['redshift-evolution']: pdf = mw.pdf(m_array, z_array)
+            else: pdf = mw.pdf(m_array)
             z = z_array[0]
             ax[0].plot(m_array, pdf + z, color = colors[zi])
             if not (zi == len(z_grid)-1):
@@ -230,6 +236,7 @@ if __name__=='__main__':
     parser.add_argument('-m2',  '--model-secondary',     type = str, metavar = 'model_secondary',     default = 'MassRatio-Gaussian'             )
     parser.add_argument('-r',   '--model-rate',          type = str, metavar = 'model_rate',          default = 'PowerLaw'                       )
     parser.add_argument('-tr',  '--redshift-transition', type = str, metavar = 'redshift_transition', default = 'linear'                         )
+    parser.add_argument('-ze',  '--redshift-evolution',  type = str, metavar = 'redshift_evolution',  default = 0                                )
     parser.add_argument('-snr', '--snr-cut',             type = str, metavar = 'snr_cut',             default = 12                               )
     parser.add_argument('-fgw', '--fgw-cut',             type = str, metavar = 'fgw_cut',             default = 15                               )
 
@@ -245,8 +252,10 @@ if __name__=='__main__':
         'model-primary'       : args.model_primary,
         'model-secondary'     : args.model_secondary,
         'model-rate'          : args.model_rate,
+        'model-cosmology'     : 'FlatLambdaCDM',
 
         'redshift-transition' : args.redshift_transition,
+        'redshift-evolution'  : int(args.redshift_evolution),
         'positive-peak'       : 0,
         'low-smoothing'       : 1,
         'single-mass'         : 0,
@@ -264,11 +273,15 @@ if __name__=='__main__':
         # Primary mass distribution
         'delta_m'     : 5.,
 
-        'alpha'       : 3.8,
-        'mmin'        : 7.,
-        'mmax'        : 150.,
+        'alpha'       : 3.68,
+        'mmin'        : 6.86,
+        'mmax'        : 144.05,
         'mu'          : 0.,
         'sigma'       : 0.,
+
+        'mu_g'        : 35.85,
+        'sigma_g'     : 3.87,
+        'lambda_peak' : 0.04,
 
         'alpha_z0'    : 3.8,
         'alpha_z1'    : 0.,
@@ -291,14 +304,14 @@ if __name__=='__main__':
         'sigma_q'     : 0.15,
 
         # Rate evolution
-        'gamma'       : 3.,     # <----- Rate evolution
-        'kappa'       : 0.,
-        'zp'          : 0.,
-        'R0'          : 0.,
+        'gamma'       : -17.31,     # <----- Rate evolution
+        'kappa'       : -2.17,
+        'zp'          : 2.17,
+        'R0'          : 19.04,
     }
 
     filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
-    base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
+    base_dir = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/data/simulations'
     results_dir = os.path.join(base_dir,    'simulated_population/TEST', filename)
     plot_dir    = os.path.join(results_dir, 'population_plots')
     if not os.path.exists(results_dir): os.makedirs(results_dir)
@@ -332,11 +345,11 @@ if __name__=='__main__':
     else:
         print('\n * Generating new population.')
         save_settings(results_dir, input_pars)
-        sample_source_dict_inj, sample_detector_dict_inj, inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = N_events)
+        sample_source_dict_inj, sample_detector_dict_inj, inj_wrappers = true_population_PDF_source(input_pars, true_values, plot_dir, Ndetgen = int(N_events))
         with open(os.path.join(results_dir, 'events_source_dict_{}.pickle'.format(  filename)), 'wb') as handle:
             pickle.dump(sample_source_dict_inj,   handle, protocol = pickle.HIGHEST_PROTOCOL)
         with open(os.path.join(results_dir, 'events_detector_dict_{}.pickle'.format(filename)), 'wb') as handle:
             pickle.dump(sample_detector_dict_inj, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
-    plot_population(sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers, true_values)
+    plot_population(input_pars, sample_source_dict_inj, sample_detector_dict_inj, plot_dir, inj_wrappers, true_values)
     print(' * Finished.\n')
