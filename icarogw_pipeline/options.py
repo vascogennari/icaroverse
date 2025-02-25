@@ -60,8 +60,7 @@ def InitialiseOptions(Config):
 
         # Plots
         'N-points'                    : 500,
-        'N-z-slices'                  : 10,
-        'N-z-slices-log'              : 5,
+        'N-z-slices'                  : 5,
         'bounds-m1'                   : [0, 100],
         'bounds-m2'                   : [0, 100],
         'bounds-q'                    : [0, 1],
@@ -70,8 +69,10 @@ def InitialiseOptions(Config):
         'true-values'                 : {},
         'selection-effects'           : 0,
         'plot-prior'                  : 1,
-        'N-points-KDE'                : 500,
-        'use-GMM'                     : 0, 
+        'estimate-observed-method'    : 'KDE',
+        'KDE-bandwidth'               : 0.1,
+        'GMM-components'              : 5,
+        'N-points-KDE-GMM'            : 500,
         'N-samps-prior'               : 1000,
         'downsample-postprocessing'   : 1,
     }
@@ -116,16 +117,19 @@ def InitialiseOptions(Config):
             except: pass
 
         # Plots
-        if ('N-points' in key) or ('N-z-slices' in key) or ('N-z-slices-log' in key) or ('N-points-KDE' in key) or ('N-samps-prior' in key):
+        if ('estimate-observed-method' in key):
+            try: input_pars[key] = Config.get('plots', key)
+            except: pass
+        if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE-GMM' in key) or ('N-samps-prior' in key) or ('GMM-components' in key):
             try: input_pars[key] = Config.getint('plots', key)
             except: pass
         if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if ('selection-effects' in key) or ('plot-prior' in key) or ('use-GMM' in key):
+        if ('selection-effects' in key) or ('plot-prior' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
-        if ('downsample-postprocessing' in key):
+        if ('downsample-postprocessing' in key) or ('KDE-bandwidth' in key):
             try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
     
@@ -321,8 +325,7 @@ usage = """
     # ----- #
 
         N-points                    Default: 500,
-        N-z-slices                  Default: 10,
-        N-z-slices-log              Default: 5,
+        N-z-slices                  Default: 5,
         bounds-m1                   Default: [0, 100],
         bounds-m2                   Default: [0, 100],
         bounds-q                    Default: [0, 1],
@@ -331,6 +334,9 @@ usage = """
         true-values                 Default: {},
         selection-effects           Default: 0,
         plot-prior                  Default: 1,
-        N-points-KDE                Default: 500,
+        estimate-observed-method    Default: 'KDE',
+        KDE-bandwidth               Default: 0.1,
+        GMM-components              Default: 5,
+        N-points-KDE-GMM            Default: 500,
         N-samps-prior               Default: 1000,
 """

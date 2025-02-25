@@ -1,9 +1,7 @@
 import icarogw, bilby
 import pandas as pd, numpy as np
 import matplotlib.pyplot as plt
-import tqdm, seaborn as sns
-from scipy.stats import kde
-from sklearn.mixture import GaussianMixture
+import tqdm, seaborn as sns, sklearn
 
 
 # from matplotlib import rcParams
@@ -25,7 +23,9 @@ from sklearn.mixture import GaussianMixture
 
 
 def get_plot_parameters(pars, x_array, x_min, x_max, figname, color, x_label, y_label, label, colors = None, z_grid = None, y_label_R = None, y_label_L = None):
-
+    '''
+    Get the dictionary with the parameters to plot the distributions.
+    '''
     plot_dict = {
         'x'         : x_array,
         'output'    : pars['output-plots'],
@@ -50,10 +50,14 @@ def get_plot_parameters(pars, x_array, x_min, x_max, figname, color, x_label, y_
 
 
 def selection_effects_countour_level(x, y, ref_cosmo):
-
+    '''
+    Compute the contour level for the credible interval of the selection effects.
+    '''
     y  = ref_cosmo.dl2z(y)
     x /= (1+y)
 
+    # Compute the KDE
+    from scipy.stats import kde
     k = kde.gaussian_kde([x, y])
 
     # Evaluate the KDE on a grid
@@ -74,7 +78,9 @@ def selection_effects_countour_level(x, y, ref_cosmo):
 
 
 def add_curves_to_dict(dictionary, x, y, label, z = 0):
-
+    '''
+    Add the curves to the dictionary.
+    '''
     dictionary[label] = {}
     dictionary[label]['x'] = x
     dictionary[label]['y'] = y
@@ -98,6 +104,16 @@ def downsampling(df, value):
         df = df.reset_index()
 
     return df
+
+
+def initialize_KDE_GMM(pars):
+    '''
+    Initialize the KDE or GMM objects.
+    '''
+    if pars['estimate-observed-method'] == 'KDE': tmp = sklearn.neighbors.KernelDensity(kernel = 'gaussian', bandwidth = pars['KDE-bandwidth'])
+    if pars['estimate-observed-method'] == 'GMM': tmp = sklearn.mixture.GaussianMixture(n_components = pars['GMM-components'])
+    
+    return tmp
 
 
 # -------------------------------- #
@@ -264,13 +280,13 @@ class ReconstructDistributions:
             curves = np.empty(shape = (len(df), pars['N-points']))
 
             percentiles = [50, 5, 16, 84, 95]
-            curves_z = {zi: {pi: np.empty(pars['N-points']) for pi in percentiles} for zi in range(pars['N-z-slices-log'])}
+            curves_z = {zi: {pi: np.empty(pars['N-points']) for pi in percentiles} for zi in range(pars['N-z-slices'])}
 
             zx         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
-            zy         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-z-slices-log'])
+            zy         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-z-slices'])
             _, z_grid  = np.meshgrid(zx, zy)
 
-            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices-log'])   # 'RdBu_r'
+            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])   # 'RdBu_r'
             zi = 0
 
             for z_array in tqdm.tqdm(z_grid, desc = 'Reconstructing primary distribution'):
@@ -285,7 +301,7 @@ class ReconstructDistributions:
                 for perc in percentiles: curves_z[zi][perc] = np.percentile(curves, perc, axis = 0)
                 zi += 1
 
-            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices-log'])
+            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
             plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#000000', '$m_1\ [M_{\odot}]$', '$z$', pars['model-primary'], colors = colors, z_grid = z_grid, y_label_L = '$z$', y_label_R = '$p(m_1)$')
 
             return curves_z, plot_dict
@@ -312,12 +328,13 @@ class ReconstructDistributions:
 
     def RemoveSelectionEffects(df, pars, rate_w, ref_cosmo, injections):
 
-        N_samps     = len(df.index)
-        # Number of samples to be extracted from the reconstructed distribution of each PE sample to compute the KDE.
-        N_samps_KDE = pars['N-points-KDE']
-        if pars['use-GMM']:
-            print('\n * Using a Gaussian Mixture Model to compute the KDE for the observed distributions.\n')
-            n_components = 5
+        N_samps = len(df.index)
+        # Number of samples to be extracted from the reconstructed distribution of each PE sample to compute the KDE or the GMM.
+        N_samps_KDE_GMM = pars['N-points-KDE-GMM']
+        if   pars['estimate-observed-method'] == 'KDE': print('\n * Using a Kernel Density Estimation with bandwidth {} to estimate the observed distribution of each population sample.\n'.format(pars['KDE-bandwidth' ]))
+        elif pars['estimate-observed-method'] == 'GMM': print('\n * Using a Gaussian Mixture Model of {} components to estimate the observed distribution of each population sample.\n'.format(    pars['GMM-components']))
+        else:
+            raise ValueError('Unknown option for the method to estimate the observed distribution.')
         
         # Initialise arrays.
         mass_array  = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1] * (1+pars['bounds-z'][1]), pars['N-points'])
@@ -334,9 +351,9 @@ class ReconstructDistributions:
         else:
             m2_array = mass2_array
 
-        m1d         = np.zeros([N_samps, N_samps_KDE])
-        m2d         = np.zeros([N_samps, N_samps_KDE])
-        dL          = np.zeros([N_samps, N_samps_KDE])
+        m1d         = np.zeros([N_samps, N_samps_KDE_GMM])
+        m2d         = np.zeros([N_samps, N_samps_KDE_GMM])
+        dL          = np.zeros([N_samps, N_samps_KDE_GMM])
         curves_m1d  = np.zeros([N_samps, pars['N-points']])
         curves_m2d  = np.zeros([N_samps, pars['N-points']])
         curves_dL   = np.zeros([N_samps, pars['N-points']])
@@ -355,41 +372,36 @@ class ReconstructDistributions:
             # This way we project the source frame distributions on the observed paramter space.
             injections.update_weights(rate_w)
             try:
-                tmp = injections.return_reweighted_injections(Nsamp = N_samps_KDE, replace = True)
+                tmp = injections.return_reweighted_injections(Nsamp = N_samps_KDE_GMM, replace = True)
                 m1d[idx,:] = tmp['mass_1']
                 if not pars['single-mass']:
                     if   'MassRatio' in pars['model-secondary']: m2d[idx,:] = tmp['mass_ratio']
                     elif 'PowerLaw'  in pars['model-secondary']: m2d[idx,:] = tmp['mass_2']
                 dL[idx,:]  = tmp['luminosity_distance']
             except:
-                m1d[idx,:] = np.full(N_samps_KDE, np.nan)
-                dL[idx,:]  = np.full(N_samps_KDE, np.nan)
+                m1d[idx,:] = np.full(N_samps_KDE_GMM, np.nan)
+                dL[idx,:]  = np.full(N_samps_KDE_GMM, np.nan)
 
-        # Compute KDE of the distribution for each PE sample.
-        for i in tqdm.tqdm(range(N_samps), desc = 'Computing KDE detector frame distributions'):
+        # Compute KDE/GMM of the distribution for each PE sample.
+        for i in tqdm.tqdm(range(N_samps), desc = 'Computing {} detector frame distributions'.format(pars['estimate-observed-method'])):
             if np.isnan(np.min(m1d[i,:])): pass
             else:
-                try:
-                    if not pars['use-GMM']:
-                        tmp          = kde.gaussian_kde(m1d[i,:])
-                        curves_m1d[i,:] = tmp.evaluate(mass_array)
-                        if not pars['single-mass']:
-                            tmp          = kde.gaussian_kde(m2d[i,:])
-                            curves_m2d[i,:] = tmp.evaluate(m2_array)
-                        tmp          = kde.gaussian_kde(dL[i,:])
-                        curves_dL[i,:]  = tmp.evaluate(dL_array)
-                    else:
-                        # Use a Gaussian Mixture Model instead of a KDE. This allows to better resolve sharp features.
-                        tmp = GaussianMixture(n_components = n_components)
-                        tmp.fit(m1d[i,:].reshape(-1, 1))
-                        curves_m1d[i,:] = np.exp(tmp.score_samples(mass_array.reshape(-1, 1)))
-                        if not pars['single-mass']:
-                            tmp = GaussianMixture(n_components = n_components)
-                            tmp.fit(m2d[i,:].reshape(-1, 1))
-                            curves_m2d[i,:] = np.exp(tmp.score_samples(m2_array.reshape(-1, 1)))
-                        tmp = GaussianMixture(n_components = n_components)
-                        tmp.fit(dL[i,:].reshape(-1, 1))
-                        curves_dL[i,:] = np.exp(tmp.score_samples(dL_array.reshape(-1, 1)))
+                try:                    
+                    # Primary mass detector frame
+                    tmp = initialize_KDE_GMM(pars)
+                    tmp.fit(m1d[i,:].reshape(-1, 1))
+                    curves_m1d[i,:] = np.exp(tmp.score_samples(mass_array.reshape(-1, 1)))
+
+                    # Secondary mass detector frame
+                    if not pars['single-mass']:
+                        tmp = initialize_KDE_GMM(pars)
+                        tmp.fit(m2d[i,:].reshape(-1, 1))
+                        curves_m2d[i,:] = np.exp(tmp.score_samples(m2_array.reshape(-1, 1)))
+
+                    # Luminosity distance
+                    tmp = initialize_KDE_GMM(pars)
+                    tmp.fit(dL[i,:].reshape(-1, 1))
+                    curves_dL[i,:] = np.exp(tmp.score_samples(dL_array.reshape(-1, 1)))
                 except: pass
 
         # Get the source frame distribution.
@@ -404,44 +416,35 @@ class ReconstructDistributions:
             for zi, bin in enumerate(indices_dict.keys()):
                 m1s_z_binned[i][zi] = m1s[i][indices_dict[bin]]
 
-        # Compute KDE of the distribution for each PE sample and redshift bin.
+        # Compute KDE/GMM of the distribution for each PE sample and redshift bin.
         for zi in range(pars['N-z-slices']):
             for i in range(N_samps):
                 if np.isnan(np.min(m1s_z_binned[i][zi])): pass
                 else:
                     try:
-                        if not pars['use-GMM']:
-                            tmp = kde.gaussian_kde(m1s_z_binned[i][zi])
-                            m1s_PDF[zi][i,:] = tmp.evaluate(mass_array)
-                        else:
-                            tmp = GaussianMixture(n_components = n_components)
-                            tmp.fit(m1s_z_binned[i][zi].reshape(-1, 1))
-                            m1s_PDF[zi][i,:] = np.exp(tmp.score_samples(mass_array.reshape(-1, 1)))
+                        # Primary mass source frame
+                        tmp = initialize_KDE_GMM(pars)
+                        tmp.fit(m1s_z_binned[i][zi].reshape(-1, 1))
+                        m1s_PDF[zi][i,:] = np.exp(tmp.score_samples(mass_array.reshape(-1, 1)))
                     except: pass
 
-        for i in tqdm.tqdm(range(N_samps), desc = 'Computing KDE source frame distributions'):
+        for i in tqdm.tqdm(range(N_samps), desc = 'Computing {} source frame distributions'.format(pars['estimate-observed-method'])):
             if not pars['single-mass']:
                 if np.isnan(np.min(m2s[i,:])): pass
                 else:
                     try:
-                        if not pars['use-GMM']:
-                            tmp             = kde.gaussian_kde(m2s[i,:])
-                            curves_m2s[i,:] = tmp.evaluate(m2_array)
-                        else:
-                            tmp = GaussianMixture(n_components = n_components)
-                            tmp.fit(m2s[i,:].reshape(-1, 1))
-                            curves_m2s[i,:] = np.exp(tmp.score_samples(m2_array.reshape(-1, 1)))
+                        # Secondary mass source frame
+                        tmp = initialize_KDE_GMM(pars)
+                        tmp.fit(m2s[i,:].reshape(-1, 1))
+                        curves_m2s[i,:] = np.exp(tmp.score_samples(m2_array.reshape(-1, 1)))
                     except: pass
             if np.isnan(np.min(zs[i,:])): pass
             else:
                 try:
-                    if not pars['use-GMM']:
-                        tmp                 = kde.gaussian_kde(zs[i,:])
-                        curves_z[i,:]       = tmp.evaluate(z_array_kde)
-                    else:
-                        tmp = GaussianMixture(n_components = n_components)
-                        tmp.fit(zs[i,:].reshape(-1, 1))
-                        curves_z[i,:] = np.exp(tmp.score_samples(z_array_kde.reshape(-1, 1)))
+                    # Redshift
+                    tmp = initialize_KDE_GMM(pars)
+                    tmp.fit(zs[i,:].reshape(-1, 1))
+                    curves_z[i,:] = np.exp(tmp.score_samples(z_array_kde.reshape(-1, 1)))
                 except: pass
 
         # Get confidence bundles.
@@ -673,7 +676,7 @@ class Plots:
             if self.pars['plot-prior']:
                 curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
             curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
-            add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'], z = np.linspace(self.pars['bounds-z'][0], self.pars['bounds-z'][1], self.pars['N-z-slices-log']))
+            add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'], z = np.linspace(self.pars['bounds-z'][0], self.pars['bounds-z'][1], self.pars['N-z-slices']))
             if self.pars['true-values'] == {}:
                 self.plots.plot_curves_evolving_log(curves, plot_dict, curves_prior = curves_prior)
                 if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo)
