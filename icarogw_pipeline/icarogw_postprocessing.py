@@ -42,7 +42,7 @@ def get_plot_parameters(pars, x_array, x_min, x_max, figname, color, x_label, y_
 
         'perc'      : pars['percentiles'],
 
-        # Only for redshift slices plots
+        # Only for redshift slices plots.
         'colors'    : colors,
         'y_label_R' : y_label_R,
         'y_label_L' : y_label_L,
@@ -58,21 +58,21 @@ def selection_effects_countour_level(x, y, ref_cosmo):
     y  = ref_cosmo.dl2z(y)
     x /= (1+y)
 
-    # Compute the KDE
+    # Compute the KDE.
     from scipy.stats import kde
     k = kde.gaussian_kde([x, y])
 
-    # Evaluate the KDE on a grid
+    # Evaluate the KDE on a grid.
     N = 100
     x_grid, y_grid = np.meshgrid(np.linspace(x.min(), x.max(), N), np.linspace(y.min(), y.max(), N))
     z = k(np.vstack([x_grid.ravel(), y_grid.ravel()])).reshape(x_grid.shape)
 
-    # Compute the credible interval
+    # Compute the credible interval.
     sorted_z = np.sort(z.ravel())
     cumulative_sum = np.cumsum(sorted_z)
     cumulative_sum /= cumulative_sum[-1]  # Normalize to make it a CDF
 
-    # Find the contour level for the credible interval
+    # Find the contour level for the credible interval.
     credible_level = 0.1
     contour_level = sorted_z[np.searchsorted(cumulative_sum, credible_level)]
 
@@ -158,7 +158,7 @@ class PlotDistributions:
             plt.yscale('log')
             plt.ylim(1e-5, 1)
 
-        plt.xlim( pl_dct['x_min'], pl_dct['x_max'])
+        plt.xlim(  pl_dct['x_min'], pl_dct['x_max'])
         plt.xlabel(pl_dct['x_label'])
         plt.ylabel(pl_dct['y_label'])
         if pl_dct['figname'] == 'RateEvolutionDistribution_Probability': plt.ylim(-5, 7)
@@ -193,7 +193,7 @@ class PlotDistributions:
             if not truth == {}:
                 ax.plot(    pl_dct['x'], truth[zi][50]+z,  lw = 0.5,         color = '#494949')
 
-        ax.set_xlim( pl_dct['x_min'], pl_dct['x_max'])
+        ax.set_xlim(  pl_dct['x_min'], pl_dct['x_max'])
         ax.set_xlabel(pl_dct['x_label'])
         ax.set_ylabel(pl_dct['y_label_L'])
 
@@ -226,7 +226,7 @@ class PlotDistributions:
             if not truth == {}:
                 ax[zi_inv].plot(    pl_dct['x'], truth[zi][50],  lw = 0.3,       color = '#494949')
         
-            ax[zi_inv].set_xlim(-3, 90)
+            ax[zi_inv].set_xlim(pl_dct['x_min'], pl_dct['x_max'])
             ax[zi_inv].set_yscale('log')
             ax[zi_inv].set_ylim(1e-5, 0.5)
             ax[zi_inv].set_ylabel(pl_dct['y_label_R'])
@@ -248,6 +248,7 @@ class ReconstructDistributions:
     def __init__(self):
         return 0
     
+
     def PrimaryMassFunction(df, w, p_dct, pars, prior = False):
 
         mass_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
@@ -354,7 +355,7 @@ class ReconstructDistributions:
             if not pars['scale-free']: curves[idx] = func * samp.R0
             else:                      curves[idx] = func
 
-            # Comoving volume and redshift (1/(1+z)*dV/dz)
+            # Comoving volume and redshift (1/(1+z)*dV/dz).
             samp_filt = {key: samp[key] for key in cw.population_parameters}
             cw.update(**samp_filt)
             func = cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
@@ -453,18 +454,18 @@ class ReconstructDistributions:
             if np.isnan(np.min(m1d[i,:])): pass
             else:
                 try:                    
-                    # Primary mass detector frame
+                    # Primary mass detector frame.
                     tmp = initialize_KDE_GMM(pars)
                     tmp.fit(m1d[i,:].reshape(-1, 1))
                     curves_m1d[i,:] = np.exp(tmp.score_samples(mass_array.reshape(-1, 1)))
 
-                    # Secondary mass detector frame
+                    # Secondary mass detector frame.
                     if not pars['single-mass']:
                         tmp = initialize_KDE_GMM(pars)
                         tmp.fit(m2d[i,:].reshape(-1, 1))
                         curves_m2d[i,:] = np.exp(tmp.score_samples(m2_array.reshape(-1, 1)))
 
-                    # Luminosity distance
+                    # Luminosity distance.
                     tmp = initialize_KDE_GMM(pars)
                     tmp.fit(dL[i,:].reshape(-1, 1))
                     curves_dL[i,:] = np.exp(tmp.score_samples(dL_array.reshape(-1, 1)))
@@ -488,7 +489,7 @@ class ReconstructDistributions:
                 if np.isnan(np.min(m1s_z_binned[i][zi])): pass
                 else:
                     try:
-                        # Primary mass source frame
+                        # Primary mass source frame.
                         tmp = initialize_KDE_GMM(pars)
                         tmp.fit(m1s_z_binned[i][zi].reshape(-1, 1))
                         m1s_PDF[zi][i,:] = np.exp(tmp.score_samples(mass_array.reshape(-1, 1)))
@@ -499,7 +500,7 @@ class ReconstructDistributions:
                 if np.isnan(np.min(m2s[i,:])): pass
                 else:
                     try:
-                        # Secondary mass source frame
+                        # Secondary mass source frame.
                         tmp = initialize_KDE_GMM(pars)
                         tmp.fit(m2s[i,:].reshape(-1, 1))
                         curves_m2s[i,:] = np.exp(tmp.score_samples(m2_array.reshape(-1, 1)))
@@ -507,7 +508,7 @@ class ReconstructDistributions:
             if np.isnan(np.min(zs[i,:])): pass
             else:
                 try:
-                    # Redshift
+                    # Redshift.
                     tmp = initialize_KDE_GMM(pars)
                     tmp.fit(zs[i,:].reshape(-1, 1))
                     curves_z[i,:] = np.exp(tmp.score_samples(z_array_kde.reshape(-1, 1)))
@@ -627,7 +628,7 @@ class Plots:
 
         self.curves_dict = {}
 
-        # Downsample the df if required
+        # Downsample the df if required.
         if not pars['downsample-postprocessing'] == 1: self.df = downsampling(self.df, pars['downsample-postprocessing'])
 
     def PrimaryMass(self):
