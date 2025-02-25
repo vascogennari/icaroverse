@@ -108,14 +108,27 @@ def downsampling(df, value):
     return df
 
 
-def initialize_KDE_GMM(pars):
+def initialize_KDE_GMM(pars, bandwidth, primary = True):
     '''
     Initialize the KDE or GMM objects.
     '''
-    if pars['estimate-observed-method'] == 'KDE': tmp = sklearn.neighbors.KernelDensity(kernel = 'gaussian', bandwidth = pars['KDE-bandwidth'])
-    if pars['estimate-observed-method'] == 'GMM': tmp = sklearn.mixture.GaussianMixture(n_components = pars['GMM-components'])
+    if not primary:
+        if pars['estimate-observed-method']    == 'KDE': tmp = sklearn.neighbors.KernelDensity(kernel = 'gaussian', bandwidth = bandwidth)
+        if pars['estimate-observed-method']    == 'GMM': tmp = sklearn.mixture.GaussianMixture(n_components = pars['GMM-components'])
+    else:
+        if pars['estimate-observed-method-m1'] == 'KDE': tmp = sklearn.neighbors.KernelDensity(kernel = 'gaussian', bandwidth = bandwidth)
+        if pars['estimate-observed-method-m1'] == 'GMM': tmp = sklearn.mixture.GaussianMixture(n_components = pars['GMM-components'])
     
     return tmp
+
+
+def silverman_bandwidth(samps):
+    '''
+    Compute the Silverman bandwidth. This is the standard estimator for the KDE bandwidth (see Eq. 3.28 of https://archive.org/details/densityestimatio00silv_0/page/44/mode/2up).
+    '''
+    n = len(samps)
+    sigma = np.std(samps)
+    return 1.06 * sigma * n**(-1/5)
 
 
 def get_curves_percentiles(curves, pars):
@@ -398,10 +411,14 @@ class ReconstructDistributions:
         N_samps = len(df.index)
         # Number of samples to be extracted from the reconstructed distribution of each PE sample to compute the KDE/GMM.
         N_samps_KDE_GMM = pars['N-points-KDE-GMM']
-        if   pars['estimate-observed-method'] == 'KDE': print('\n * Using a Kernel Density Estimation with bandwidth {} to estimate the observed distribution of each population sample.\n'.format(pars['KDE-bandwidth' ]))
-        elif pars['estimate-observed-method'] == 'GMM': print('\n * Using a Gaussian Mixture Model of {} components to estimate the observed distribution of each population sample.\n'.format(    pars['GMM-components']))
+        if   pars['estimate-observed-method']    == 'KDE': print('\n * Using a Kernel Density Estimation with Silverman bandwidth to estimate the observed distribution of each population sample. The distributions are rescaled by a factor.\n'.format(pars['KDE-bandwidth-scale']))
+        elif pars['estimate-observed-method']    == 'GMM': print('\n * Using a Gaussian Mixture Model of {} components to estimate the observed distribution of each population sample.\n'.format(pars['GMM-components']))
         else:
             raise ValueError('Unknown option for the method to estimate the observed distribution.')
+        if   pars['estimate-observed-method-m1'] == 'KDE': print('\n * Using a Kernel Density Estimation with Silverman bandwidth to estimate the primary observed distribution, rescaled by a factor.\n'.format(pars['KDE-bandwidth-scale-m1']))
+        elif pars['estimate-observed-method-m1'] == 'GMM': print('\n * Using a Gaussian Mixture Model of {} components to estimate the primary observed distribution.\n'.format(pars['GMM-components']))
+        else:
+            raise ValueError('Unknown option for the method to estimate the observed distribution of the primary mass.')
         
         # Initialise arrays.
         mass_array  = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1] * (1+pars['bounds-z'][1]), pars['N-points'])
@@ -453,20 +470,23 @@ class ReconstructDistributions:
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing {} detector frame distributions'.format(pars['estimate-observed-method'])):
             if np.isnan(np.min(m1d[i,:])): pass
             else:
-                try:                    
+                try:
                     # Primary mass detector frame.
-                    tmp = initialize_KDE_GMM(pars)
+                    bw  = silverman_bandwidth(m1d[i,:]) / pars['KDE-bandwidth-scale-m1']
+                    tmp = initialize_KDE_GMM(pars, bw, primary = True)
                     tmp.fit(m1d[i,:].reshape(-1, 1))
                     curves_m1d[i,:] = np.exp(tmp.score_samples(mass_array.reshape(-1, 1)))
 
                     # Secondary mass detector frame.
                     if not pars['single-mass']:
-                        tmp = initialize_KDE_GMM(pars)
+                        bw  = silverman_bandwidth(m2d[i,:]) / pars['KDE-bandwidth-scale']
+                        tmp = initialize_KDE_GMM(pars, bw)
                         tmp.fit(m2d[i,:].reshape(-1, 1))
                         curves_m2d[i,:] = np.exp(tmp.score_samples(m2_array.reshape(-1, 1)))
 
                     # Luminosity distance.
-                    tmp = initialize_KDE_GMM(pars)
+                    bw  = silverman_bandwidth(dL[i,:]) / pars['KDE-bandwidth-scale']
+                    tmp = initialize_KDE_GMM(pars, bw)
                     tmp.fit(dL[i,:].reshape(-1, 1))
                     curves_dL[i,:] = np.exp(tmp.score_samples(dL_array.reshape(-1, 1)))
                 except: pass
@@ -490,7 +510,8 @@ class ReconstructDistributions:
                 else:
                     try:
                         # Primary mass source frame.
-                        tmp = initialize_KDE_GMM(pars)
+                        bw  = silverman_bandwidth(m1s_z_binned[i][zi]) / pars['KDE-bandwidth-scale-m1']
+                        tmp = initialize_KDE_GMM(pars, bw, primary = True)
                         tmp.fit(m1s_z_binned[i][zi].reshape(-1, 1))
                         m1s_PDF[zi][i,:] = np.exp(tmp.score_samples(mass_array.reshape(-1, 1)))
                     except: pass
@@ -501,7 +522,8 @@ class ReconstructDistributions:
                 else:
                     try:
                         # Secondary mass source frame.
-                        tmp = initialize_KDE_GMM(pars)
+                        bw  = silverman_bandwidth(m2s[i,:]) / pars['KDE-bandwidth-scale']
+                        tmp = initialize_KDE_GMM(pars, bw)
                         tmp.fit(m2s[i,:].reshape(-1, 1))
                         curves_m2s[i,:] = np.exp(tmp.score_samples(m2_array.reshape(-1, 1)))
                     except: pass
@@ -509,7 +531,8 @@ class ReconstructDistributions:
             else:
                 try:
                     # Redshift.
-                    tmp = initialize_KDE_GMM(pars)
+                    bw  = silverman_bandwidth(zs[i,:]) / pars['KDE-bandwidth-scale']
+                    tmp = initialize_KDE_GMM(pars, bw)
                     tmp.fit(zs[i,:].reshape(-1, 1))
                     curves_z[i,:] = np.exp(tmp.score_samples(z_array_kde.reshape(-1, 1)))
                 except: pass

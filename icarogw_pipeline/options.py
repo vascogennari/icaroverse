@@ -70,8 +70,10 @@ def InitialiseOptions(Config):
         'selection-effects'           : 0,
         'plot-prior'                  : 1,
         'estimate-observed-method'    : 'KDE',
-        'KDE-bandwidth'               : 0.1,
-        'GMM-components'              : 5,
+        'estimate-observed-method-m1' : 'GMM',
+        'KDE-bandwidth-scale'         : 3,
+        'KDE-bandwidth-scale-m1'      : 8,
+        'GMM-components'              : 6,
         'N-points-KDE-GMM'            : 500,
         'N-samps-prior'               : 1000,
         'downsample-postprocessing'   : 1,
@@ -118,7 +120,7 @@ def InitialiseOptions(Config):
             except: pass
 
         # Plots
-        if ('estimate-observed-method' in key):
+        if ('estimate-observed-method' in key) or ('estimate-observed-method-m1' in key):
             try: input_pars[key] = Config.get('plots', key)
             except: pass
         if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE-GMM' in key) or ('N-samps-prior' in key) or ('GMM-components' in key):
@@ -130,7 +132,7 @@ def InitialiseOptions(Config):
         if ('selection-effects' in key) or ('plot-prior' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
-        if ('downsample-postprocessing' in key) or ('KDE-bandwidth' in key):
+        if ('downsample-postprocessing' in key) or ('KDE-bandwidth-scale' in key) or ('KDE-bandwidth-scale-m1' in key):
             try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
     
@@ -336,8 +338,10 @@ usage = """
         selection-effects           Default: 0,
         plot-prior                  Default: 1,
         estimate-observed-method    Default: 'KDE',
-        KDE-bandwidth               Default: 0.1,
-        GMM-components              Default: 5,
+        estimate-observed-method-m1 Default: 'GMM',
+        KDE-bandwidth-scale         Default: 3,
+        KDE-bandwidth-scale-m1      Default: 8,
+        GMM-components              Default: 6,
         N-points-KDE-GMM            Default: 500,
         N-samps-prior               Default: 1000,
         percentiles                 Default: {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95},
