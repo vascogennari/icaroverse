@@ -56,7 +56,7 @@ slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pip
 
 # Set the specific directory for the runs
 directory    = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/config_files'
-subdirectory = 'EXP_O3_cosmology'
+subdirectory = 'EXP_O3_simulation-test'
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')
