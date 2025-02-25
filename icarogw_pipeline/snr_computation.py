@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 import pycbc.psd # PYCBC MUST BE IMPORTED BEFORE ICAROGW
 from pycbc.waveform import get_fd_waveform
@@ -137,7 +138,7 @@ class Event():
 
 class Detector_custom(Detector):
 
-    def __init__(self, name, flow, delta_f, sample_rate):
+    def __init__(self, name, flow, delta_f, sample_rate, psd_directory):
         super().__init__(name)
         self.delta_f = delta_f
         self.flow = flow
@@ -145,6 +146,8 @@ class Detector_custom(Detector):
 
         self.fhigh = self.sample_rate
         self.flen = int(self.sample_rate / self.delta_f)
+
+        self.psd_directory = psd_directory
 
     def load_psd(self, observing_run):
         """
@@ -155,9 +158,10 @@ class Detector_custom(Detector):
         observing_run: str
             Observing period ('O4', 'O5')
         """
-        filename = f"/Users/tbertheas/Documents/icarogw_pipeline/data/psd/{self.name}_{observing_run}.txt"
+        filename = f"{self.name}_{observing_run}.txt"
+        filepath = os.path.join(self.psd_directory, filename)
         self.psd = pycbc.psd.from_txt(
-            filename,
+            filepath,
             self.flen,
             self.delta_f,
             self.flow,
@@ -200,7 +204,7 @@ class Detector_custom(Detector):
 
 class DetectorNetwork():
 
-    def __init__(self, observing_run, flow, delta_f, sample_rate, network=['H1', 'L1', 'V1', 'K1']):
+    def __init__(self, observing_run, flow, delta_f, sample_rate, psd_directory, network=['H1', 'L1', 'V1', 'K1']):
         """
         A class to store information about a network of detector.
 
@@ -225,7 +229,9 @@ class DetectorNetwork():
         self.fhigh = self.sample_rate
         self.flen = int(self.sample_rate / self.delta_f)
 
-        self.network = {name: Detector_custom(name, self.flow, self.delta_f, self.sample_rate) for name in network}
+        self.psd_directory = psd_directory
+
+        self.network = {name: Detector_custom(name, self.flow, self.delta_f, self.sample_rate, self.psd_directory) for name in network}
         self.snrs = {name: 0. for name in network}
         self.run = observing_run
 

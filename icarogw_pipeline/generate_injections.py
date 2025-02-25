@@ -54,7 +54,7 @@ def plot_injections(true_param, plot_dir):
 # }
 dic_param ={
     'alpha':        100.,
-    'beta':         1.,
+    'beta':         1.07,
     'mmin':         10.,
     'mmax':         50.,
     'delta_m':      1.,
@@ -67,7 +67,7 @@ dic_param ={
 }
 
 m_model   = 'MultiPeak'
-Ninj      = 1000
+Ninj      = 10000
 Ndet_inj  = 0
 N_ext     = 1e3
 snr_thr   = 11
@@ -83,8 +83,9 @@ print('\n * Generating injections for selection effects.\n')
 
 inj_name = 'inj_{}_N{}_SNR{}_fGW{}{}'.format(m_model, int(Ninj), snr_thr, fgw_cut, additional_text)
 
-base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
-results_dir = os.path.join(base_dir,    'injections_selection_effects/H0_prospects', inj_name)
+base_dir = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/data/simulations'
+psd_dir  = base_dir.replace('simulations', 'psd')
+results_dir = os.path.join(base_dir,    'injections_selection_effects', inj_name)
 plot_dir    = os.path.join(results_dir, 'injections_plots')
 if not os.path.exists(results_dir): os.makedirs(results_dir)
 if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
@@ -125,11 +126,12 @@ with tqdm(total = Ninj) as pbar:
                 flow          = 16., 
                 delta_f       = 1./128.,
                 sample_rate   = 1024.,
+                psd_directory = psd_dir,
                 network       = ['H1', 'L1', 'V1'],
             )
             detector_network.load_psds()
-            print('\n * Computing the SNR with the full waveform.')
-            for i, (_m1, _m2, _dL) in tqdm(enumerate(zip(m1d_inj, m2d_inj, dL_inj)), total=len(m1d_inj)):
+            if c == 1: print('\n * Computing the SNR with the full waveform.')
+            for i, (_m1, _m2, _dL) in enumerate(zip(m1d_inj, m2d_inj, dL_inj)):
                 snr_inj[i] = detector_network.hit_network(
                     m1=_m1, m2=_m2, dL=_dL,
                     t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), #GW190425
