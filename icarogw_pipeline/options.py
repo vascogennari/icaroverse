@@ -75,6 +75,7 @@ def InitialiseOptions(Config):
         'N-points-KDE-GMM'            : 500,
         'N-samps-prior'               : 1000,
         'downsample-postprocessing'   : 1,
+        'percentiles'                 : {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95},
     }
 
     # Read options from config file.
@@ -123,7 +124,7 @@ def InitialiseOptions(Config):
         if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE-GMM' in key) or ('N-samps-prior' in key) or ('GMM-components' in key):
             try: input_pars[key] = Config.getint('plots', key)
             except: pass
-        if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
+        if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key)  or ('percentiles' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
         if ('selection-effects' in key) or ('plot-prior' in key):
@@ -339,4 +340,5 @@ usage = """
         GMM-components              Default: 5,
         N-points-KDE-GMM            Default: 500,
         N-samps-prior               Default: 1000,
+        percentiles                 Default: {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95},
 """
