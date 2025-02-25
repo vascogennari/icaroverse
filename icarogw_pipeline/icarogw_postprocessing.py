@@ -252,63 +252,144 @@ class ReconstructDistributions:
 
         mass_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
 
-        if 'Redshift' in pars['model-primary']:
-            if prior:
-                tmp = {}
-                for key in w.population_parameters:
-                    if 'peak' in p_dct[key]['kwargs'].keys(): tmp[key] = np.full(pars['N-samps-prior'], p_dct[key]['kwargs']['peak'])   # Take care of fixed parameters.
-                    else:                                     tmp[key] = bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior'])
-                df  = pd.DataFrame(tmp)
+        if prior:
+            tmp = {}
+            for key in w.population_parameters:
+                if 'peak' in p_dct[key]['kwargs'].keys(): tmp[key] = np.full(pars['N-samps-prior'], p_dct[key]['kwargs']['peak'])   # Take care of fixed parameters.
+                else:                                     tmp[key] = bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior'])
+            df  = pd.DataFrame(tmp)
 
-            pdf = np.empty(shape = (pars['N-points'], pars['N-points']))
-            curves = np.empty(shape = (len(df), pars['N-points']))
+        pdf = np.empty(shape = (pars['N-points'], pars['N-points']))
+        curves = np.empty(shape = (len(df), pars['N-points']))
 
-            percentiles = [pars['percentiles']['m'], pars['percentiles']['ll'], pars['percentiles']['l'], pars['percentiles']['h'], pars['percentiles']['hh']]
-            curves_z = {zi: {pi: np.empty(pars['N-points']) for pi in percentiles} for zi in range(pars['N-z-slices'])}
+        percentiles = [pars['percentiles']['m'], pars['percentiles']['ll'], pars['percentiles']['l'], pars['percentiles']['h'], pars['percentiles']['hh']]
+        curves_z = {zi: {pi: np.empty(pars['N-points']) for pi in percentiles} for zi in range(pars['N-z-slices'])}
 
-            zx         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
-            zy         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-z-slices'])
-            _, z_grid  = np.meshgrid(zx, zy)
+        zx         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
+        zy         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-z-slices'])
+        _, z_grid  = np.meshgrid(zx, zy)
 
-            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])   # 'RdBu_r'
-            zi = 0
+        colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])   # 'RdBu_r'
+        zi = 0
 
-            for z_array in tqdm.tqdm(z_grid, desc = 'Reconstructing primary distribution'):
-                for idx, samp in df.iterrows():
-
-                    samp_filt = {key: samp[key] for key in w.population_parameters}
-                    w.update(**samp_filt)
-                    pdf = w.pdf(mass_array, z_array)
-                    if not (np.isnan(pdf).any()): curves[idx] = pdf
-                    else: pass
-
-                for perc in percentiles: curves_z[zi][perc] = np.percentile(curves, perc, axis = 0)
-                zi += 1
-
-            colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
-            plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#000000', '$m_1\ [M_{\odot}]$', '$z$', pars['model-primary'], colors = colors, z_grid = z_grid, y_label_L = '$z$', y_label_R = '$p(m_1)$')
-
-            return curves_z, plot_dict
-
-        else:
-            if prior:
-                tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
-                df  = pd.DataFrame(tmp)
-
-            pdf = np.empty(shape = (pars['N-points'], pars['N-points']))
-            curves = np.empty(shape = (len(df), pars['N-points']))
-
+        for z_array in tqdm.tqdm(z_grid, desc = 'Reconstructing primary distribution'):
             for idx, samp in df.iterrows():
 
                 samp_filt = {key: samp[key] for key in w.population_parameters}
                 w.update(**samp_filt)
-                pdf = w.pdf(mass_array)
-                curves[idx] = pdf
+                if 'Redshift' in pars['model-primary']: pdf = w.pdf(mass_array, z_array)
+                else:                                   pdf = w.pdf(mass_array)
+                if not (np.isnan(pdf).any()): curves[idx] = pdf
+                else: pass
 
-            curves_CI = get_curves_percentiles(curves, pars)
-            plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#890C0A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'])
+            for perc in percentiles: curves_z[zi][perc] = np.percentile(curves, perc, axis = 0)
+            zi += 1
 
-            return curves_CI, plot_dict
+        colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
+        plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'PrimaryMassDistribution', '#000000', '$m_1\ [M_{\odot}]$', '$z$', pars['model-primary'], colors = colors, z_grid = z_grid, y_label_L = '$z$', y_label_R = '$p(m_1)$')
+
+        return curves_z, plot_dict
+
+
+    def SecondaryMassFunction(df, w, p_dct, pars, prior = False):
+
+        if   'MassRatio' in pars['model-secondary']: bound = 'bounds-q'
+        elif 'PowerLaw'  in pars['model-secondary']: bound = 'bounds-m2'
+        else:
+            raise ValueError('Unknown option for the secondary mass plot. Current implementation accounts for MassRatio and PowerLaw.')
+        
+        if prior:
+            tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
+            df  = pd.DataFrame(tmp)
+
+        m_array = np.linspace(pars[bound][0], pars[bound][1], pars['N-points'])
+        curves  = np.empty(shape = (len(df), pars['N-points']))
+        pdf     = np.empty(shape = (pars['N-points']))
+
+        for idx, samp in df.iterrows():
+            samp_filt = {key: samp[key] for key in w.population_parameters}
+            w.update(**samp_filt)
+            if   'MassRatio' in pars['model-secondary']: pdf = w.pdf(m_array)
+            elif 'PowerLaw'  in pars['model-secondary']: pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
+            curves[idx] = pdf
+        
+        curves_CI = get_curves_percentiles(curves, pars)
+        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
+
+        return curves_CI, plot_dict
+
+
+    def RateEvolutionFunction(df, w, p_dct, pars, prior = False):
+
+        if prior:
+            tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
+            df  = pd.DataFrame(tmp)
+
+        z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
+        curves  = np.empty(shape = (len(df), pars['N-points']))
+
+        for idx, samp in df.iterrows():
+
+            samp_filt = {key: samp[key] for key in w.population_parameters}
+            w.update(**samp_filt)        
+            func = w.rate.log_evaluate(z_array)
+            curves[idx] = func
+
+        curves_CI = get_curves_percentiles(curves, pars)
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionFunction', '#825310', '$z$', '$ln[\Psi(z)/R_0]$', pars['model-rate'])
+
+        return curves_CI, plot_dict
+
+
+    def RateEvolutionFunctionProbability(df, rw, cw, pars):
+
+        z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
+        curves  = np.empty(shape = (len(df), pars['N-points']))
+
+        for idx, samp in df.iterrows():
+
+            samp_filt = {key: samp[key] for key in rw.population_parameters}
+            rw.update(**samp_filt)
+            func = np.exp(rw.rate.log_evaluate(z_array))
+            if not pars['scale-free']: curves[idx] = func * samp.R0
+            else:                      curves[idx] = func
+
+            # Comoving volume and redshift (1/(1+z)*dV/dz)
+            samp_filt = {key: samp[key] for key in cw.population_parameters}
+            cw.update(**samp_filt)
+            func = cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
+            curves[idx] *= func
+            curves[idx] = np.log(curves[idx])
+            curves[idx] -= 7
+
+        curves_CI = get_curves_percentiles(curves, pars)
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', '$\propto ln[p(z)]$', pars['model-rate'])
+
+        return curves_CI, plot_dict
+
+
+    def RedshiftTransitionFunction(df, p_dct, pars, prior = False):
+
+        z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
+
+        if prior:
+            if   pars['redshift-transition'] == 'linear':   tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1']}
+            elif pars['redshift-transition'] == 'sigmoid':  tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1', 'zt',  'delta_zt']}
+            elif pars['redshift-transition'] == 'sinusoid': tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1', 'amp', 'freq']}
+
+            df = pd.DataFrame(tmp)
+            
+        curves = np.empty(shape = (len(df), pars['N-points']))
+
+        for idx, samp in df.iterrows():
+            if   pars['redshift-transition'] == 'linear':   curves[idx] = icarogw.priors._mixed_linear_function(         z_array, samp['mix_z0'], samp['mix_z1'])
+            elif pars['redshift-transition'] == 'sigmoid':  curves[idx] = icarogw.priors._mixed_double_sigmoid_function( z_array, samp['mix_z0'], samp['mix_z1'], samp['zt'],  samp['delta_zt'])
+            elif pars['redshift-transition'] == 'sinusoid': curves[idx] = icarogw.priors._mixed_linear_sinusoid_function(z_array, samp['mix_z0'], samp['mix_z1'], samp['amp'], samp['freq'])
+
+        curves_CI = get_curves_percentiles(curves, pars)
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RedshiftTransitionFunction', '#212121', '$z$', '$\\sigma(z)$', pars['model-primary'])
+        
+        return curves_CI, plot_dict
 
 
     def RemoveSelectionEffects(df, pars, rate_w, ref_cosmo, injections):
@@ -457,107 +538,6 @@ class ReconstructDistributions:
         return plots_inputs
 
 
-    def SecondaryMassFunction(df, w, p_dct, pars, prior = False):
-
-        if   'MassRatio' in pars['model-secondary']: bound = 'bounds-q'
-        elif 'PowerLaw'  in pars['model-secondary']: bound = 'bounds-m2'
-        else:
-            raise ValueError('Unknown option for the secondary mass plot. Current implementation accounts for MassRatio and PowerLaw.')
-        
-        if prior:
-            tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
-            df  = pd.DataFrame(tmp)
-
-        m_array = np.linspace(pars[bound][0], pars[bound][1], pars['N-points'])
-        curves  = np.empty(shape = (len(df), pars['N-points']))
-        pdf     = np.empty(shape = (pars['N-points']))
-
-        for idx, samp in df.iterrows():
-            samp_filt = {key: samp[key] for key in w.population_parameters}
-            w.update(**samp_filt)
-            if   'MassRatio' in pars['model-secondary']: pdf = w.pdf(m_array)
-            elif 'PowerLaw'  in pars['model-secondary']: pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
-            curves[idx] = pdf
-        
-        curves_CI = get_curves_percentiles(curves, pars)
-        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
-
-        return curves_CI, plot_dict
-
-
-    def RateEvolutionFunction(df, w, p_dct, pars, prior = False):
-
-        if prior:
-            tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
-            df  = pd.DataFrame(tmp)
-
-        z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
-        curves  = np.empty(shape = (len(df), pars['N-points']))
-
-        for idx, samp in df.iterrows():
-
-            samp_filt = {key: samp[key] for key in w.population_parameters}
-            w.update(**samp_filt)        
-            func = w.rate.log_evaluate(z_array)
-            curves[idx] = func
-
-        curves_CI = get_curves_percentiles(curves, pars)
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionFunction', '#825310', '$z$', '$ln[\Psi(z)/R_0]$', pars['model-rate'])
-
-        return curves_CI, plot_dict
-
-
-    def RateEvolutionFunctionProbability(df, rw, cw, pars):
-
-        z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
-        curves  = np.empty(shape = (len(df), pars['N-points']))
-
-        for idx, samp in df.iterrows():
-
-            samp_filt = {key: samp[key] for key in rw.population_parameters}
-            rw.update(**samp_filt)
-            func = np.exp(rw.rate.log_evaluate(z_array))
-            if not pars['scale-free']: curves[idx] = func * samp.R0
-            else:                      curves[idx] = func
-
-            # Comoving volume and redshift (1/(1+z)*dV/dz)
-            samp_filt = {key: samp[key] for key in cw.population_parameters}
-            cw.update(**samp_filt)
-            func = cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
-            curves[idx] *= func
-            curves[idx] = np.log(curves[idx])
-            curves[idx] -= 7
-
-        curves_CI = get_curves_percentiles(curves, pars)
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', '$\propto ln[p(z)]$', pars['model-rate'])
-
-        return curves_CI, plot_dict
-
-
-    def RedshiftTransitionFunction(df, p_dct, pars, prior = False):
-
-        z_array = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-points'])
-
-        if prior:
-            if   pars['redshift-transition'] == 'linear':   tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1']}
-            elif pars['redshift-transition'] == 'sigmoid':  tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1', 'zt',  'delta_zt']}
-            elif pars['redshift-transition'] == 'sinusoid': tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in ['mix_z0', 'mix_z1', 'amp', 'freq']}
-
-            df = pd.DataFrame(tmp)
-            
-        curves = np.empty(shape = (len(df), pars['N-points']))
-
-        for idx, samp in df.iterrows():
-            if   pars['redshift-transition'] == 'linear':   curves[idx] = icarogw.priors._mixed_linear_function(         z_array, samp['mix_z0'], samp['mix_z1'])
-            elif pars['redshift-transition'] == 'sigmoid':  curves[idx] = icarogw.priors._mixed_double_sigmoid_function( z_array, samp['mix_z0'], samp['mix_z1'], samp['zt'],  samp['delta_zt'])
-            elif pars['redshift-transition'] == 'sinusoid': curves[idx] = icarogw.priors._mixed_linear_sinusoid_function(z_array, samp['mix_z0'], samp['mix_z1'], samp['amp'], samp['freq'])
-
-        curves_CI = get_curves_percentiles(curves, pars)
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RedshiftTransitionFunction', '#212121', '$z$', '$\\sigma(z)$', pars['model-primary'])
-        
-        return curves_CI, plot_dict
-
-
     # FIXME: Fix the 2D joint implementation.
     def MassRedshift_Joint(df, pars):
 
@@ -652,32 +632,20 @@ class Plots:
 
     def PrimaryMass(self):
 
-        if not 'Redshift' in self.pars['model-primary']:
-            curves_prior = 0
-            if self.pars['plot-prior']:
-                curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
-            curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
-            add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
-            if self.pars['true-values'] == {}:
-                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, logscale = True)
-            else:
-                curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
-                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true, logscale = True)
+        curves_prior = 0
+        if self.pars['plot-prior']:
+            curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
+        curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
+        add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'], z = np.linspace(self.pars['bounds-z'][0], self.pars['bounds-z'][1], self.pars['N-z-slices']))
+        if self.pars['true-values'] == {}:
+            self.plots.plot_curves_redshift_log(curves, plot_dict, curves_prior = curves_prior)
+            if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo)
+            else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, selection_effects = self.inj.injections_data)                    
         else:
-            curves_prior = 0
-            if self.pars['plot-prior']:
-                curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
-            curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
-            add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'], z = np.linspace(self.pars['bounds-z'][0], self.pars['bounds-z'][1], self.pars['N-z-slices']))
-            if self.pars['true-values'] == {}:
-                self.plots.plot_curves_redshift_log(curves, plot_dict, curves_prior = curves_prior)
-                if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo)
-                else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, selection_effects = self.inj.injections_data)                    
-            else:
-                curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
-                self.plots.plot_curves_redshift_log( curves, plot_dict, curves_prior = curves_prior, truth = curve_true)
-                if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true)
-                else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true, selection_effects = self.inj.injections_data)
+            curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
+            self.plots.plot_curves_redshift_log( curves, plot_dict, curves_prior = curves_prior, truth = curve_true)
+            if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true)
+            else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true, selection_effects = self.inj.injections_data)
 
     def SecondaryMass(self):
 
@@ -767,20 +735,18 @@ class Plots:
     # Call the class functions to generate the plots.
     def ProducePlots(self):
 
-        # try:    self.PrimaryMass()
-        # except: pass
-        # try:    self.SecondaryMass()
-        # except: pass
-        # try:    self.RateEvolution()
-        # except: pass
-        # try:    self.RateEvolutionProbability()
-        # except: pass
-        # try:    self.NoSelectionEffects()
-        # except: pass
-        # try:    self.RedshiftTransition()
-        # except: pass
-
-        self.NoSelectionEffects()
+        try:    self.PrimaryMass()
+        except: pass
+        try:    self.SecondaryMass()
+        except: pass
+        try:    self.RateEvolution()
+        except: pass
+        try:    self.RateEvolutionProbability()
+        except: pass
+        try:    self.NoSelectionEffects()
+        except: pass
+        try:    self.RedshiftTransition()
+        except: pass
 
     def return_curves(self):
         return self.curves_dict
