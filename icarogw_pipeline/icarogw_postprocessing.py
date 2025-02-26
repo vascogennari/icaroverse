@@ -411,12 +411,12 @@ class ReconstructDistributions:
         N_samps = len(df.index)
         # Number of samples to be extracted from the reconstructed distribution of each PE sample to compute the KDE/GMM.
         N_samps_KDE_GMM = pars['N-points-KDE-GMM']
-        if   pars['estimate-observed-method']    == 'KDE': print('\n * Using a Kernel Density Estimation with Silverman bandwidth to estimate the observed distribution of each population sample. The distributions are rescaled by a factor.\n'.format(pars['KDE-bandwidth-scale']))
-        elif pars['estimate-observed-method']    == 'GMM': print('\n * Using a Gaussian Mixture Model of {} components to estimate the observed distribution of each population sample.\n'.format(pars['GMM-components']))
+        if   pars['estimate-observed-method']    == 'KDE': print('\n\tUsing a Kernel Density Estimation with Silverman bandwidth to estimate the observed distribution of each population sample. The distributions are rescaled by a factor {}.'.format(pars['KDE-bandwidth-scale']))
+        elif pars['estimate-observed-method']    == 'GMM': print('\n\tUsing a Gaussian Mixture Model of {} components to estimate the observed distribution of each population sample.'.format(pars['GMM-components']))
         else:
             raise ValueError('Unknown option for the method to estimate the observed distribution.')
-        if   pars['estimate-observed-method-m1'] == 'KDE': print('\n * Using a Kernel Density Estimation with Silverman bandwidth to estimate the primary observed distribution, rescaled by a factor.\n'.format(pars['KDE-bandwidth-scale-m1']))
-        elif pars['estimate-observed-method-m1'] == 'GMM': print('\n * Using a Gaussian Mixture Model of {} components to estimate the primary observed distribution.\n'.format(pars['GMM-components']))
+        if   pars['estimate-observed-method-m1'] == 'KDE': print('\n\tUsing a Kernel Density Estimation with Silverman bandwidth to estimate the primary observed distribution, rescaled by a factor {}.\n'.format(pars['KDE-bandwidth-scale-m1']))
+        elif pars['estimate-observed-method-m1'] == 'GMM': print('\n\tUsing a Gaussian Mixture Model of {} components to estimate the primary observed distribution.\n'.format(pars['GMM-components']))
         else:
             raise ValueError('Unknown option for the method to estimate the observed distribution of the primary mass.')
         
