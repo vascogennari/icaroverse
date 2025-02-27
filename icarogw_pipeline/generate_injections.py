@@ -53,21 +53,21 @@ def plot_injections(true_param, plot_dir):
 #     'lambda_peak': 0.8,
 # }
 dic_param ={
-    'alpha':        100.,
+    'alpha':        185.89788,
+    'mmin':         10.81405,
+    'mmax':         102.70377,
+    'mu_g_low':     20.3181,
+    'sigma_g_low':  1.3,
+    'lambda_g_low': 0.6,
+    'mu_g_high':    34.0,
+    'sigma_g_high': 6.0,
+    'lambda_g':     0.25,
     'beta':         1.07,
-    'mmin':         10.,
-    'mmax':         50.,
-    'delta_m':      1.,
-    'mu_g_low':     20.,
-    'sigma_g_low':  5.,
-    'lambda_g_low': 0.5,
-    'mu_g_high':    40.,
-    'sigma_g_high': 10.,
-    'lambda_g':     0.1,
+    'delta_m':      1.0,
 }
 
 m_model   = 'MultiPeak'
-Ninj      = 10000
+Ninj      = 50000
 Ndet_inj  = 0
 N_ext     = 1e3
 snr_thr   = 11
