@@ -117,6 +117,7 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
             delta_f       = 1./128.,
             sample_rate   = 1024.,
             network       = ['H1', 'L1', 'V1'],
+            psd_directory = pars['psd_dir'],
         )
         detector_network.load_psds()
         print('\n * Computing the SNR with the full waveform.')
@@ -291,16 +292,17 @@ if __name__=='__main__':
         'Om0'         : 0.308,
 
         # Primary mass distribution
-        'delta_m'     : 3.0,
+        'delta_m'     : 2.54,
 
-        'alpha'       : 50.,
-        'mmin'        : 10.,
-        'mmax'        : 100.,
+        'alpha'       : 3.70,
+        'mmin'        : 6.77,
+        'mmax'        : 142.26,
         'mu'          : 0.,
         'sigma'       : 0.,
 
-        'mu_g'        : 35.,
-        'sigma_g'     : 2.,
+        'mu_g'        : 34.17,
+        'sigma_g'     : 3.77,
+        'lambda_peak' : 0.04,
 
         'alpha_z0'    : 50.,
         'alpha_z1'    : 20.,
@@ -335,12 +337,13 @@ if __name__=='__main__':
         # Secondary mass distribution
         'mu_q'        : 0.722427,
         'sigma_q'     : 0.123636,
+        'alpha_q'     : 2.4,
 
         # Rate evolution
-        'gamma'       : -8.877444,     # <----- Rate evolution
-        'kappa'       : -3.522539,
-        'zp'          : 3.155209,
-        'R0'          : 15.176471,
+        'gamma'       : 2.67,     # <----- Rate evolution
+        'kappa'       : 2.87,
+        'zp'          : 2.12,
+        'R0'          : 17.56,
 
         # Double peak
         'mu_z0_a'     : 25.,
@@ -362,12 +365,15 @@ if __name__=='__main__':
     }
 
     filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
-    base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
+    icarogw_pipeline_dir = '/sps/virgo/USERS/tbertheas/icarogw_pipeline'
+    base_dir = os.path.join(icarogw_pipeline_dir, 'data/simulations')
+    psd_dir  = os.path.join(icarogw_pipeline_dir, 'data/psd')
     results_dir = os.path.join(base_dir,    'simulated_population/H0_prospects', filename)
     plot_dir    = os.path.join(results_dir, 'population_plots')
     if not os.path.exists(results_dir): os.makedirs(results_dir)
     if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
     input_pars['output'] = results_dir
+    input_pars['psd_dir'] = psd_dir
 
     if not generate_population:
         try:

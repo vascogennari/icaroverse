@@ -83,8 +83,9 @@ print('\n * Generating injections for selection effects.\n')
 
 inj_name = 'inj_{}_N{}_SNR{}_fGW{}{}'.format(m_model, int(Ninj), snr_thr, fgw_cut, additional_text)
 
-base_dir = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/data/simulations'
-psd_dir  = base_dir.replace('simulations', 'psd')
+icarogw_pipeline_dir = '/sps/virgo/USERS/tbertheas/icarogw_pipeline'
+base_dir = os.path.join(icarogw_pipeline_dir, 'data/simulations')
+psd_dir  = os.path.join(icarogw_pipeline_dir, 'data/psd')
 results_dir = os.path.join(base_dir,    'injections_selection_effects', inj_name)
 plot_dir    = os.path.join(results_dir, 'injections_plots')
 if not os.path.exists(results_dir): os.makedirs(results_dir)
