@@ -45,18 +45,18 @@ def activate_slurm_submit(config_name):
     os.system('sbatch {}'.format(subfile))
 
 # ---------------------------------------------------------------------- #
-conda_env    = 'icarogw_nessai_env'
+conda_env    = 'in2_env'
 user_mail    = 'tom.bertheas@l2it.in2p3.fr'
 slurm_nodes  = 1
 slurm_cpus   = 10
 slurm_memory = 5
-slurm_time   = {'days': 0, 'hours': 0, 'minutes': 30}
+slurm_time   = {'days': 1, 'hours': 0, 'minutes': 0}
 slurm_executable_path = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
 slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
 
 # Set the specific directory for the runs
 directory    = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/config_files'
-subdirectory = 'EXP_O3_population'
+subdirectory = 'temp'
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')

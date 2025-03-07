@@ -58,14 +58,26 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
         tmp_str  = 'maximum likelihood'
 
     if not tmp_dict == None:
+        # Set rate model parameters at true values 
         likelihood.parameters = {key: tmp_dict[key] for key in likelihood.rate_model.population_parameters}
+        # First likelihood evaluation at true values
         single_likelihood_eval()
+        # Check effective number of injections.
         N_eff_inj = likelihood.injections.effective_injections_number()
         stability = N_eff_inj / (4 * n_events)
-        N_eff_PE  = np.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
         print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, tmp_str))
-        print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
         if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
+        # print(" --- I WILL UPDATE WEIGHTS MANUALLY --- ")
+        # likelihood.rate_model.update(**{key:tmp_dict[key] for key in likelihood.rate_model.population_parameters})
+        # likelihood.posterior_samples_dict.update_weights(likelihood.rate_model)
+        # print(" --- I HAVE UPDATED WEIGHTS MANUALLY --- ")
+
+        # Check effective numer of posterior samples.
+        try:
+            N_eff_PE  = np.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
+            print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
+        except AttributeError as err:
+            raise AttributeError(err, "* This error might occur because during the first evaluation of the likelihood, the effective number of injections was below threshold,. Consequently, log_likelihood() output -inf and never initializes the posterior sample weights.")
 
 
 class Wrappers:
@@ -428,6 +440,7 @@ def main():
 
     # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
+        print("\n * screen-output is False -> I will deviate stdout and stderr to the result folder.\n")
         sys.stdout = open(os.path.join(input_pars['output'], 'stdout_icarogw.txt'), 'w')
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
