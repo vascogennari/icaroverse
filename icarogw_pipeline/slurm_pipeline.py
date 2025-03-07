@@ -18,7 +18,11 @@ template = """#!/bin/sh
 #SBATCH --mail-type=ALL
 
 module load conda
+<<<<<<< HEAD
+conda activate {conda_env}
+=======
 conda activate icarogw_env
+>>>>>>> main
 {executable} {script} --config-file {config}
 """
 
@@ -35,6 +39,7 @@ def activate_slurm_submit(config_name):
                                              memory     = slurm_memory,
                                              time       = '{}-{}:{}:00'.format(slurm_time['days'], slurm_time['hours'], slurm_time['minutes']),
                                              user_mail  = user_mail,
+                                             conda_env  = conda_env,
                                              executable = slurm_executable_path,
                                              script     = slurm_executable_file,
                                              config     = config_name)
@@ -44,12 +49,13 @@ def activate_slurm_submit(config_name):
     os.system('sbatch {}'.format(subfile))
 
 # ---------------------------------------------------------------------- #
+conda_env    = 'icarogw_env'
 user_mail    = 'vasco.gennari@l2it.in2p3.fr'
 slurm_nodes  = 1
 slurm_cpus   = 10
 slurm_memory = 5
 slurm_time   = {'days': 2, 'hours': 0, 'minutes': 0}
-slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/icarogw_env/bin/python'
+slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
 slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
 
 # Set the specific directory for the runs
@@ -72,4 +78,4 @@ for config in config_list:
     config_path = os.path.join(configs_path, config)
     activate_slurm_submit(config_path)
 
-print('\nThe config files in {configs_path} are running in detached slurm jobs. Good luck!\n'.format(configs_path = configs_path))
+print('\nThe config files in {configs_path} are running in detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = configs_path, conda_env=conda_env))

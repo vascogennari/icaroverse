@@ -1,8 +1,11 @@
 import argparse, numpy as np, pickle, pandas as pd, os
-from distutils.dir_util import copy_tree
-import icarogw.simulation as icarosim
 import matplotlib.pyplot as plt, seaborn as sns
 from tqdm import tqdm
+from distutils.dir_util import copy_tree
+
+from snr_computation import DetectorNetwork
+
+import icarogw.simulation as icarosim
 import icarogw_runner as icarorun
 
 
@@ -102,9 +105,36 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     m2s = qs * m1s
     plot_injected_distribution(q_array, z_array, m2w, truths, plot_dir, pars['model-secondary'], q_samps = qs)
 
-    if not pars['flat-PSD']:
+    # Detector frame
+    m1d = m1s * (1 + zs)
+    m2d = m2s * (1 + zs)
+    dL  = cosmo_ref.z2dl(zs)
+
+    if not pars['snr-approx']:
+        rho_true_det = np.zeros_like(m1d)
+        detector_network = DetectorNetwork(
+            observing_run = 'O3', 
+            flow          = 16., 
+            delta_f       = 1./128.,
+            sample_rate   = 1024.,
+            network       = ['H1', 'L1', 'V1'],
+            psd_directory = pars['psd_dir'],
+        )
+        detector_network.load_psds()
+        print('\n * Computing the SNR with the full waveform.')
+        for i, (_m1, _m2, _dL) in tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d)):
+            rho_true_det[i] = detector_network.hit_network(
+                m1=_m1, m2=_m2, dL=_dL,
+                t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), #GW190425
+                approximant = 'IMRPhenomXHM',
+                precessing  = False,
+                snr_method  = 'mf_fast',
+            )
+        idx_cut_det = icarosim.snr_cut_flat(rho_true_det, snrthr = pars['snr-cut'])
+
+    elif not pars['flat-PSD']:
         # Average on extrinsic parameters.
-        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, 'Pw_three.dat')
+        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, os.path.join('/Users/tbertheas/Documents/icarogw_pipeline/data/simulations', 'Pw_three.dat'))
         rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
         idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
     # Simulate a detection with a flat PSD.
@@ -115,17 +145,13 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     print('\n * Number of detections: {}\n'.format(len(idx_cut_det)), flush = True)
     with open(os.path.join(results_dir, 'number_detected_events.txt'), 'w') as f: f.write('{}'.format(len(idx_cut_det)))
     
-    # Detector frame
-    m1d = m1s * (1 + zs)
-    m2d = m2s * (1 + zs)
-    dL  = cosmo_ref.z2dl(zs)
-    
     m1d_det = m1d[idx_cut_det]
     m2d_det = m2d[idx_cut_det]
     dL_det  = dL[ idx_cut_det]
+    snr = rho_true_det[idx_cut_det]
     
-    samps_detector_dict = {'m1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det}
-    samps_source_dict   = {'m1s': m1s,     'm2s': m2s,     'z':  zs}
+    samps_detector_dict = {'m1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det, 'snr':snr}
+    samps_source_dict   = {'m1s': m1s,     'm2s': m2s,     'z':  zs,     'snr':snr}
     
     return samps_source_dict, samps_detector_dict, inj_wrappers
 
@@ -239,6 +265,7 @@ if __name__=='__main__':
     parser.add_argument('-tr',  '--redshift-transition', type = str,   metavar = 'redshift_transition', default = 'linear'                         )
     parser.add_argument('-snr', '--snr-cut',             type = float, metavar = 'snr_cut',             default = 12                               )
     parser.add_argument('-fgw', '--fgw-cut',             type = float, metavar = 'fgw_cut',             default = 15                               )
+    parser.add_argument('-apx', '--snr-approx',          type = int,   metavar = 'snr_approx',          default = 1                                )
 
     args                = parser.parse_args()
     additional_text     = args.additional_text
@@ -246,6 +273,8 @@ if __name__=='__main__':
 
     generate_population = 1
     subset_events       = 0
+
+    print(args.snr_approx, type(args.snr_approx))
 
     input_pars  = {
         # Model parameters
@@ -264,6 +293,7 @@ if __name__=='__main__':
 
         'snr-cut'              : args.snr_cut,
         'fgw-cut'              : args.fgw_cut,
+        'snr-approx'           : args.snr_approx,
         'flat-PSD'             : 0,
     }
 
@@ -283,6 +313,7 @@ if __name__=='__main__':
 
         'mu_g'        : 35.,
         'sigma_g'     : 2.,
+        'lambda_peak' : 0.04,
 
         'alpha_z0'    : 50.,
         'alpha_z1'    : 20.,
@@ -317,6 +348,7 @@ if __name__=='__main__':
         # Secondary mass distribution
         'mu_q'        : 0.7,
         'sigma_q'     : 0.1,
+        'alpha_q'     : 2.4,
 
         # Rate evolution
         'gamma'       : 3.,     # <----- Rate evolution
@@ -344,12 +376,15 @@ if __name__=='__main__':
     }
 
     filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
-    base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
-    results_dir = os.path.join(base_dir,    'simulated_population/alpha-sigma_priors', filename)
+    icarogw_pipeline_dir = '/sps/virgo/USERS/tbertheas/icarogw_pipeline'
+    base_dir = os.path.join(icarogw_pipeline_dir, 'data/simulations')
+    psd_dir  = os.path.join(icarogw_pipeline_dir, 'data/psd')
+    results_dir = os.path.join(base_dir,    'simulated_population/H0_prospects', filename)
     plot_dir    = os.path.join(results_dir, 'population_plots')
     if not os.path.exists(results_dir): os.makedirs(results_dir)
     if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
     input_pars['output'] = results_dir
+    input_pars['psd_dir'] = psd_dir
 
     if not generate_population:
         try:

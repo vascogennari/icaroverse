@@ -3,6 +3,8 @@ import icarogw.simulation as icarosim
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+from snr_computation import DetectorNetwork
+
 
 def compute_theta(m1, path):
      
@@ -40,34 +42,50 @@ def plot_injections(true_param, plot_dir):
 
 
 # Injections set 
+# dic_param ={
+#     'alpha':       1.,
+#     'beta':        1.,
+#     'mmin':        1.,
+#     'mmax':        300.,
+#     'delta_m':     1.,
+#     'mu_g':        30.,
+#     'sigma_g':     10.,
+#     'lambda_peak': 0.8,
+# }
 dic_param ={
-    'alpha':       1.,
-    'beta':        1.,
-    'mmin':        1.,
-    'mmax':        300.,
-    'delta_m':     1.,
-    'mu_g':        30.,
-    'sigma_g':     10.,
-    'lambda_peak': 0.8,
+    'alpha':        185.89788,
+    'mmin':         10.81405,
+    'mmax':         102.70377,
+    'mu_g_low':     20.3181,
+    'sigma_g_low':  1.3,
+    'lambda_g_low': 0.6,
+    'mu_g_high':    34.0,
+    'sigma_g_high': 6.0,
+    'lambda_g':     0.25,
+    'beta':         1.07,
+    'delta_m':      1.0,
 }
 
-m_model   = 'PowerLawPeak'
-Ninj      = 100000  #200000
+m_model   = 'MultiPeak'
+Ninj      = 50000
 Ndet_inj  = 0
-N_ext     = 10e4
-snr_thr   = 12
+N_ext     = 1e3
+snr_thr   = 11
 fgw_cut   = 15
 unif_dist = 0
-unif_z    = 0
-zmax      = 1.5
+unif_z    = 1
+zmax      = 1.
 flat_PSD  = 0
+snr_apx   = 0
 additional_text = ''
 
 print('\n * Generating injections for selection effects.\n')
 
 inj_name = 'inj_{}_N{}_SNR{}_fGW{}{}'.format(m_model, int(Ninj), snr_thr, fgw_cut, additional_text)
 
-base_dir = '/Users/vgennari/Documents/work/code/python/icarogw/data/simulations'
+icarogw_pipeline_dir = '/sps/virgo/USERS/tbertheas/icarogw_pipeline'
+base_dir = os.path.join(icarogw_pipeline_dir, 'data/simulations')
+psd_dir  = os.path.join(icarogw_pipeline_dir, 'data/psd')
 results_dir = os.path.join(base_dir,    'injections_selection_effects', inj_name)
 plot_dir    = os.path.join(results_dir, 'injections_plots')
 if not os.path.exists(results_dir): os.makedirs(results_dir)
@@ -96,7 +114,36 @@ with tqdm(total = Ninj) as pbar:
         # FIXME: Implement a more general framework to account for different parameters: mass ratio or only one mass.
         jacobian                     = (1 + z_inj)**(-2)
         prior_inj                    = pdf_m * pdf_dL * jacobian
-        if not flat_PSD:
+
+        # Convert the masses to detector frame
+        m1d_inj = m1s_inj * (1 + z_inj)
+        m2d_inj = m2s_inj * (1 + z_inj)
+
+        # Compute the SNR with the full waveform
+        if not snr_apx:
+            snr_inj = np.zeros_like(m1d_inj)
+            detector_network = DetectorNetwork(
+                observing_run = 'O3', 
+                flow          = 16., 
+                delta_f       = 1./128.,
+                sample_rate   = 1024.,
+                psd_directory = psd_dir,
+                network       = ['H1', 'L1', 'V1'],
+            )
+            detector_network.load_psds()
+            if c == 1: print('\n * Computing the SNR with the full waveform.')
+            for i, (_m1, _m2, _dL) in enumerate(zip(m1d_inj, m2d_inj, dL_inj)):
+                snr_inj[i] = detector_network.hit_network(
+                    m1=_m1, m2=_m2, dL=_dL,
+                    t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), #GW190425
+                    approximant = 'IMRPhenomXHM',
+                    precessing  = False,
+                    snr_method  = 'mf_fast',
+                )
+            idx_detected_inj = icarosim.snr_cut_flat(snr_inj, snrthr = snr_thr)
+
+        # Compute the SNR with the approximate waveform
+        elif not flat_PSD:
             theta                    = compute_theta(m1s_inj, os.path.join(base_dir, 'Pw_three.dat'))
             snr_inj, _, _            = icarosim.snr_samples(m1s_inj, m2s_inj, z_inj, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
             idx_detected_inj         = icarosim.snr_and_freq_cut(m1s_inj, m2s_inj, z_inj, snr_inj, snrthr = snr_thr, fgw_cut = fgw_cut)
@@ -104,18 +151,15 @@ with tqdm(total = Ninj) as pbar:
             snr_inj                  = icarosim.snr_samples_flat(z_inj)
             idx_detected_inj         = icarosim.snr_cut_flat(snr_inj, snrthr = snr_thr)
         
-        m1d_inj = m1s_inj[idx_detected_inj] * (1 + z_inj[idx_detected_inj])
-        m2d_inj = m2s_inj[idx_detected_inj] * (1 + z_inj[idx_detected_inj])
-        
         Ndet     = len(idx_detected_inj)
         Ndet_inj = Ndet_inj + Ndet
         c = c+1
         
-        true_param['m1d'].append(  m1d_inj)
-        true_param['m2d'].append(  m2d_inj)
-        true_param['dL'].append(   dL_inj[idx_detected_inj])
+        true_param['m1d'].append(  m1d_inj[  idx_detected_inj])
+        true_param['m2d'].append(  m2d_inj[  idx_detected_inj])
+        true_param['dL'].append(   dL_inj[   idx_detected_inj])
         true_param['prior'].append(prior_inj[idx_detected_inj])
-        true_param['snr'].append(  snr_inj[idx_detected_inj])
+        true_param['snr'].append(  snr_inj[  idx_detected_inj])
 
         if Ndet_inj > Ninj: pbar.update(Ninj)
         else:               pbar.update(Ndet)
