@@ -62,22 +62,23 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
         likelihood.parameters = {key: tmp_dict[key] for key in likelihood.rate_model.population_parameters}
         # First likelihood evaluation at true values
         single_likelihood_eval()
-        # Check effective number of injections.
-        N_eff_inj = likelihood.injections.effective_injections_number()
-        stability = N_eff_inj / (4 * n_events)
-        print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, tmp_str))
-        if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
-        # print(" --- I WILL UPDATE WEIGHTS MANUALLY --- ")
-        # likelihood.rate_model.update(**{key:tmp_dict[key] for key in likelihood.rate_model.population_parameters})
-        # likelihood.posterior_samples_dict.update_weights(likelihood.rate_model)
-        # print(" --- I HAVE UPDATED WEIGHTS MANUALLY --- ")
-
-        # Check effective numer of posterior samples.
-        try:
-            N_eff_PE  = np.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
-            print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
-        except AttributeError as err:
-            raise AttributeError(err, "* This error might occur because during the first evaluation of the likelihood, the effective number of injections was below threshold,. Consequently, log_likelihood() output -inf and never initializes the posterior sample weights.")
+        if not pars['loglike-var'] == 0:
+            # Check effective number of injections.
+            N_eff_inj = likelihood.injections.effective_injections_number()
+            stability = N_eff_inj / (4 * n_events)
+            print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, tmp_str))
+            if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
+            # Check effective numer of posterior samples.
+            try:
+                N_eff_PE  = np.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
+                print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
+            except AttributeError as err:
+                # The first likelihood evaluation at true population values gives 0 because the effective number of injections is below threshold.
+                # Consequently the initialisation of posterior samples weights is skipped.
+                raise AttributeError(err, "* The effective number of injections for the true population values is below threshold.")
+        else:
+             loglike_var = likelihood.injections.likelihood_variance_thr()
+             print('\n\tThe variance on the log-likelihood for the {1} model is {0:.1f}.'.format(loglike_var, tmp_str))
 
 
 class Wrappers:
@@ -374,12 +375,15 @@ class LikelihoodPrior:
         self.wrapper    = wrapper
 
     def Likelihood(self, data, injections, wrapper):
+
+        if self.pars['loglike-var'] == 0: self.pars['loglike-var'] = None
         
         res = icarogw.likelihood.hierarchical_likelihood(
                         data, injections, wrapper,
-                        nparallel = self.pars['nparallel'],
-                        neffPE    = self.pars['neffPE'],
-                        neffINJ   = self.pars['neffINJ'])
+                        nparallel               = self.pars['nparallel'],
+                        neffPE                  = self.pars['neffPE'],
+                        neffINJ                 = self.pars['neffINJ'],
+                        likelihood_variance_thr = self.pars['loglike-var'])
         return res
 
     def Prior(self, pars, w):

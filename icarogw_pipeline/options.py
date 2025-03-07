@@ -44,6 +44,7 @@ def InitialiseOptions(Config):
         'nparallel'                   : 1,
         'neffPE'                      : 1,
         'neffINJ'                     : None,
+        'loglike-var'                 : 0,
 
         # Sampler
         'sampler'                     : 'nessai',
@@ -59,8 +60,7 @@ def InitialiseOptions(Config):
 
         # Plots
         'N-points'                    : 500,
-        'N-z-slices'                  : 10,
-        'N-z-slices-log'              : 5,
+        'N-z-slices'                  : 5,
         'bounds-m1'                   : [0, 100],
         'bounds-m2'                   : [0, 100],
         'bounds-q'                    : [0, 1],
@@ -69,9 +69,15 @@ def InitialiseOptions(Config):
         'true-values'                 : {},
         'selection-effects'           : 0,
         'plot-prior'                  : 1,
-        'N-points-KDE'                : 500,
+        'estimate-observed-method'    : 'KDE',
+        'estimate-observed-method-m1' : 'GMM',
+        'KDE-bandwidth-scale'         : 3,
+        'KDE-bandwidth-scale-m1'      : 8,
+        'GMM-components'              : 6,
+        'N-points-KDE-GMM'            : 500,
         'N-samps-prior'               : 1000,
         'downsample-postprocessing'   : 1,
+        'percentiles'                 : {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95},
     }
 
     # Read options from config file.
@@ -109,18 +115,24 @@ def InitialiseOptions(Config):
         if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('queue-size' in key) or ('nwalkers' in key) or ('nsteps' in key) or ('ntemps' in key):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
+        if ('loglike-var' in key):
+            try: input_pars[key] = Config.getfloat('sampler', key)
+            except: pass
 
         # Plots
-        if ('N-points' in key) or ('N-z-slices' in key) or ('N-z-slices-log' in key) or ('N-points-KDE' in key) or ('N-samps-prior' in key):
+        if ('estimate-observed-method' in key) or ('estimate-observed-method-m1' in key):
+            try: input_pars[key] = Config.get('plots', key)
+            except: pass
+        if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE-GMM' in key) or ('N-samps-prior' in key) or ('GMM-components' in key):
             try: input_pars[key] = Config.getint('plots', key)
             except: pass
-        if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
+        if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key)  or ('percentiles' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
         if ('selection-effects' in key) or ('plot-prior' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
-        if ('downsample-postprocessing' in key):
+        if ('downsample-postprocessing' in key) or ('KDE-bandwidth-scale' in key) or ('KDE-bandwidth-scale-m1' in key):
             try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
     
@@ -298,6 +310,7 @@ usage = """
         nparallel                   Default: 1
         neffPE                      Number of effective PE samples per event contributing to the numerical evaluation of the likelihood. Default: 1
         neffINJ                     Number of effective injections contributing to the numerical evaluation of the likelihood. Default: None
+        loglike-var                 Cut the likelihood using the variance of the log-likelihood. If set to zero, the option is deactivated, otherwise we use the float passed. If not zero, the option superseed the Neff PE and injections. Default: 0
 
         sampler                     Type of sampler to be used to draw samples from the likelihood. Options: 'dynesty', 'nessai', 'ptemcee'. Default: 'dynesty'
         nlive                       Number of live points used by the nested sampler. Option not available for the MCMC samplers. Default: 200
@@ -315,8 +328,7 @@ usage = """
     # ----- #
 
         N-points                    Default: 500,
-        N-z-slices                  Default: 10,
-        N-z-slices-log              Default: 5,
+        N-z-slices                  Default: 5,
         bounds-m1                   Default: [0, 100],
         bounds-m2                   Default: [0, 100],
         bounds-q                    Default: [0, 1],
@@ -325,6 +337,12 @@ usage = """
         true-values                 Default: {},
         selection-effects           Default: 0,
         plot-prior                  Default: 1,
-        N-points-KDE                Default: 500,
+        estimate-observed-method    Default: 'KDE',
+        estimate-observed-method-m1 Default: 'GMM',
+        KDE-bandwidth-scale         Default: 3,
+        KDE-bandwidth-scale-m1      Default: 8,
+        GMM-components              Default: 6,
+        N-points-KDE-GMM            Default: 500,
         N-samps-prior               Default: 1000,
+        percentiles                 Default: {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95},
 """
