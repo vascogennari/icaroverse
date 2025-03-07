@@ -38,6 +38,7 @@ def InitialiseOptions(Config):
         'simulation'                  : 1,
         'data-path'                   : '',
         'distance-prior-PE'           : 1,
+        'remove-events'               : ['GW190412_053044'],
     
         # Likelihood
         'nparallel'                   : 1,
@@ -48,8 +49,8 @@ def InitialiseOptions(Config):
         'sampler'                     : 'nessai',
         'nlive'                       : 200,
         'naccept'                     : 60,
-        'npool'                       : 1,
-        'print_method'                : 'interval-60',
+        'queue-size'                  : 1,
+        'print-method'                : 'interval-60',
         'sample'                      : 'acceptance-walk',
         'nwalkers'                    : 64,
         'nsteps'                      : 1000,
@@ -70,6 +71,7 @@ def InitialiseOptions(Config):
         'plot-prior'                  : 1,
         'N-points-KDE'                : 500,
         'N-samps-prior'               : 1000,
+        'downsample-postprocessing'   : 1,
     }
 
     # Read options from config file.
@@ -84,6 +86,9 @@ def InitialiseOptions(Config):
             except: pass
         if ('O3-cosmology' in key) or ('simulation' in key) or ('distance-prior-PE' in key) or ('screen-output' in key):
             try: input_pars[key] = Config.getboolean('input', key)
+            except: pass
+        if ('remove-events' in key):
+            try: input_pars[key] = ast.literal_eval(Config.get('input', key))
             except: pass
 
         # Model
@@ -101,7 +106,7 @@ def InitialiseOptions(Config):
         if ('sampler' in key):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('npool' in key) or ('nwalkers' in key) or ('nsteps' in key) or ('ntemps' in key):
+        if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('queue-size' in key) or ('nwalkers' in key) or ('nsteps' in key) or ('ntemps' in key):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
 
@@ -114,6 +119,9 @@ def InitialiseOptions(Config):
             except: pass
         if ('selection-effects' in key) or ('plot-prior' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
+            except: pass
+        if ('downsample-postprocessing' in key):
+            try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
     
     # Initialise the prior bounds.
@@ -225,13 +233,14 @@ def default_priors():
         'delta_zt'    : [1. , 100.],
 
         # Secondary mass distribution
-        'beta'        : [1.,  6.  ],
+        'beta'        : [-20., 20.],
         'mu_q'        : [0.1, 1.  ],
         'sigma_q'     : [0.01, 0.9],
+        'alpha_q'     : [-20., 20.],
 
         # Rate evolution
         'gamma'       : [-50., 30.],
-        'kappa'       : [-10., 10.],
+        'kappa'       : [-20., 10.],
         'zp'          : [0. , 4.  ],
         'R0'          : [0. , 100.],
     }
@@ -247,42 +256,75 @@ usage = """
     # input #
     # ----- #
 
-        output                      Directory from which input samples are read. The path is relative to the 'samples' namib directory. Default: ''
-        
-        injections-path             Flag to activate a hard comparison in case only two options are compared. This parameter is used only in violin and ridgeline plots. Default: 0
-        injections-number           Flag to read the evidence from the samples. Default: 0
-        snr-cut                     Flag to plot the prior. Option currently implemented only in corner plot and not fully implemented. Default: 0
-        ifar-cut                    List of true values of the selected parameters. Currently implemented only with corner-sns=0. Default: []
-        selection-effects-cut       Flag to read the evidence from the samples. Default: 0
+        output                      Path where the run output is saved. Default: 'icarogw_run'
+        screen-output               Flag to deviate the standard output to screen. Default: '0'
 
-        O3-cosmology                List of modes for which the QNMs are computed. This option is used only when QNMs are computed from {Mf, af}. Default: [(2,2)]
-        simulation                  Flag to convert the damping time in [ms] and scale amplitudes as [1e-21]. The option is used to compare samples from Damped Sinusoids with other models. Default: 0
-        data-path                   Flag to use pyRing fits to compute the QNMs. Default: 1
+        injections-path             Path of the injections used to evaluate selection effects. Default: ''
+        injections-number           Number of generated injections used for selection effects. Default: 1
+        selection-effects-cut       Type of cut to select events and injections. Options: 'snr', 'ifar'. Default: 'snr'
+        snr-cut                     Value of signal-to-noise ratio used to selected the events and injections. Default: 12
+        ifar-cut                    Value of inverse false-alarm-rate used to selected the events and injections. Default: 4
+
+        data-path                   Path of the single event data. Default: ''.
+        O3-cosmology                Option to process PE samples using O3 data from the GWTC-3 cosmology paper. Default: 0
+        simulation                  Option to process PE samples using simulated events. Default: 1
+        distance-prior-PE           Flag to re-weight the PE samples on the luminosity distance uniform in volume, accoringly to the GWTC-3 cosmology paper. Default: 1
+        remove-events               List of events to be removed from the analysis. Default: ['GW190412_053044']
 
     # ----- #
     # model #
     # ----- #
 
-        model-primary               Options: {'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear'}
-        model-secondary             Options: {'Mass2-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-PowerLaw'}
-        model-rate                  Options: {'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'PowerLaw'}
-        redshift-transition         Options: {'linear', 'sigmoid', 'sinusoid'}
+        model-primary               Model distribution for the primary object. Options: 'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-Gaussian', 'PowerLaw-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftQuadratic', 'PowerLaw-GaussianRedshiftPowerLaw', 'PowerLaw-GaussianRedshiftSigmoid', 'PowerLawBroken-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear', 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear'. Default: 'PowerLaw-Gaussian'
+        model-secondary             Model distribution for the secondary object. Options: 'Mass2-PowerLaw', 'MassRatio-PowerLaw', 'MassRatio-Gaussian'. Default: 'MassRatio-Gaussian'
+        model-rate                  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution'. Default: 'PowerLaw'
+        
+        low-smoothing               Flag to apply a smoothing function to the Powerlaw. Available in all primary mass models with a Powerlaw. Default: 0
+        priors                      Dictionary of the prior bounds for the population parameters. Default values can be found in 'icarogw_pipeline.options.default_priors'
+        scale-free                  Flag to use the scale-free likelihood fromulation. Default: 0
+        single-mass                 Flag to use only one mass for the single-event parameters. Default: 0
 
-        positive-peak               List of parameters bounds that are used in the plots. Default: []. Syntax: [[a, b], [c, d], ...]
-        low-smoothing               List of the selected parameters ordering. Default: []
-        priors                      List of the compared parameters ordering. Default: []
-        scale-free                  List of the compared parameters ordering. Default: []
+        redshift-transition         Model function for the mixture redshift evolution. Only available for primary mass redshift evolving models. Options: 'linear', 'sigmoid', 'sinusoid'. Default: 'linear'
+        redshift-mixture            Flag to make the mixture transition function stationary in redshift. Only available for primary mass redshift evolving models. Default: 1
+        positive-gaussian-z0        Flag to constrain the Gaussian peak to be positive within 3 sigmas at redshift zero. Only available for primary mass redshift evolving models with a Gaussian. Default: 0
+        positive-gaussian-z         Flag to constrain the Gaussian peak to be positive within 3 sigmas at all redshifts. Only available for primary mass redshift evolving models with a Gaussian. Default: 0
+        separate-gaussians-z0       Flag to impose an ordering on the two Gaussian peaks at redshift zero.  Only available for primary mass redshift evolving models with two Gaussians. Default: 0
+        separate-gaussians-z        Flag to impose an ordering on the two Gaussian peaks at all redshifts.  Only available for primary mass redshift evolving models with two Gaussians. Default: 0
 
     # ------- #
     # sampler #
     # ------- #
 
-        nparallel                   Flag to save the imput samples filtered on the selected parameters. They are saved in 'output/reduced_posteriors'. Default: 0
-        neffPE                      Flag to save the medians of the selected parameters. They are saved in 'output/output_medians'. Default: 0
-        neffINJ                     Option to downsample the input samples, taking the corresponding percent value (downsampling=1, 100% of initial samples). Default: 1
+        nparallel                   Default: 1
+        neffPE                      Number of effective PE samples per event contributing to the numerical evaluation of the likelihood. Default: 1
+        neffINJ                     Number of effective injections contributing to the numerical evaluation of the likelihood. Default: None
 
-        sampler                     Flag to read the evidence from the samples. Default: 0
-        nlive                       Flag to read the evidence from the samples. Default: 0
-        npool                       Flag to read the evidence from the samples. Default: 0
+        sampler                     Type of sampler to be used to draw samples from the likelihood. Options: 'dynesty', 'nessai', 'ptemcee'. Default: 'dynesty'
+        nlive                       Number of live points used by the nested sampler. Option not available for the MCMC samplers. Default: 200
+        queue-size                  Number of parallel process to be executed (see dunesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1
+        naccept                     Default: 60
+        print-method                Default: 'interval-60'
+        sample                      Default: 'acceptance-walk'
+        nwalkers                    Default: 64
+        nsteps                      Default: 1000
+        ntemps                      Default: 10
+        threads                     Default: 10
 
+    # ----- #
+    # plots #
+    # ----- #
+
+        N-points                    Default: 500,
+        N-z-slices                  Default: 10,
+        N-z-slices-log              Default: 5,
+        bounds-m1                   Default: [0, 100],
+        bounds-m2                   Default: [0, 100],
+        bounds-q                    Default: [0, 1],
+        bounds-dL                   Default: [0, 10000],
+        bounds-z                    Default: [1e-5, 0.8],
+        true-values                 Default: {},
+        selection-effects           Default: 0,
+        plot-prior                  Default: 1,
+        N-points-KDE                Default: 500,
+        N-samps-prior               Default: 1000,
 """

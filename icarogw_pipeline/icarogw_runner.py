@@ -300,9 +300,9 @@ class Data:
             samps_dict = {}
             for ev in list(BBHs_O3_IFAR_4.keys()):
                 
-                # Skip the two low mass ratio events in Rinaldi+. This is to avoid problems in assuming a Gaussian distirbution in the mass ratio.
-                if ('190412' in ev) or ('190917' in ev) or ('030229' in ev): continue
-                else:                                    print('\t{}'.format(ev))
+                # Skip the events to be removed.
+                if ev in pars['remove-events']: continue
+                else:                           print('\t{}'.format(ev))
 
                 tmp = h5py.File(BBHs_O3_IFAR_4[ev]['PE'])
                 data_evs = tmp[BBHs_O3_IFAR_4[ev]['PE_waveform']]['posterior_samples']
@@ -482,11 +482,11 @@ def main():
 
     print('\n * Running hierarchical analysis with this settings.\n')
     if   input_pars['sampler'] == 'dynesty' or input_pars['sampler'] == 'nessai':
-        print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'npool', 'print_method', 'sample']})
+        print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'queue-size', 'print-method', 'sample']})
     elif input_pars['sampler'] == 'ptemcee':
-         print_dictionary({key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print_method']})
+        print_dictionary({key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']})
     else:
-         raise ValueError('Sampler not available.')
+        raise ValueError('Sampler not available.')
 
     # Start Bilby sampler.
     print('\n * Starting the sampler.\n')
@@ -495,11 +495,11 @@ def main():
             sampler      = input_pars['sampler'],
             nlive        = input_pars['nlive'],
             naccept      = input_pars['naccept'],
-            npool        = input_pars['npool'],
+            queue_size   = input_pars['queue-size'],
             nwalkers     = input_pars['nwalkers'],
             nsteps       = input_pars['nsteps'],
             ntemps       = input_pars['ntemps'],
-            print_method = input_pars['print_method'],
+            print_method = input_pars['print-method'],
             threads      = input_pars['threads'],
             sample       = input_pars['sample'],
             outdir       = os.path.join(input_pars['output'], 'sampler'),
