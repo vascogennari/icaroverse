@@ -60,7 +60,7 @@ def InitialiseOptions(Config):
         'bounds-m2'                   : [0, 200],
         'bounds-q'                    : [0.1, 1],
         'bounds-dL'                   : [0, 10000],
-        'bounds-z'                    : [1e-6, 1.5],
+        'bounds-z'                    : [1e-6, 3.0],
     }
 
     # Read options from config file.
@@ -80,7 +80,7 @@ def InitialiseOptions(Config):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if ('snr-fw-detectors' in key):
-            try: input_pars[key] = ast.literal_eval('input', key)
+            try: input_pars[key] = ast.literal_eval(Config.get('input', key))
             except: pass
 
         # Model
@@ -91,7 +91,7 @@ def InitialiseOptions(Config):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if ('truths' in key):
-            try: input_pars[key] = ast.literal_eval('model', key)
+            try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
         # Plots
@@ -103,10 +103,11 @@ def InitialiseOptions(Config):
             except: pass
     
     # Initialise the population true values.
+    input_pars['all-truths'] = default_population()
     if not input_pars['truths'] == {}:
         for key in input_pars['truths']: input_pars['all-truths'][key] = input_pars['truths'][key]
     else:
-        input_pars['truths'] = default_population()
+        input_pars['truths'] = input_pars['all-truths']
 
     return input_pars
 
@@ -197,9 +198,9 @@ def default_population():
 
         'lambda_peak'   : 0.1,
         'mix_z0'        : 0.9,
-        'mix_z1'        : 0.,
+        'mix_z1'        : 0.9,
         'mix_alpha_z0'  : 0.9,
-        'mix_alpha_z1'  : 0.,
+        'mix_alpha_z1'  : 0.9,
         'mix_beta_z0'   : 0.05,
         'mix_beta_z1'   : 0.,
         'mix'           : 0.9,

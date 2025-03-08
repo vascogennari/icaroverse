@@ -73,8 +73,8 @@ def main():
     # Postprocess existing data.
     if input_pars['postprocessing']:
         try:
-            dict_source_frame = pd.read_pickle(os.path.join(input_pars['output'], '{}_source_frame.pickle'  ).format(input_pars['run-type']))
-            dict_detect_frame = pd.read_pickle(os.path.join(input_pars['output'], '{}_detector_frame.pickle').format(input_pars['run-type']))
+            samps_dict_astrophysical = pd.read_pickle(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']))
+            samps_dict_observed      = pd.read_pickle(os.path.join(input_pars['output'], '{}_observed.pickle'     ).format(input_pars['run-type']))
             print(    '\n * Reading existing {}.\n'.format(             input_pars['run-type']))
         except: print('\n * Existing {} not found. Exiting...\n'.format(input_pars['run-type']))
 
@@ -84,17 +84,17 @@ def main():
         save_settings(input_pars['output'], input_pars)
         
         # Generate either a synthetic population or a set of injections for selection effects.
-        if   input_pars['run-type'] == 'population': dict_source_frame, dict_detect_frame = generate_population(input_pars)
-        elif input_pars['run-type'] == 'injections': dict_source_frame, dict_detect_frame = generate_injections(input_pars)
+        if   input_pars['run-type'] == 'population': samps_dict_astrophysical, samps_dict_observed = generate_population(input_pars)
+        elif input_pars['run-type'] == 'injections': samps_dict_astrophysical, samps_dict_observed = generate_injections(input_pars)
         else: raise ValueError('Invalid type of run. Please either select "population" or "injections".')
 
-        with open(os.path.join(input_pars['output'], '{}_source_frame.pickle'  ).format(input_pars['run-type']), 'wb') as handle:
-            pickle.dump(dict_source_frame,   handle, protocol = pickle.HIGHEST_PROTOCOL)
-        with open(os.path.join(input_pars['output'], '{}_detector_frame.pickle').format(input_pars['run-type']), 'wb') as handle:
-            pickle.dump(dict_detect_frame, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
+            pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        with open(os.path.join(input_pars['output'], '{}_observed.pickle'     ).format(input_pars['run-type']), 'wb') as handle:
+            pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
 
     # Plots section.
-    plot_population(input_pars, dict_source_frame, dict_detect_frame)
+    plot_population(input_pars, samps_dict_astrophysical, samps_dict_observed)
     print(' * Finished.\n')
 
 
@@ -135,16 +135,19 @@ def generate_population(pars):
     with open(os.path.join(pars['output'], 'number_detected_events.txt'), 'w') as f: f.write('{}'.format(len(idx_detected)))
     
     # Select the detected events.
+    m1s_det = m1s[idx_detected]
+    m2s_det = m2s[idx_detected]
+    zs_det  = zs[ idx_detected]
     m1d_det = m1d[idx_detected]
     m2d_det = m2d[idx_detected]
     dL_det  = dL[ idx_detected]
-    snr     = SNR[idx_detected]
+    SNR_det = SNR[idx_detected]
     
     # Save the population.
-    samps_detector_dict = {'m1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det, 'snr': snr}
-    samps_source_dict   = {'m1s': m1s,     'm2s': m2s,     'z' : zs,     'snr': snr}
+    samps_dict_observed      = {'m1s': m1s_det, 'm2s': m2s_det, 'z' : zs_det, 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det, 'snr': SNR_det}
+    samps_dict_astrophysical = {'m1s': m1s,     'm2s': m2s,     'z' : zs,     'm1d': m1d,     'm2d': m2d,     'dL': dL,     'snr': SNR    }
     
-    return samps_source_dict, samps_detector_dict
+    return samps_dict_astrophysical, samps_dict_observed
 
 
 def generate_injections(pars):
@@ -156,8 +159,8 @@ def generate_injections(pars):
     '''
 
     # Initialize the dictionaries.
-    samps_detector_dict = {'m1d':[], 'm2d':[], 'dL':[], 'prior':[], 'snr':[]}
-    samps_source_dict   = {'m1s':[], 'm2s':[], 'z' :[]}
+    samps_dict_observed      = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': [], 'prior': []}
+    samps_dict_astrophysical = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': []}
 
     c = 0
     inj_number_tmp = 0
@@ -210,30 +213,37 @@ def generate_injections(pars):
             inj_number_tmp = inj_number_tmp + number_detected_chuck
             c = c+1
 
-            samps_source_dict['m1s'].append(m1s)
-            samps_source_dict['m2s'].append(m2s)
-            samps_source_dict['z'  ].append(zs )
+            samps_dict_astrophysical['m1s'].append(m1s)
+            samps_dict_astrophysical['m2s'].append(m2s)
+            samps_dict_astrophysical['z'  ].append(zs )
+            samps_dict_astrophysical['m1d'].append(m1d)
+            samps_dict_astrophysical['m2d'].append(m2d)
+            samps_dict_astrophysical['dL' ].append(dL )
+            samps_dict_astrophysical['snr'].append(SNR)
 
-            samps_detector_dict['m1d'  ].append(m1d[  idx_detected])
-            samps_detector_dict['m2d'  ].append(m2d[  idx_detected])
-            samps_detector_dict['dL'   ].append(dL[   idx_detected])
-            samps_detector_dict['prior'].append(prior[idx_detected])
-            samps_detector_dict['snr'  ].append(SNR[  idx_detected])
+            samps_dict_observed['m1s'  ].append(m1s[  idx_detected])
+            samps_dict_observed['m2s'  ].append(m2s[  idx_detected])
+            samps_dict_observed['z'    ].append(zs[   idx_detected])
+            samps_dict_observed['m1d'  ].append(m1d[  idx_detected])
+            samps_dict_observed['m2d'  ].append(m2d[  idx_detected])
+            samps_dict_observed['dL'   ].append(dL[   idx_detected])
+            samps_dict_observed['snr'  ].append(SNR[  idx_detected])
+            samps_dict_observed['prior'].append(prior[idx_detected])
 
             if inj_number_tmp > pars['injections-number']: pbar.update(pars['injections-number'])
             else:               pbar.update(number_detected_chuck)
 
     # Clean the dictionary.
-    for key in samps_source_dict.keys():   samps_source_dict[  key] = np.concatenate(samps_source_dict[  key])
-    for key in samps_detector_dict.keys(): samps_detector_dict[key] = np.concatenate(samps_detector_dict[key])
+    for key in samps_dict_astrophysical.keys(): samps_dict_astrophysical[key] = np.concatenate(samps_dict_astrophysical[key])
+    for key in samps_dict_observed.keys():      samps_dict_observed[     key] = np.concatenate(samps_dict_observed[     key])
 
     # Save the number of detected events.
     print('\n * Generated {} injections.'.format(pars['injections-number-bank'] * c))
     with open(os.path.join(pars['output'], 'injections_number.txt'), 'w') as f:
         f.write('Generated: {}\n'.format(int(pars['injections-number-bank'] * c)))
-        f.write('Detected:  {}'.format(len(samps_detector_dict['m1d'])))
+        f.write('Detected:  {}'.format(len(samps_dict_observed['m1d'])))
 
-    return samps_source_dict, samps_detector_dict
+    return samps_dict_astrophysical, samps_dict_observed
 
 
 
@@ -263,14 +273,14 @@ def read_truths(path):
 
 def save_settings(path, dictionary):
 
-    with open(os.path.join(path, 'population_settings.txt'), 'w') as f:
+    with open(os.path.join(path, 'analysis_settings.txt'), 'w') as f:
         for key in dictionary.keys():
             max_len = len(max(dictionary.keys(), key = len))
             f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
 
 def read_settings(path):
 
-    with open(os.path.join(path, 'population_settings.txt'), 'r') as f:
+    with open(os.path.join(path, 'analysis_settings.txt'), 'r') as f:
         res = dict([line.strip().split('  ', 1) for line in f])
     for key in res.keys():
         if key == 'positive-peak' or key == 'low-smoothing' or key == 'single-mass' or key == 'flat-PSD':
@@ -297,8 +307,8 @@ def get_distribution_samples(pars):
     # Initialise the arrays.
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
     m2_array = np.linspace(pars['bounds-m2'][0], pars['bounds-m2'][1], pars['N-points'])
-    q_array  = np.linspace(pars['bounds-q'][0],  pars['bounds-q'][1],  pars['N-points'])
-    z_array  = np.linspace(pars['bounds-z'][0],  pars['bounds-z'][1],  pars['N-points'])
+    q_array  = np.linspace(pars['bounds-q'][ 0], pars['bounds-q'][ 1], pars['N-points'])
+    z_array  = np.linspace(pars['bounds-z'][ 0], pars['bounds-z'][ 1], pars['N-points'])
 
     # Rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
@@ -457,44 +467,59 @@ def rejection_sampling_1D(x, PDF, N):
 # Plotting functions #
 ######################
 
-def plot_population(pars, dict_source_frame, dict_detect_frame):
+def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
+
+    colors = ['#0771AB', '#8F3A49']
+    nbins  = 40
+    alpha  = 0.5
 
     title = 'm1_source_frame'
     figname = os.path.join(pars['output'], 'plots', title)
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
-    plt.hist(dict_source_frame['m1s'], density = 1, bins = 40, color = 'k', alpha = 0.5)
+    plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+    plt.hist(samps_dict_observed[     'm1s'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     update_weights(pars['wrappers']['m1w'], pars['truths'])
-    plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array))
+    if 'Redshift' in pars['model-primary']:
+        plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array, np.median(samps_dict_astrophysical['z'])), c = '#153B60', label = 'Injected z-median')
+    else:
+        plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array), c = '#153B60', label = 'Injected')
     plt.title(title)
     plt.xlabel('m1')
     plt.yscale('log')
     plt.ylim(1e-5, 1)
+    plt.legend()
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
 
     title = 'm1_detector_frame'
     figname = os.path.join(pars['output'], 'plots', title)
-    plt.hist(dict_detect_frame['m1d'], bins = 40, color = 'k', alpha = 0.5)
+    plt.hist(samps_dict_astrophysical['m1d'], bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+    plt.hist(samps_dict_observed[     'm1d'], bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     plt.title(title)
     plt.xlabel('m1')
+    plt.legend()
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
     
     title = 'm1z_source_frame'
     figname = os.path.join(pars['output'], 'plots', title)
-    plt.scatter(dict_source_frame['m1s'], dict_source_frame['z'], s = 0.1, c = 'k')
+    plt.scatter(samps_dict_astrophysical['m1s'], samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
+    plt.scatter(samps_dict_observed[     'm1s'], samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
     plt.ylabel('z')
+    plt.legend()
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
 
     title = 'm1dL_detector_frame'
     figname = os.path.join(pars['output'], 'plots', title)
-    plt.scatter(dict_detect_frame['m1d'], dict_detect_frame['dL'], s = 0.1, c = 'k')
+    plt.scatter(samps_dict_astrophysical['m1d'], samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
+    plt.scatter(samps_dict_observed[     'm1d'], samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
     plt.ylabel('dL')
+    plt.legend()
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
 
@@ -535,10 +560,11 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
     else:
         figname = os.path.join(pars['output'], 'plots', title)
         pdf = wrapper.pdf(x_array)
-        plt.hist(q_samps, density = 1, bins = 40, color = 'k', alpha = 0.5)
-        plt.plot(x_array, pdf)
+        plt.hist(q_samps, density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+        plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
         plt.xlabel('$q$')
         plt.ylabel('$p(q)$')
+        plt.legend()
         plt.tight_layout()
         plt.savefig('{}.pdf'.format(figname), transparent = True)
         plt.close()
