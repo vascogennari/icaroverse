@@ -10,7 +10,7 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, pos_gauss_z0 = None, pos_gauss_z = None, sep_gauss_z0 = None, sep_gauss_z = None, z_mixture = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -26,14 +26,10 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             # GaussianRedshift-order-x model.
             return wrap(order = order)
     else:
-        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftQuadratic' or wrap_name == 'PowerLaw_GaussianRedshiftPowerLaw' or wrap_name == 'PowerLaw_GaussianRedshiftSigmoid' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear':
-            return wrap(redshift_transition = transition, flag_powerlaw_smoothing = smoothing, flag_positive_gaussian_z0 = pos_gauss_z0, flag_positive_gaussian_z = pos_gauss_z, flag_redshift_mixture = z_mixture)
-        elif wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear':
-            return wrap(redshift_transition = transition, flag_powerlaw_smoothing = smoothing, flag_positive_gaussian_z0 = pos_gauss_z0, flag_positive_gaussian_z = pos_gauss_z, flag_separates_gaussians_z0 = sep_gauss_z0, flag_separates_gaussians_z = sep_gauss_z, flag_redshift_mixture = z_mixture)
-        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear':
-            return wrap(redshift_transition = transition,                                      flag_positive_gaussian_z0 = pos_gauss_z0, flag_positive_gaussian_z = pos_gauss_z, flag_separates_gaussians_z0 = sep_gauss_z0, flag_separates_gaussians_z = sep_gauss_z, flag_redshift_mixture = z_mixture)
-        elif wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear':
-            return wrap(redshift_transition = transition,                                                                                                                                                                                                              flag_redshift_mixture = z_mixture)
+        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftQuadratic' or wrap_name == 'PowerLaw_GaussianRedshiftPowerLaw' or wrap_name == 'PowerLaw_GaussianRedshiftSigmoid' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear':
+            return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture, flag_powerlaw_smoothing = smoothing)
+        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear':
+            return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture)
 
 def print_dictionary(dictionary):
       
@@ -79,34 +75,34 @@ class Wrappers:
 
         # Non-evolving models.
         if not 'Redshift' in pars['model-primary']:
-            if   pars['model-primary'] == 'PowerLaw':                                      w = get_wrapper('massprior_PowerLaw')
-            elif pars['model-primary'] == 'PowerLaw-Gaussian':                             w = get_wrapper('massprior_PowerLawPeak')
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw':                             w = get_wrapper('PowerLaw_PowerLaw',          smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw':                    w = get_wrapper('PowerLaw_PowerLaw_PowerLaw', smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian':                    w = get_wrapper('PowerLaw_PowerLaw_Gaussian', smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'DoublePowerlaw':                                w = get_wrapper('DoublePowerlaw')
+            if   pars['model-primary'] == 'PowerLaw':                   w = get_wrapper('massprior_PowerLaw')
+            elif pars['model-primary'] == 'PowerLaw-Gaussian':          w = get_wrapper('massprior_PowerLawPeak')
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw':          w = get_wrapper('PowerLaw_PowerLaw',          smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw': w = get_wrapper('PowerLaw_PowerLaw_PowerLaw', smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian': w = get_wrapper('PowerLaw_PowerLaw_Gaussian', smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'DoublePowerlaw':             w = get_wrapper('DoublePowerlaw')
             else:
                 raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
             if not ( (pars['single-mass'] and 'Mass2' in pars['model-secondary']) or (pars['model-primary'] == 'PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian') ):
-                if pars['low-smoothing']:                                                  w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
+                if pars['low-smoothing']:                               w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
 
         # Evolving models.
         else:
-            if   pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear':                                      w = get_wrapper('PowerLaw_GaussianRedshiftLinear',                                      transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftQuadratic':                                   w = get_wrapper('PowerLaw_GaussianRedshiftQuadratic',                                   transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftPowerLaw':                                    w = get_wrapper('PowerLaw_GaussianRedshiftPowerLaw',                                    transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftSigmoid':                                     w = get_wrapper('PowerLaw_GaussianRedshiftSigmoid',                                     transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLawBroken-GaussianRedshiftLinear':                                w = get_wrapper('PowerLawBroken_GaussianRedshiftLinear',                                transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('PowerLawRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               w = get_wrapper('PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               transition = pars['redshift-transition'], smoothing = pars['low-smoothing'], pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'],                                    pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'],                                    pos_gauss_z0 = pars['positive-gaussian-z0'], pos_gauss_z = pars['positive-gaussian-z'], sep_gauss_z0 = pars['separate-gaussians-z0'], sep_gauss_z = pars['separate-gaussians-z'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', transition = pars['redshift-transition'], smoothing = pars['low-smoothing'],                                                                                                                                                                                   z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], smoothing = pars['low-smoothing'],                                                                                                                                                                                   z_mixture = pars['redshift-mixture'])
+            if   pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear':                                      w = get_wrapper('PowerLaw_GaussianRedshiftLinear',                                      transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftQuadratic':                                   w = get_wrapper('PowerLaw_GaussianRedshiftQuadratic',                                   transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftPowerLaw':                                    w = get_wrapper('PowerLaw_GaussianRedshiftPowerLaw',                                    transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftSigmoid':                                     w = get_wrapper('PowerLaw_GaussianRedshiftSigmoid',                                     transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLawBroken-GaussianRedshiftLinear':                                w = get_wrapper('PowerLawBroken_GaussianRedshiftLinear',                                transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('PowerLawRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               w = get_wrapper('PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'])
+            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'])
+            elif pars['model-primary'] == 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            elif pars['model-primary'] == 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
 
             elif 'GaussianRedshift-order-' in pars['model-primary']:
-                                                                                           order = int(pars['model-primary'].split('GaussianRedshift-order-')[-1])
-                                                                                           w = get_wrapper('GaussianEvolving', order = order)
+                order = int(pars['model-primary'].split('GaussianRedshift-order-')[-1])
+                w = get_wrapper('GaussianEvolving', order = order)
             else:
                 raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
         return w
@@ -115,11 +111,11 @@ class Wrappers:
 
         if not pars['single-mass']:
             if   pars['model-secondary'] == 'Mass2-PowerLaw':          
-                if pars['low-smoothing']:                              w = get_wrapper('m1m2_conditioned_lowpass', input_wrapper = m1w)
-                else:                                                  w = get_wrapper('m1m2_conditioned',         input_wrapper = m1w)
-            elif pars['model-secondary'] == 'MassRatio-Gaussian':      w = get_wrapper('mass_ratio_prior_Gaussian')
-            elif pars['model-secondary'] == 'MassRatio-PowerLaw':      w = get_wrapper('mass_ratio_prior_Powerlaw')
-            elif pars['model-secondary'] == 'MassRatio-Gamma':         w = get_wrapper('Gamma')
+                if pars['low-smoothing']:                         w = get_wrapper('m1m2_conditioned_lowpass', input_wrapper = m1w)
+                else:                                             w = get_wrapper('m1m2_conditioned',         input_wrapper = m1w)
+            elif pars['model-secondary'] == 'MassRatio-Gaussian': w = get_wrapper('mass_ratio_prior_Gaussian')
+            elif pars['model-secondary'] == 'MassRatio-PowerLaw': w = get_wrapper('mass_ratio_prior_Powerlaw')
+            elif pars['model-secondary'] == 'MassRatio-Gamma':    w = get_wrapper('Gamma')
             else:
                 raise ValueError('Unknown model for the secondary mass {}. Please consult the available models.'.format(pars['model-secondary']))
         else:

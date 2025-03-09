@@ -16,10 +16,6 @@ def InitialiseOptions(Config):
         'model-rate'                  : 'PowerLaw',
 
         'redshift-transition'         : 'linear',
-        'positive-gaussian-z0'        : 0,
-        'positive-gaussian-z'         : 0,
-        'separate-gaussians-z0'       : 0,
-        'separate-gaussians-z'        : 0,
         'redshift-mixture'            : 1,
         'low-smoothing'               : 0,
         'priors'                      : {},
@@ -96,7 +92,7 @@ def InitialiseOptions(Config):
         if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('positive-gaussian-z0' in key) or ('positive-gaussian-z' in key) or ('separate-gaussians-z0' in key) or ('separate-gaussians-z' in key) or ('redshift-mixture' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
+        if ('redshift-mixture' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if ('priors' in key):
@@ -121,7 +117,7 @@ def InitialiseOptions(Config):
         if ('selection-effects' in key) or ('plot-prior' in key) or ('m1-logscale' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
-    
+
     # Initialise the prior bounds.
     input_pars['all-priors'] = default_priors()
     if not input_pars['priors'] == {}:
