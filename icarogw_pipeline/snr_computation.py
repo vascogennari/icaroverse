@@ -542,7 +542,11 @@ class BilbySNR():
             self.ifos_list[i].power_spectral_density = self.all_ifos_available_psd_dict[ifo]
 
 
-    def compute_snr(self, reference_frequency=20., sampling_frequency=2048., approx='IMRPhenomXPHM'):
+    def compute_matched_filter_snr(self, reference_frequency=20., sampling_frequency=2048., approx='IMRPhenomXPHM'):
+        """
+        Compute the matched filter SNR for the event with parameters stored in self.event_dict
+        """
+        self.check_all_parameters_present()
 
         # Calculate the time between the moment the binary's frequency enters the detector's band (default: 20 Hz) and the merger
         time_to_merger = bilby.gw.utils.calculate_time_to_merger(
@@ -605,4 +609,26 @@ class BilbySNR():
         if 'seed' not in self.event_dict:
             self.event_dict['seed'] = int(time.time()) + np.random.randint(1000000)
         np.random.seed(self.event_dict['seed'])
+
+    def check_all_parameters_present(self):
+        if not (
+            ('geocent_time' in self.event_dict) and
+            ('mass_1' in self.event_dict) and
+            ('mass_2' in self.event_dict) and
+            ('luminosity_distance' in self.event_dict) and
+            ('dec' in self.event_dict) and
+            ('ra' in self.event_dict) and
+            ('theta_jn' in self.event_dict) and
+            ('psi' in self.event_dict) and
+            ('phase' in self.event_dict) and
+            ('a_1' in self.event_dict) and
+            ('a_2' in self.event_dict) and
+            ('tilt_1' in self.event_dict) and
+            ('tilt_2' in self.event_dict) and
+            ('phi_12' in self.event_dict) and
+            ('phi_jl' in self.event_dict) and
+            ('ifos_on' in self.event_dict)
+        ):
+            raise KeyError("Some single event parameters are missing for SNR computation. Please consider reloading the event dict with the set_event_dict() method")
+
 
