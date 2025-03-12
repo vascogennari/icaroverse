@@ -28,14 +28,15 @@ def InitialiseOptions(Config):
         'snr-cut'                     : 12.,
         'ifar-cut'                    : 4.,
         'selection-effects-cut'       : 'snr',
-        'reverse_q'                   : 0,
+        'inverse-mass-ratio'          : 0,
 
         # Data
         'O3-cosmology'                : 0,
         'simulation'                  : 1,
         'data-path'                   : '',
-        'distance-prior-PE'           : 1,
         'remove-events'               : ['GW190412_053044'],
+        'PE-prior-distance'           : 'dL3',
+        'PE-prior-masses'             : 'm1-m2',
     
         # Likelihood
         'nparallel'                   : 1,
@@ -75,13 +76,13 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if ('output' in key) or ('injections-path' in key) or ('selection-effects-cut' in key) or ('data-path' in key):
+        if ('output' in key) or ('injections-path' in key) or ('selection-effects-cut' in key) or ('data-path' in key) or ('PE-prior-distance' in key) or ('PE-prior-masses' in key):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if ('injections-number' in key) or ('snr-cut' in key) or ('ifar-cut' in key):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if ('O3-cosmology' in key) or ('simulation' in key) or ('distance-prior-PE' in key) or ('reverse_q' in key):
+        if ('O3-cosmology' in key) or ('simulation' in key) or ('inverse-mass-ratio' in key):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if ('remove-events' in key):
