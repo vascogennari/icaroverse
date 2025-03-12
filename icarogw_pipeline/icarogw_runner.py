@@ -10,12 +10,17 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, cosmo_wrap=False, input_wrapper = None, order = None, transition = None, smoothing = None, pos_gauss_z0 = None, pos_gauss_z = None, sep_gauss_z0 = None, sep_gauss_z = None, z_mixture = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, pos_gauss_z0 = None, pos_gauss_z = None, sep_gauss_z0 = None, sep_gauss_z = None, z_mixture = None, cosmo_wrap = True, bkg_cosmo_wrap_name = None):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
     if cosmo_wrap:
-        return wrap(zmax=20)
+        # if bkg_cosmo_wrap_name is not None, it is assumed that wrap_name refers to a modified gravity cosmology wrapper
+        if bkg_cosmo_wrap_name is not None:
+            bkg_wrap = get_wrapper(bkg_cosmo_wrap_name, cosmo_wrap=True)
+            return wrap(bkg_wrap)
+        else:
+            return wrap(zmax=20)
     elif transition == None:
         if order == None:
             if not input_wrapper == None:
@@ -140,9 +145,14 @@ class Wrappers:
     
     def Cosmology(self, pars):
 
-        if   pars['model-cosmology'] == 'FlatLambdaCDM': w = get_wrapper('FlatLambdaCDM_wrap', cosmo_wrap=True)
-        elif pars['model-cosmology'] == 'FlatwCDM':      w = get_wrapper('FlatwCDM_wrap',      cosmo_wrap=True)
-        elif pars['model-cosmology'] == 'wIDE1':         w = get_wrapper('wIDE1_wrap',         cosmo_wrap=True)
+        if ('mod' in pars['model-cosmology']) and (pars['model-bkg-cosmo'] in {'FlatLambdaCDM', 'FlatwCDM', 'wIDE1'}):
+            if   pars['model-cosmology'] == 'Xi0_mod':       w = get_wrapper('Xi0_mod_wrap',       cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
+            elif pars['model-cosmology'] == 'extraD_mod':    w = get_wrapper('extraD_mod_wrap',    cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
+            elif pars['model-cosmology'] == 'cM_mod':        w = get_wrapper('cM_mod_wrap',        cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
+            elif pars['model-cosmology'] == 'alphalog_mod':  w = get_wrapper('alphalog_mod_wrap',  cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
+        elif pars['model-cosmology'] == 'FlatLambdaCDM':     w = get_wrapper('FlatLambdaCDM_wrap', cosmo_wrap=True)
+        elif pars['model-cosmology'] == 'FlatwCDM':          w = get_wrapper('FlatwCDM_wrap',      cosmo_wrap=True)
+        elif pars['model-cosmology'] == 'wIDE1':             w = get_wrapper('wIDE1_wrap',         cosmo_wrap=True)
         else:
             raise ValueError('Unknown model for the cosmology {}. Please consult the available models.'.format(pars['model-cosmology']))   
         return w

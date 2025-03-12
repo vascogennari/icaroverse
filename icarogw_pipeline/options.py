@@ -15,6 +15,7 @@ def InitialiseOptions(Config):
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
         'model-cosmology'             : 'FlatLambdaCDM',
+        'model-bkg-cosmo'             : 'FlatLambdaCDM',
 
         'redshift-transition'         : 'linear',
         'positive-gaussian-z0'        : 0,
