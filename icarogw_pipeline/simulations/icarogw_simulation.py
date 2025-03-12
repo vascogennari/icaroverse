@@ -308,6 +308,9 @@ def get_distribution_samples(pars):
     '''
         Draw samples from the selected sitribution.
         Returns the source and detector frame samples.
+
+        Whatever distribution is used, the output prior is expressed in the detector frame using the variables (m1d,m2d,dL).
+        Please make sure to properly account for any variable transformation involved, by including the corresponding Jacobian.
     '''
     # Initialise the arrays.
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
@@ -336,10 +339,10 @@ def get_distribution_samples(pars):
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
         m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, pars['events-number'])
 
-    # Remove the log_10 contribution.
+    # If required, remove the log10 contribution.
     if pars['log10-PDF']:
         m1s = np.power(10., m1s)
-        pdf_m1 *= np.log10(np.e) / m1s
+        pdf_m1 *= np.log10(np.e) / m1s   # Compute the Jacobian: |J_(log10(m1s))->(m1s)| = log10(e) / m1s.
 
     # Secondary mass.
     if 'MassRatio' in pars['model-secondary']:
@@ -347,17 +350,19 @@ def get_distribution_samples(pars):
         tmp = pars['wrappers']['m2w'].pdf(q_array)
         qs, pdf_q = rejection_sampling_1D(q_array, tmp, pars['events-number'])
 
-        # Remove the log_10 contribution.
+        # If required, remove the log10 contribution.
         if pars['log10-PDF']:
             qs = np.power(10., qs)
-            pdf_q *= np.log10(np.e) / qs
+            pdf_q *= np.log10(np.e) / qs # Compute the Jacobian: |J_(log10(q))->(q)| = log10(e) / q.
 
-        if not pars['invert-mass-ratio']:
-            m2s = qs * m1s # Compute m2 from q.
-            pdf_m2 = pdf_q / m1s # Compute the Jacobian (m1s,q)->(m1s,m2s).
+        # If required, get m2 from q.
+        if not pars['inverse-mass-ratio']:
+            m2s = qs * m1s
+            pdf_m2 = pdf_q / m1s         # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = 1/m1s, with q = m2/m1.
         else:
-            m2s = m1s / qs # Compute m2 from q.
-            pdf_m2 = m1s / pdf_q # FIXME
+            m2s = m1s / qs
+            pdf_m2 = pdf_q / m1s * qs**2 # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = q**2/m1s, with q=m1/m2.
+
         pdf_m1m2 = pdf_m1 * pdf_m2
         plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
     else:
@@ -373,7 +378,7 @@ def get_distribution_samples(pars):
     m2d = m2s * (1 + zs)
     dL  = pars['wrappers']['ref-cosmo'].z2dl(zs)
 
-    # Transform the prior from source to detector frame.
+    # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz]
     prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
 
     return m1s, m2s, zs, m1d, m2d, dL, prior

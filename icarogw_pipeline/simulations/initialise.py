@@ -44,7 +44,7 @@ def InitialiseOptions(Config):
         'icarogw-sim-z-max'           : 1.5,
 
         'log10-PDF'                   : 0,
-        'invert-mass-ratio'           : 1,
+        'inverse-mass-ratio'          : 1,
 
         # Model
         'model-primary'               : 'PowerLaw-Gaussian',                     
@@ -79,7 +79,7 @@ def InitialiseOptions(Config):
         if ('events-number' in key) or ('injections-number' in key) or ('injections-number-bank' in key) or ('snr-app-N-detectors' in key):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if ('screen-output' in key) or ('postprocessing' in key) or ('flat-PSD' in key) or ('use-icarogw-sim-inj' in key) or ('snr-fw-precession' in key) or ('use-icarogw-sim-inj' in key) or ('log10-PDF' in key) or ('invert-mass-ratio' in key):
+        if ('screen-output' in key) or ('postprocessing' in key) or ('flat-PSD' in key) or ('use-icarogw-sim-inj' in key) or ('snr-fw-precession' in key) or ('use-icarogw-sim-inj' in key) or ('log10-PDF' in key) or ('inverse-mass-ratio' in key):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if ('snr-fw-detectors' in key):
