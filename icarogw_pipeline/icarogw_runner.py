@@ -212,7 +212,7 @@ class SelectionEffects:
             obs_time = (28519200 / 86400) / 365
             pars['injections-number'] = data_inj.attrs['total_generated']
             prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
-            # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m_1s, m_2s, z) --> (m_1d, m_2d, d_L).
+            # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m1s,m2s,z)->(m1d,m2d,dL).
             prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
 
             tmp = np.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
@@ -234,7 +234,7 @@ class SelectionEffects:
         # Internal simulations
         elif pars['simulation']:
 
-            # This prior must be the one in detector frame for the variables (m1d, m2d, dL).
+            # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
             # Whatever distribution and variables used to generate the injections, please make sure it follows such conventions.
             prior = data_inj['prior']
             obs_time = 1
@@ -255,7 +255,7 @@ class SelectionEffects:
                         prior *= data_inj[mass_1]                             # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
                     else:
                         inj_dict['mass_ratio'] = data_inj[mass_1] / inj_dict.pop('mass_2')
-                        prior *= data_inj[mass_1] / inj_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q**2, with q=m1/m2.
+                        prior *= data_inj[mass_1] / inj_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
             else:
                 # If only using one mass, remove the Jacobian contribution from the secondary.
                 # This operation depends on the injection prior used to generate the injections.
@@ -315,18 +315,15 @@ class Data:
                     'mass_2'             : data_evs['mass_2'][()],
                     'luminosity_distance': data_evs['luminosity_distance'][()]}
 
-                # Account for PE prior.
+                # Account for PE priors. For O3 data, PE priors are uniform in component masses.
+                # Luminosity distance.
                 if   pars['PE-prior-distance'] == 'dL' : prior = np.ones(len(data_evs['luminosity_distance'][()]))    # Set the prior to one.
                 elif pars['PE-prior-distance'] == 'dL3': prior = np.power(   data_evs['luminosity_distance'][()], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
 
-                # If using the mass ratio, correct the prior with the Jacobian m2->q.
+                # Case of using mass ratio instead of the secondary mass.
                 if 'MassRatio' in pars['model-secondary']:
-                    pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / data_evs['mass_1'][()]
-                    prior *= data_evs['mass_1'][()] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
-
-                    # Account for PE prior.
-                    if pars['PE-prior-masses'  ] == 'Mc-q':
-                        raise ValueError('The option to use a PE prior uniform in chirp mass and mass ratio is to be implemented.')
+                    pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / pos_dict['mass_1']
+                    prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
 
@@ -345,23 +342,35 @@ class Data:
                     'mass_2':              np.array([data_evs['m2d'][i]]),
                     'luminosity_distance': np.array([data_evs['dL'][i]])}
 
+                # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
+                prior = np.full(len(pos_dict['mass_1']), 1.)
+
                 # Account for PE prior.
-                if   pars['PE-prior-distance'] == 'dL' : prior = prior = np.array([1.])    # Set the prior to one.
-                elif pars['PE-prior-distance'] == 'dL3': prior = np.array([data_evs['dL'][i]**2]) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+                if not pars['true-data']:
+                    # Luminosity distance. If the prior is uniform in dL, we leave it flat.
+                    if pars['PE-prior-distance'] == 'dL3': prior *= data_evs['dL'][i]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
 
-                if not pars['single-mass']:
-                    # If using the mass ratio, correct the prior with the Jacobian m2->q.
-                    if 'MassRatio' in pars['model-secondary']:
-                        if not pars['inverse-mass-ratio']:
-                            pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / pos_dict['mass_1']
-                            prior *= pos_dict['mass_1']                             # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+                    if not pars['single-mass']:
+                        chirp_mass = (pos_dict['mass_1']*pos_dict['mass_2'])**(3/5) / (pos_dict['mass_1']+pos_dict['mass_2'])**(1/5)
+                        # Case of using component masses. If the prior is uniform in (m1,m2), we leave it flat.
+                        if not 'MassRatio' in pars['model-secondary']:
+                            if   pars['PE-prior-masses'] == 'Mc-q':
+                                if not pars['inverse-mass-ratio']:
+                                    prior *= chirp_mass / pos_dict['mass_1']**2 # p(m1,m2) = |J_(Mc,q)->(m1,m2)| = Mc/m1^2, with q = m2/m1.
+                                else:
+                                    prior *= chirp_mass / pos_dict['mass_2']**2 # p(m1,m2) = |J_(Mc,q)->(m1,m2)| = Mc/m2^2, with q = m1/m2.
+
+                        # Case of using mass ratio instead of the secondary mass.
                         else:
-                            pos_dict['mass_ratio'] = pos_dict['mass_1'] / pos_dict.pop('mass_2')
-                            prior *= pos_dict['mass_1'] / pos_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q**2, with q=m1/m2.
+                            if not pars['inverse-mass-ratio']:
+                                pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / pos_dict['mass_1']
+                                if   pars['PE-prior-masses'] == 'm1-m2': prior *= pos_dict['mass_1']              # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+                                elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1'] # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m2/m1.
 
-                else: # If using only one mass.
-                    try:     pos_dict.pop('mass_2')
-                    except : pos_dict.pop('mass_ratio')
+                            else:
+                                pos_dict['mass_ratio'] = pos_dict['mass_1'] / pos_dict.pop('mass_2')
+                                if   pars['PE-prior-masses'] == 'm1-m2': prior *= pos_dict['mass_1'] / pos_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
+                                elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
         else:

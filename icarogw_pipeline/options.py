@@ -37,6 +37,7 @@ def InitialiseOptions(Config):
         'remove-events'               : ['GW190412_053044'],
         'PE-prior-distance'           : 'dL3',
         'PE-prior-masses'             : 'm1-m2',
+        'true-data'                   : 0,
     
         # Likelihood
         'nparallel'                   : 1,
@@ -82,7 +83,7 @@ def InitialiseOptions(Config):
         if ('injections-number' in key) or ('snr-cut' in key) or ('ifar-cut' in key):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if ('O3-cosmology' in key) or ('simulation' in key) or ('inverse-mass-ratio' in key):
+        if ('O3-cosmology' in key) or ('simulation' in key) or ('inverse-mass-ratio' in key) or ('true-data'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if ('remove-events' in key):
