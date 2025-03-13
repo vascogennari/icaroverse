@@ -659,7 +659,11 @@ class Plots:
 
         self.curves_dict = {}
 
+<<<<<<< HEAD
         # Downsample the df if required.
+=======
+        # Downsample the df if required
+>>>>>>> a53e5ef8f4db017b6a8edf7055c78006e35b0722
         if not pars['downsample-postprocessing'] == 1: self.df = downsampling(self.df, pars['downsample-postprocessing'])
 
     def PrimaryMass(self):
