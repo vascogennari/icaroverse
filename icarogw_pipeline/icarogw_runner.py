@@ -10,7 +10,7 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, pos_gauss_z0 = None, pos_gauss_z = None, sep_gauss_z0 = None, sep_gauss_z = None, z_mixture = None, cosmo_wrap = True, bkg_cosmo_wrap_name = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, pos_gauss_z0 = None, pos_gauss_z = None, sep_gauss_z0 = None, sep_gauss_z = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
