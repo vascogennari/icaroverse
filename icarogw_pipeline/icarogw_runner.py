@@ -145,18 +145,18 @@ class Wrappers:
     
     def Cosmology(self, pars):
 
-        if ('_mod' in pars['model-cosmology']) and (pars['model-bkg-cosmo'] in {'FlatLambdaCDM', 'FlatwCDM', 'wIDE1'}):
+        if ('_mod' in pars['model-cosmology']) and (pars['model-bkg-cosmo'] in {'FlatLambdaCDM', 'FlatwCDM', 'wIDS_linDE'}):
             if   pars['model-cosmology'] == 'Xi0_mod':       w = get_wrapper('Xi0_mod_wrap',       cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
             elif pars['model-cosmology'] == 'extraD_mod':    w = get_wrapper('extraD_mod_wrap',    cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
             elif pars['model-cosmology'] == 'cM_mod':        w = get_wrapper('cM_mod_wrap',        cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
             elif pars['model-cosmology'] == 'alphalog_mod':  w = get_wrapper('alphalog_mod_wrap',  cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
             else:
                 raise ValueError('Unknown modified gravity model for the cosmology {}. Please consult the available models.'.format(pars['model-cosmology']))
-        elif ('_mod' in pars['model-cosmology']) and (pars['model-bkg-cosmo'] not in {'FlatLambdaCDM', 'FlatwCDM', 'wIDE1'}):
+        elif ('_mod' in pars['model-cosmology']) and (pars['model-bkg-cosmo'] not in {'FlatLambdaCDM', 'FlatwCDM', 'wIDS_linDE'}):
             raise ValueError('Unknown GR model for the background cosmology {}. Please consult the available GR models.'.format(pars['model-bkg-cosmo']))
         elif pars['model-cosmology'] == 'FlatLambdaCDM':     w = get_wrapper('FlatLambdaCDM_wrap', cosmo_wrap=True)
         elif pars['model-cosmology'] == 'FlatwCDM':          w = get_wrapper('FlatwCDM_wrap',      cosmo_wrap=True)
-        elif pars['model-cosmology'] == 'wIDE1':             w = get_wrapper('wIDE1_wrap',         cosmo_wrap=True)
+        elif pars['model-cosmology'] == 'wIDS_linDE':        w = get_wrapper('wIDS_linDE_wrap',    cosmo_wrap=True)
         else:
             raise ValueError('Unknown GR model for the cosmology {}. Please consult the available models.'.format(pars['model-cosmology']))
         return w
