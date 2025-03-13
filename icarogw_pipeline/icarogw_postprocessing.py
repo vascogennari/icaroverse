@@ -82,6 +82,23 @@ def add_curves_to_dict(dictionary, x, y, label, z = 0):
         dictionary[label]['z'] = z
 
 
+def downsampling(df, value):
+    '''
+    Return the data frame downsampled according to the required probability.
+    downsample = 1 takes the 100% of the data, i.e. no downsampling
+    '''
+    print('\n * Downsampling the posteriors to fasten the plots production.\n')
+    if not value == 1:
+        if (value <= 0) or (value > 1):
+            raise ValueError('Invalid option for the downsampling. Its value needs to be in the interval [0, 1].')
+        
+        new_nsamp = int(len(df.index) * value)
+        df = df.sample(new_nsamp)
+        df = df.reset_index()
+
+    return df
+
+
 # -------------------------------- #
 # Class with all the type of plots #
 # -------------------------------- #
@@ -601,6 +618,9 @@ class Plots:
         self.plots         = PlotDistributions
 
         self.curves_dict = {}
+
+        # Downsample the df if required
+        if not pars['downsample-postprocessing'] == 1: self.df = downsampling(self.df, pars['downsample-postprocessing'])
 
     def PrimaryMass(self):
 
