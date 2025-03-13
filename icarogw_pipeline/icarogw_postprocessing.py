@@ -614,7 +614,7 @@ class Plots:
                 self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, logscale = self.pars['m1-logscale'])
             else:
                 curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
-                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true, logscale = self.pars['m1-logscale'])
+                self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, logscale = self.pars['m1-logscale'], truth = curve_true[0])
         else:
             curves_prior = 0
             if self.pars['plot-prior']:
@@ -662,7 +662,7 @@ class Plots:
         curves_prior = 0
         if self.pars['plot-prior']:
             curves_prior, _ = self.distributions.RateEvolutionFunctionProbability(self.df, self.rw, self.cw, self.pars, prior = True)
-        curves, plot_dict = self.distributions.RateEvolutionFunctionProbability(self.df, self.rw, self.cw, self.pars)
+        curves, plot_dict   = self.distributions.RateEvolutionFunctionProbability(self.df, self.rw, self.cw, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
@@ -675,7 +675,7 @@ class Plots:
         curves_prior = 0
         if self.pars['plot-prior']:
             curves_prior, _ = self.distributions.RedshiftTransitionFunction(self.df, self.priors, self.pars, prior = True)
-        curves, plot_dict = self.distributions.RedshiftTransitionFunction(self.df, self.priors, self.pars)
+        curves, plot_dict   = self.distributions.RedshiftTransitionFunction(self.df, self.priors, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
