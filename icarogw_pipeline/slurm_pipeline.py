@@ -51,12 +51,12 @@ slurm_nodes  = 1
 slurm_cpus   = 10
 slurm_memory = 5
 slurm_time   = {'days': 2, 'hours': 0, 'minutes': 0}
-slurm_executable_path = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
-slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
+slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
+slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
 
 # Set the specific directory for the runs
-directory    = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/config_files'
-subdirectory = 'EXP_O3_population'
+directory    = '/sps/virgo/USERS/vgennari/icarogw_pipeline/config_files'
+subdirectory = 'simulation_evolving_population_PRODX'
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')
