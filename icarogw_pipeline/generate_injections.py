@@ -53,21 +53,21 @@ def plot_injections(true_param, plot_dir):
 #     'lambda_peak': 0.8,
 # }
 dic_param ={
-    'alpha':        185.89788,
-    'mmin':         10.81405,
-    'mmax':         102.70377,
-    'mu_g_low':     20.3181,
-    'sigma_g_low':  1.3,
-    'lambda_g_low': 0.6,
-    'mu_g_high':    34.0,
-    'sigma_g_high': 6.0,
-    'lambda_g':     0.25,
-    'beta':         1.07,
-    'delta_m':      1.0,
+    'alpha':         6.175777,
+    'mmin':          5.0,
+    'mmax':          100.0,
+    'mu_g_low':      20.0,
+    'sigma_g_low':   2.0,
+    'lambda_g_low':  0.65,
+    'mu_g_high':     30.0,
+    'sigma_g_high':  10.0,
+    'lambda_g':      0.1,
+    'delta_m':       19.0,
+    'beta':          1.0,
 }
 
 m_model   = 'MultiPeak'
-Ninj      = 50000
+Ninj      = 300000
 Ndet_inj  = 0
 N_ext     = 1e3
 snr_thr   = 11
@@ -76,8 +76,8 @@ unif_dist = 0
 unif_z    = 1
 zmax      = 1.
 flat_PSD  = 0
-snr_apx   = 0
-additional_text = ''
+snr_apx   = 1
+additional_text = '_SNRproxy'
 
 print('\n * Generating injections for selection effects.\n')
 
@@ -144,8 +144,9 @@ with tqdm(total = Ninj) as pbar:
 
         # Compute the SNR with the approximate waveform
         elif not flat_PSD:
-            theta                    = compute_theta(m1s_inj, os.path.join(base_dir, 'Pw_three.dat'))
+            theta                    = compute_theta(m1s_inj, os.path.join(base_dir, 'Pw_three_lognormal.dat'))
             snr_inj, _, _            = icarosim.snr_samples(m1s_inj, m2s_inj, z_inj, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
+            snr_inj += np.random.randn(len(snr_inj))
             idx_detected_inj         = icarosim.snr_and_freq_cut(m1s_inj, m2s_inj, z_inj, snr_inj, snrthr = snr_thr, fgw_cut = fgw_cut)
         else:
             snr_inj                  = icarosim.snr_samples_flat(z_inj)

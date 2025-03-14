@@ -134,8 +134,9 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
 
     elif not pars['flat-PSD']:
         # Average on extrinsic parameters.
-        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, os.path.join('/Users/tbertheas/Documents/icarogw_pipeline/data/simulations', 'Pw_three.dat'))
+        theta              = icarosim.rvs_theta(Ndetgen, 0., 1.4, os.path.join(pars['base_dir'], 'Pw_three_lognormal.dat'))
         rho_true_det, _, _ = icarosim.snr_samples(     m1s, m2s, zs, numdet = 3, rho_s = 9, dL_s = 1.5, Md_s = 25, theta = theta)
+        rho_true_det += np.random.randn(len(rho_true_det))
         idx_cut_det        = icarosim.snr_and_freq_cut(m1s, m2s, zs, rho_true_det, snrthr = pars['snr-cut'], fgw_cut = pars['fgw-cut'])
     # Simulate a detection with a flat PSD.
     else:
@@ -304,34 +305,34 @@ if __name__=='__main__':
         'Om0'         : 0.308,
 
         # Primary mass distribution
-        'delta_m'     : 3.0,
+        'delta_m'     : 2.75,
 
-        'alpha'       : 50.,
-        'mmin'        : 10.,
-        'mmax'        : 100.,
+        'alpha'       : 3.71,
+        'mmin'        : 7.06,
+        'mmax'        : 141.20,
         'mu'          : 0.,
         'sigma'       : 0.,
 
-        'mu_g'        : 35.,
-        'sigma_g'     : 2.,
+        'mu_g'        : 35.22,
+        'sigma_g'     : 3.67,
         'lambda_peak' : 0.04,
 
         'alpha_z0'    : 50.,
         'alpha_z1'    : 20.,
 
-        'alpha_a'     : 40.,
-        'alpha_b'     : 18.,
-        'alpha_c'     : 7.,
-        'mmin_a'      : 10.,
-        'mmin_b'      : 16.,
-        'mmin_c'      : 28.,
-        'mmax_a'      : 100.,
-        'mmax_b'      : 100.,
-        'mmax_c'      : 100.,
+        'alpha_a'     : 185.897875,
+        'alpha_b'     : 40.166612,
+        'alpha_c'     : 6.175777,
+        'mmin_a'      : 10.815449,
+        'mmin_b'      : 17.961703,
+        'mmin_c'      : 31.508523,
+        'mmax_a'      : 40.424315,
+        'mmax_b'      : 102.703774,
+        'mmax_c'      : 62.315738,
 
-        'delta_m_a'   : 0.5,
-        'delta_m_b'   : 10.,
-        'delta_m_c'   : 8.,
+        'delta_m_a'   : 0.000555,
+        'delta_m_b'   : 8.898135,
+        'delta_m_c'   : 1.598921,
 
         'mmin_z0'     : 10.,
         'mmin_z1'     : 0.,
@@ -347,14 +348,14 @@ if __name__=='__main__':
         'mix_z1'      : 0.6,
         
         # Secondary mass distribution
-        'mu_q'        : 0.7,
-        'sigma_q'     : 0.1,
+        'mu_q'        : 0.79,
+        'sigma_q'     : 0.27,
         'alpha_q'     : 2.4,
 
         # Rate evolution
-        'gamma'       : 3.,     # <----- Rate evolution
-        'kappa'       : 0.,
-        'zp'          : 3.,
+        'gamma'       : -14.87,     # <----- Rate evolution
+        'kappa'       : -2.54,
+        'zp'          : 2.09,
         'R0'          : 0.,
 
         # Double peak
@@ -372,8 +373,8 @@ if __name__=='__main__':
         'mix_beta_z0' : 0.05,
         'mix_beta_z1' : 0.05,
 
-        'mix_alpha'   : 0.8,
-        'mix_beta'    : 0.1,
+        'mix_alpha'   : 0.817856,
+        'mix_beta'    : 0.102476,
     }
 
     filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
