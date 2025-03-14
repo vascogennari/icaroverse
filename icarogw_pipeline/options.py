@@ -16,10 +16,6 @@ def InitialiseOptions(Config):
         'model-rate'                  : 'PowerLaw',
 
         'redshift-transition'         : 'linear',
-        'positive-gaussian-z0'        : 0,
-        'positive-gaussian-z'         : 0,
-        'separate-gaussians-z0'       : 0,
-        'separate-gaussians-z'        : 0,
         'redshift-mixture'            : 1,
         'low-smoothing'               : 0,
         'priors'                      : {},
@@ -32,13 +28,16 @@ def InitialiseOptions(Config):
         'snr-cut'                     : 12.,
         'ifar-cut'                    : 4.,
         'selection-effects-cut'       : 'snr',
+        'inverse-mass-ratio'          : 0,
 
         # Data
         'O3-cosmology'                : 0,
         'simulation'                  : 1,
         'data-path'                   : '',
-        'distance-prior-PE'           : 1,
         'remove-events'               : ['GW190412_053044'],
+        'PE-prior-distance'           : 'dL3',
+        'PE-prior-masses'             : 'm1-m2',
+        'true-data'                   : 0,
     
         # Likelihood
         'nparallel'                   : 1,
@@ -66,6 +65,7 @@ def InitialiseOptions(Config):
         'bounds-q'                    : [0, 1],
         'bounds-dL'                   : [0, 10000],
         'bounds-z'                    : [1e-5, 0.8],
+        'm1-logscale'                 : 1,
         'true-values'                 : {},
         'selection-effects'           : 0,
         'plot-prior'                  : 1,
@@ -84,13 +84,13 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if ('output' in key) or ('injections-path' in key) or ('selection-effects-cut' in key) or ('data-path' in key):
+        if ('output' in key) or ('injections-path' in key) or ('selection-effects-cut' in key) or ('data-path' in key) or ('PE-prior-distance' in key) or ('PE-prior-masses' in key):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if ('injections-number' in key) or ('snr-cut' in key) or ('ifar-cut' in key):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if ('O3-cosmology' in key) or ('simulation' in key) or ('distance-prior-PE' in key) or ('screen-output' in key):
+        if ('O3-cosmology' in key) or ('simulation' in key) or ('distance-prior-PE' in key) or ('screen-output' in key) or ('true-data' in key):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if ('remove-events' in key):
@@ -101,7 +101,7 @@ def InitialiseOptions(Config):
         if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('positive-gaussian-z0' in key) or ('positive-gaussian-z' in key) or ('separate-gaussians-z0' in key) or ('separate-gaussians-z' in key) or ('redshift-mixture' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
+        if ('redshift-mixture' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if ('priors' in key):
@@ -129,7 +129,7 @@ def InitialiseOptions(Config):
         if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key)  or ('percentiles' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if ('selection-effects' in key) or ('plot-prior' in key):
+        if ('selection-effects' in key) or ('plot-prior' in key) or ('m1-logscale' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
         if ('downsample-postprocessing' in key) or ('KDE-bandwidth-scale' in key) or ('KDE-bandwidth-scale-m1' in key):
@@ -156,6 +156,7 @@ def default_priors():
         'delta_m_a'   : [0.,  30. ],
         'delta_m_b'   : [0.,  30. ],
         'delta_m_c'   : [0.,  30. ],
+        'delta'       : [0.,  0.15],
 
         'alpha'       : [-4., 120.],
         'alpha_z0'    : [-4., 120.],
@@ -165,7 +166,8 @@ def default_priors():
         'alpha_a'     : [-4., 120.],
         'alpha_b'     : [-4.,  20.],
         'alpha_c'     : [-4.,  20.],
-        'break_p'     : [0.,   1. ],
+        'break_p'     : [0.,    1.],
+        'm_b'         : [5.,    7.],
 
         'alpha_a_z0'  : [-4., 120.],
         'alpha_b_z0'  : [-4., 120.],
@@ -250,11 +252,17 @@ def default_priors():
         'sigma_q'     : [0.01, 0.9],
         'alpha_q'     : [-20., 20.],
 
+        'a_gamma'     : [  1., 10.],
+        'theta'       : [0.01,  1.],
+
         # Rate evolution
         'gamma'       : [-50., 30.],
         'kappa'       : [-20., 10.],
         'zp'          : [0. , 4.  ],
         'R0'          : [0. , 100.],
+        'mu_r'        : [-10000.,0.],
+        'sigma_r'     : [1. , 100.],
+        'amp_r'       : [1. , 200.],
     }
 
     return prior
