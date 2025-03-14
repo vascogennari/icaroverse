@@ -433,9 +433,9 @@ class BilbySNR():
     def load_psd_from_file(self):
         self.all_ifos_available_psd_dict = {
             ifo: bilby.gw.detector.PowerSpectralDensity(
-                asd_file = os.path.join(self.psd_directory, f"{ifo}_{self.observing_run}.txt")
+                asd_file = os.path.join(self.psd_dir, f"{ifo}_{self.observing_run}.txt")
             )
-            for ifo in ['H1', 'L1', 'V1', 'K1']
+            for ifo in ['H1', 'L1', 'V1'] + ['K1']*(self.observing_run in {'O4', 'O5'})
         }
 
     def set_event_dict(self, init_dict):
@@ -481,7 +481,7 @@ class BilbySNR():
     def draw_geocent_time(self):
         """Draw GPS time uniformly in the time window associated to self.observing_run"""
         t_gps_start, t_gps_end = run_to_time_window(self.observing_run)
-        return np.random.uniform(t_gps_start, t_gps_end)
+        self.event_dict['geocent_time'] = np.random.uniform(t_gps_start, t_gps_end)
 
     def draw_spins(self):
         """
@@ -493,12 +493,12 @@ class BilbySNR():
           see http://corysimon.github.io/articles/uniformdistn-on-sphere/)
         > phi_12 and phi_jl are drawn uniformly from [0, 2*pi]
         """
-        self.event_dict['a_1']      = np.random.uniform(0., 1.)
-        self.event_dict['tilt_1']   = np.arccos(np.random.uniform(-1., 1.))
-        self.event_dict['a_2']      = np.random.uniform(0., 1.)
-        self.event_dict['tilt_2']   = np.arccos(np.random.uniform(-1., 1.))
-        self.event_dict['phi_12']   = np.random.uniform(0., 2*np.pi)
-        self.event_dict['phi_jl']   = np.random.uniform(0., 2*np.pi)
+        self.event_dict['a_1']          = np.random.uniform(0., 1.)
+        self.event_dict['tilt_1']       = np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['a_2']          = np.random.uniform(0., 1.)
+        self.event_dict['tilt_2']       = np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['phi_12']       = np.random.uniform(0., 2*np.pi)
+        self.event_dict['phi_jl']       = np.random.uniform(0., 2*np.pi)
 
     def draw_skyloc(self):
         """
@@ -508,8 +508,8 @@ class BilbySNR():
         > rignt ascention is drawn uniformly from [0, 2*pi]
         > cos(pi/2 - declination) is drawn randomly in [-1, 1]
         """
-        self.event_dict['ra']       = np.random.uniform(0., 2*np.pi)
-        self.event_dict['dec']      = np.pi/2 - np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['ra']           = np.random.uniform(0., 2*np.pi)
+        self.event_dict['dec']          = np.pi/2 - np.arccos(np.random.uniform(-1., 1.))
 
     def draw_inclination(self):
         """
@@ -517,21 +517,22 @@ class BilbySNR():
         
         > cos(theta_jn) is drawn randomly in [-1, 1]
         """
-        self.event_dict['theta_jn'] = np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['theta_jn']     = np.arccos(np.random.uniform(-1., 1.))
 
     def draw_polarization(self):
         """Draw polarization angle uniformly in [0, 2*pi]"""
-        self.event_dict['psi']      = np.random.uniform(0., 2*np.pi)
+        self.event_dict['psi']          = np.random.uniform(0., 2*np.pi)
 
     def draw_phase(self):
         """Draw reference phare uniformly in [0, 2*pi]"""
-        self.event_dict['phase']    = np.random.uniform(0., 2*np.pi)
+        self.event_dict['phase']        = np.random.uniform(0., 2*np.pi)
 
     def draw_ifos_on(self):
         """
         Draw ifos_on based on detectors duty cycles.
         """
-        self.event_dict['ifos_on']  = tell_me_ifos_on('opt')#run = self.observing_run)
+        self.event_dict['ifos_on']      = tell_me_ifos_on(run = self.observing_run)
+        # self.event_dict['ifos_on']      = tell_me_ifos_on('opt')
     
     def set_ifos_list(self):
         """
@@ -577,7 +578,7 @@ class BilbySNR():
 
         # Setup ifos strain data from psd
         self.set_random_seed()
-        self.ifos.set_strain_data_from_power_spectral_densities(
+        self.ifos_list.set_strain_data_from_power_spectral_densities(
             sampling_frequency = sampling_frequency, 
             duration           = duration,
             start_time         = self.event_dict['geocent_time'] - (duration - 1.)
@@ -587,23 +588,25 @@ class BilbySNR():
         self.set_frequency_mask()
 
         # Inject signals
-        self.ifos.inject_signal(
+        self.ifos_list.inject_signal(
             waveform_generator = self.waveform_generator,
             parameters = self.event_dict
         )
 
         # Compute network SNR (with interferometers on)
         matched_filter_SNR = np.sqrt(np.sum([
-            np.real(self.ifos.meta_data[ifo]['matched_filter_SNR'])**2. 
+            np.real(self.ifos_list.meta_data[ifo]['matched_filter_SNR'])**2. 
             for ifo in self.event_dict['ifos_on']
         ]))
         self.event_dict['matched_filter_SNR'] = matched_filter_SNR
 
+        return self.event_dict
+
 
     def set_frequency_mask(self):
-        for ifo in self.ifos:
-            ifo.frequency_mask = ((ifo.strain_data.minimum_frequency < self.ifos.frequency_array) & 
-                                  (self.ifos.frequency_array < ifo.strain_data.maximum_frequency))
+        for ifo in self.ifos_list:
+            ifo.frequency_mask = ((ifo.strain_data.minimum_frequency < self.ifos_list.frequency_array) & 
+                                  (self.ifos_list.frequency_array < ifo.strain_data.maximum_frequency))
     
     def set_random_seed(self):
         if 'seed' not in self.event_dict:
