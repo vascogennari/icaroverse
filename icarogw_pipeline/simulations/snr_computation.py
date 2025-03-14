@@ -6,6 +6,8 @@ from pycbc.waveform import get_fd_waveform
 from pycbc.filter import get_cutoff_indices
 from pycbc.detector import Detector
 
+import lisabeta.lisa.lisa as lisa
+
 
 
 class Event():
@@ -300,3 +302,105 @@ class DetectorNetwork():
         
         else:
             raise AssertionError(f"Unknown snr computation method: {snr_method}")
+
+
+def SNR_lisabeta(m1s, q, dL):
+
+    SNR = []
+    # Randomize the remaining parameters
+    # FIXME: Check that these priors are consistent with the lisabeta PE
+    chi1   = np.random.uniform(-1., 1., len(m1s))
+    chi2   = np.random.uniform(-1., 1., len(m1s))
+    Deltat = np.random.uniform(2432.322951048043, 243232.29510480427, len(m1s))
+    inc    = np.random.uniform(-1., 1., len(m1s))
+    phi    = np.random.uniform(0., 2 * np.pi, len(m1s))
+    lambd  = np.random.uniform(0., 2 * np.pi, len(m1s))
+    beta   = np.random.uniform(0.,     np.pi, len(m1s))
+    psi    = np.random.uniform(0., 2 * np.pi, len(m1s))
+
+    i = 0
+    for mi, qi, di in zip(m1s, q, dL):
+        
+        M = mi + mi / qi
+
+        params = {
+            'M':      M,         # Total *redshifted* mass M=m1+m2 [M_odot]
+            'q':      qi,        # Mass ratio q=m1/m2
+            'dist':   di,        # Luminosity distance [Mpc]
+            
+            'chi1':   chi1[i],   # Dimensionless spin 1 component along orbital momentum
+            'chi2':   chi2[i],   # Dimensionless spin 2 component along orbital momentum
+            'Deltat': Deltat[i], # Time shift of coalescence, s -- coalescence is at t0*yr + Deltat*s, t0 in waveform_params
+            'inc':    inc[i],    # Inclination, observer's colatitude in source-frame
+            'phi':    phi[i],    # Phase, observer's longitude in source-frame
+            'lambda': lambd[i],  # Longitude in the sky
+            'beta':   beta[i],   # Latitude in the sky
+            'psi':    psi[i],    # Polarization angle
+            'Lframe': True       # Flag indicating whether angles and Deltat pertain to the L-frame or SSB-frame
+        }
+        
+        waveform_params = {
+            
+            # Frequency range
+            'minf':                  1e-5,
+            'maxf':                  0.5,
+            
+            't0':                    0.0,    # Reference epoch of coalescence, yr -- coalescence is at t0*yr + Deltat*s, Deltat in params
+            'timetomerger_max':      1.0,    # Always cut signals timetomerger_max*yr before merger -- to avoid needlessly long signals using minf
+            'DeltatL_cut':           None,   # Option to cut the signal pre-merger -- must be in L-frame
+            
+            # Further options to cut signals
+            'fend':                  None,
+            'tmin':                  None,
+            'tmax':                  None,
+
+            # Options for the time and phase alignment -- development/testing
+            'phiref':                0.0,
+            'fref_for_phiref':       0.0,
+            'tref':                  0.0,
+            'fref_for_tref':         0.0,
+            'force_phiref_fref':     True,
+            'toffset':               0.0,
+            
+            # TDI channels to generate
+            'TDI':                   'TDIAET',
+
+            # Internal accuracy params
+            'acc':                   1e-4,
+            'order_fresnel_stencil': 0,
+
+            # Waveform approximant and set of harmonics to use
+            'approximant':           'IMRPhenomHM',
+            'modes':                 None,
+
+            # LISA response options
+            'LISAconst':             'Proposal',
+            'responseapprox':        'full',
+            'frozenLISA':            False,
+            'TDIrescaled':           True,
+            
+            # Noise options -- can also be given as a numpy array for interpolation
+            'LISAnoise': {
+                'InstrumentalNoise':       'SciRDv1',
+                'WDbackground':            False,
+                'WDduration' :             0.0,
+                'lowf_add_pm_noise_f0':    0.0,
+                'lowf_add_pm_noise_alpha': 2.0
+            }
+        }
+        
+        # Generate the waveform
+        tdi_signal = lisa.GenerateLISATDISignal_SMBH(params, **waveform_params)
+        SNR.append(tdi_signal['SNR'])
+        i += 1
+    
+    return np.array(SNR)
+
+def cut_SNR(snr, snr_thr = 10):
+    '''
+    Apply a cut in snr : snr > snrthr
+    Returns the indices of each event that fits the criterion.
+    '''
+    indices = np.where((snr >= snr_thr))[0]
+
+    return indices

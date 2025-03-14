@@ -43,6 +43,9 @@ def InitialiseOptions(Config):
         'icarogw-sim-draw-dL'         : 'uniform-dL',
         'icarogw-sim-z-max'           : 1.5,
 
+        'log10-PDF'                   : 0,
+        'inverse-mass-ratio'          : 1,
+
         # Model
         'model-primary'               : 'PowerLaw-Gaussian',                     
         'model-secondary'             : 'MassRatio-Gaussian',
@@ -76,7 +79,7 @@ def InitialiseOptions(Config):
         if ('events-number' in key) or ('injections-number' in key) or ('injections-number-bank' in key) or ('snr-app-N-detectors' in key):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if ('screen-output' in key) or ('postprocessing' in key) or ('flat-PSD' in key) or ('use-icarogw-sim-inj' in key) or ('snr-fw-precession' in key) or ('use-icarogw-sim-inj' in key):
+        if ('screen-output' in key) or ('postprocessing' in key) or ('flat-PSD' in key) or ('use-icarogw-sim-inj' in key) or ('snr-fw-precession' in key) or ('use-icarogw-sim-inj' in key) or ('log10-PDF' in key) or ('inverse-mass-ratio' in key):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if ('snr-fw-detectors' in key):
@@ -222,6 +225,12 @@ def default_population():
         'kappa'         : 0.,
         'zp'            : 3.,
         'R0'            : 20.,
+
+        # LISA only
+        'm_b'           : 6.,
+        'delta'         : 0.1,
+        'a_gamma'       : 1.2,
+        'theta'         : 0.3,
     }
 
     return pop

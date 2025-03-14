@@ -6,8 +6,7 @@ from tqdm import tqdm
 
 # Internal imports
 sys.path.append('../')
-import initialise, icarogw_runner as icarorun
-from snr_computation import DetectorNetwork
+import initialise, icarogw_runner as icarorun, snr_computation
 import icarogw.simulation as icarosim
 import icarogw.wrappers as icarowrap
 
@@ -127,6 +126,9 @@ def generate_population(pars):
     # Use the flat PSD to compute the SNR.
     elif pars['SNR-method'] == 'flat-PSD':
         SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
+    elif pars['SNR-method'] == 'lisabeta':
+        SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+        idx_detected = snr_computation.cut_SNR(SNR)
     else:
         raise ValueError('Unknows method to compute the SNR. Exiting...')
 
@@ -206,6 +208,9 @@ def generate_injections(pars):
             # Use the flat PSD to compute the SNR.
             elif pars['SNR-method'] == 'flat-PSD':
                 SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
+            elif pars['SNR-method'] == 'lisabeta':
+                SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+                idx_detected = snr_computation.cut_SNR(SNR)
             else:
                 raise ValueError('Unknows method to compute the SNR. Exiting...')
             
@@ -303,6 +308,9 @@ def get_distribution_samples(pars):
     '''
         Draw samples from the selected sitribution.
         Returns the source and detector frame samples.
+
+        Whatever distribution is used, the output prior is expressed in the detector frame using the variables (m1d,m2d,dL).
+        Please make sure to properly account for any variable transformation involved, by including the corresponding Jacobian.
     '''
     # Initialise the arrays.
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
@@ -315,6 +323,7 @@ def get_distribution_samples(pars):
     # Convert from rate to probability distribution.
     tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) / (1+z_array)
     zs, pdf_z = rejection_sampling_1D(z_array, tmp, pars['events-number'])
+    plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
@@ -330,13 +339,30 @@ def get_distribution_samples(pars):
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
         m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, pars['events-number'])
 
+    # If required, remove the log10 contribution.
+    if pars['log10-PDF']:
+        m1s = np.power(10., m1s)
+        pdf_m1 *= np.log10(np.e) / m1s   # Compute the Jacobian: |J_(log10(m1s))->(m1s)| = log10(e) / m1s.
+
     # Secondary mass.
     if 'MassRatio' in pars['model-secondary']:
         update_weights(pars['wrappers']['m2w'], pars['truths'])
         tmp = pars['wrappers']['m2w'].pdf(q_array)
         qs, pdf_q = rejection_sampling_1D(q_array, tmp, pars['events-number'])
-        m2s = qs * m1s # Compute m2 from q.
-        pdf_m2 = pdf_q / m1s # Compute the Jacobian (m1s,q)->(m1s,m2s).
+
+        # If required, remove the log10 contribution.
+        if pars['log10-PDF']:
+            qs = np.power(10., qs)
+            pdf_q *= np.log10(np.e) / qs # Compute the Jacobian: |J_(log10(q))->(q)| = log10(e) / q.
+
+        # If required, get m2 from q.
+        if not pars['inverse-mass-ratio']:
+            m2s = qs * m1s
+            pdf_m2 = pdf_q / m1s         # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = 1/m1s, with q = m2/m1.
+        else:
+            m2s = m1s / qs
+            pdf_m2 = pdf_q / m1s * qs**2 # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = q**2/m1s, with q=m1/m2.
+
         pdf_m1m2 = pdf_m1 * pdf_m2
         plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
     else:
@@ -352,7 +378,7 @@ def get_distribution_samples(pars):
     m2d = m2s * (1 + zs)
     dL  = pars['wrappers']['ref-cosmo'].z2dl(zs)
 
-    # Transform the prior from source to detector frame.
+    # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz]
     prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
 
     return m1s, m2s, zs, m1d, m2d, dL, prior
@@ -364,7 +390,7 @@ def compute_SNR_full_waveform(pars, m1d, m2d, dL):
     '''
     print('\n * Computing the SNR with the full waveform.')
     SNR = np.zeros(pars['events-number'])
-    detector_network = DetectorNetwork(
+    detector_network = snr_computation.DetectorNetwork(
         observing_run = pars['snr-fw-observing-run'], 
         flow          = pars['snr-fw-f-low'        ], 
         delta_f       = pars['snr-fw-delta-f'      ],
@@ -476,8 +502,12 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     title = 'm1_source_frame'
     figname = os.path.join(pars['output'], 'plots', title)
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
-    plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
-    plt.hist(samps_dict_observed[     'm1s'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+    if not pars['log10-PDF']:
+        plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        plt.hist(samps_dict_observed[     'm1s'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+    else:
+        plt.hist(np.log10(samps_dict_astrophysical['m1s']), density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        plt.hist(np.log10(samps_dict_observed[     'm1s']), density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     update_weights(pars['wrappers']['m1w'], pars['truths'])
     if 'Redshift' in pars['model-primary']:
         plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array, np.median(samps_dict_astrophysical['z'])), c = '#153B60', label = 'Injected z-median')
@@ -485,16 +515,21 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
         plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array), c = '#153B60', label = 'Injected')
     plt.title(title)
     plt.xlabel('m1')
-    plt.yscale('log')
-    plt.ylim(1e-5, 1)
+    if not pars['log10-PDF']:
+        plt.yscale('log')
+        plt.ylim(1e-5, 1)
     plt.legend()
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
 
     title = 'm1_detector_frame'
     figname = os.path.join(pars['output'], 'plots', title)
-    plt.hist(samps_dict_astrophysical['m1d'], bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
-    plt.hist(samps_dict_observed[     'm1d'], bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+    if not pars['log10-PDF']:
+        plt.hist(samps_dict_astrophysical['m1d'], bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        plt.hist(samps_dict_observed[     'm1d'], bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+    else:
+        plt.hist(np.log10(samps_dict_astrophysical['m1d']), bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        plt.hist(np.log10(samps_dict_observed[     'm1d']), bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     plt.title(title)
     plt.xlabel('m1')
     plt.legend()
@@ -503,8 +538,12 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     
     title = 'm1z_source_frame'
     figname = os.path.join(pars['output'], 'plots', title)
-    plt.scatter(samps_dict_astrophysical['m1s'], samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
-    plt.scatter(samps_dict_observed[     'm1s'], samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
+    if not pars['log10-PDF']:
+        plt.scatter(samps_dict_astrophysical['m1s'], samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        plt.scatter(samps_dict_observed[     'm1s'], samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
+    else:
+        plt.scatter(np.log10(samps_dict_astrophysical['m1s']), samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        plt.scatter(np.log10(samps_dict_observed[     'm1s']), samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
     plt.ylabel('z')
@@ -514,8 +553,12 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
 
     title = 'm1dL_detector_frame'
     figname = os.path.join(pars['output'], 'plots', title)
-    plt.scatter(samps_dict_astrophysical['m1d'], samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
-    plt.scatter(samps_dict_observed[     'm1d'], samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
+    if not pars['log10-PDF']:
+        plt.scatter(samps_dict_astrophysical['m1d'], samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        plt.scatter(samps_dict_observed[     'm1d'], samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
+    else:
+        plt.scatter(np.log10(samps_dict_astrophysical['m1d']), samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        plt.scatter(np.log10(samps_dict_observed[     'm1d']), samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
     plt.ylabel('dL')
@@ -523,9 +566,20 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
 
+    title = 'z_distribution'
+    figname = os.path.join(pars['output'], 'plots', title)
+    plt.hist(samps_dict_astrophysical['z'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+    plt.hist(samps_dict_observed[     'z'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+    plt.xlabel('$z$')
+    plt.ylabel('$p(z)$')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('{}.pdf'.format(figname), transparent = True)
+    plt.close()
+
     return 0
 
-def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, q_samps = 0):
+def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, rate_evolution = 0, q_samps = 0):
 
     if redshift:
         N_z = 10
@@ -558,16 +612,32 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
     
     # FIXME: Should relax this condition.
     else:
-        figname = os.path.join(pars['output'], 'plots', title)
-        pdf = wrapper.pdf(x_array)
-        plt.hist(q_samps, density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
-        plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
-        plt.xlabel('$q$')
-        plt.ylabel('$p(q)$')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig('{}.pdf'.format(figname), transparent = True)
-        plt.close()
+        if not rate_evolution:
+            figname = os.path.join(pars['output'], 'plots', title)
+            pdf = wrapper.pdf(x_array)
+            if not pars['log10-PDF']:
+                plt.hist(q_samps, density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+            else:
+                plt.hist(np.log10(q_samps), density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+            plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
+            plt.xlabel('$q$')
+            plt.ylabel('$p(q)$')
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig('{}.pdf'.format(figname), transparent = True)
+            plt.close()
+
+        else:
+            if not pars['use-icarogw-sim-inj']:
+                figname = os.path.join(pars['output'], 'plots', 'rate_evolution')
+                pdf = wrapper.rate.log_evaluate(x_array)
+                plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
+                plt.xlabel('$z$')
+                plt.ylabel('$R(z)/R0$')
+                plt.legend()
+                plt.tight_layout()
+                plt.savefig('{}.pdf'.format(figname), transparent = True)
+                plt.close()
 
     return 0
 
