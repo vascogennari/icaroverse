@@ -17,6 +17,9 @@ def InitialiseOptions(Config):
         'injections-number-bank'      : 100,
         'selection-effects-cut'       : 'snr',
         'SNR-cut'                     : 12.,
+        'estimate-events-number'      : 0,
+        'R0'                          : 25.,
+        'observation-time'            : 1.,
 
         'SNR-method'                  : 'full-waveform',
         'frequency-cut'               : 15,
@@ -73,13 +76,13 @@ def InitialiseOptions(Config):
         if ('output' in key) or ('run-type' in key) or ('selection-effects-cut' in key) or ('SNR-method' in key) or ('snr-fw-observing-run' in key) or ('snr-fw-waveform' in key) or ('snr-fw-method' in key) or ('snr-fw-PSD-path' in key) or ('snr-app-theta-path' in key) or ('icarogw-sim-mass-model' in key) or ('icarogw-sim-draw-dL' in key):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if ('SNR-cut' in key) or ('frequency-cut' in key) or ('snr-fw-sampling-rate' in key) or ('snr-fw-delta-f' in key) or ('snr-fw-f-low' in key) or ('snr-app-SNR-reference' in key) or ('snr-app-dL-reference' in key) or ('snr-app-Mc-reference' in key) or ('icarogw-sim-z-max' in key):
+        if ('SNR-cut' in key) or ('frequency-cut' in key) or ('snr-fw-sampling-rate' in key) or ('snr-fw-delta-f' in key) or ('snr-fw-f-low' in key) or ('snr-app-SNR-reference' in key) or ('snr-app-dL-reference' in key) or ('snr-app-Mc-reference' in key) or ('icarogw-sim-z-max' in key) or ('R0' in key) or ('observation-time' in key):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
         if ('events-number' in key) or ('injections-number' in key) or ('injections-number-bank' in key) or ('snr-app-N-detectors' in key):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if ('screen-output' in key) or ('postprocessing' in key) or ('flat-PSD' in key) or ('use-icarogw-sim-inj' in key) or ('snr-fw-precession' in key) or ('use-icarogw-sim-inj' in key) or ('log10-PDF' in key) or ('inverse-mass-ratio' in key):
+        if ('screen-output' in key) or ('postprocessing' in key) or ('flat-PSD' in key) or ('use-icarogw-sim-inj' in key) or ('snr-fw-precession' in key) or ('use-icarogw-sim-inj' in key) or ('log10-PDF' in key) or ('inverse-mass-ratio' in key) or ('estimate-events-number' in key):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if ('snr-fw-detectors' in key):
