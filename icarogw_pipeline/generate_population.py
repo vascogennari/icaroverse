@@ -90,12 +90,23 @@ def true_population_PDF_source(pars, truths, plot_dir, Ndetgen, return_wrappers 
     zs  = np.random.choice(z_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
 
     # Primary mass
+    # update_weights(m1w, truths)
+    # m1s = np.zeros(Ndetgen)
+    # for i,z in tqdm(enumerate(zs),  total = len(zs)):
+    #     if 'Redshift' in pars['model-primary']: pdf = m1w.pdf(m_array, z)
+    #     else:                                   pdf = m1w.pdf(m_array)
+    #     m1s[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
+    # plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir, pars['model-primary'], redshift = True)
+    # Primary mass
     update_weights(m1w, truths)
-    m1s = np.zeros(Ndetgen)
-    for i,z in tqdm(enumerate(zs),  total = len(zs)):
-        if 'Redshift' in pars['model-primary']: pdf = m1w.pdf(m_array, z)
-        else:                                   pdf = m1w.pdf(m_array)
-        m1s[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
+    if 'Redshift' in pars['model-primary']: 
+        m1s = np.zeros(Ndetgen) 
+        for i,z in tqdm(enumerate(zs),  total = len(zs)):
+            pdf = m1w.pdf(m_array, z)
+            m1s[i] = np.random.choice(m_array, size = 1, p = pdf/pdf.sum(), replace = True)
+    else:
+        pdf = m1w.pdf(m_array)
+        m1s = np.random.choice(m_array, size = Ndetgen, p = pdf/pdf.sum(), replace = True)
     plot_injected_distribution(m_array, z_array, m1w, truths, plot_dir, pars['model-primary'], redshift = True)
 
     # Mass ratio
@@ -320,19 +331,19 @@ if __name__=='__main__':
         'alpha_z0'    : 50.,
         'alpha_z1'    : 20.,
 
-        'alpha_a'     : 185.897875,
-        'alpha_b'     : 40.166612,
-        'alpha_c'     : 6.175777,
-        'mmin_a'      : 10.815449,
-        'mmin_b'      : 17.961703,
-        'mmin_c'      : 31.508523,
-        'mmax_a'      : 40.424315,
-        'mmax_b'      : 102.703774,
-        'mmax_c'      : 62.315738,
+        'alpha_a'     : 95.38,
+        'alpha_b'     : 17.07,
+        'alpha_c'     : 6.84,
+        'mmin_a'      : 9.91,
+        'mmin_b'      : 16.7,
+        'mmin_c'      : 26.58,
+        'mmax_a'      : 114.68,
+        'mmax_b'      : 127.64,
+        'mmax_c'      : 136.91,
 
-        'delta_m_a'   : 0.000555,
-        'delta_m_b'   : 8.898135,
-        'delta_m_c'   : 1.598921,
+        'delta_m_a'   : 1.54,
+        'delta_m_b'   : 9.35,
+        'delta_m_c'   : 9.25,
 
         'mmin_z0'     : 10.,
         'mmin_z1'     : 0.,
@@ -348,14 +359,14 @@ if __name__=='__main__':
         'mix_z1'      : 0.6,
         
         # Secondary mass distribution
-        'mu_q'        : 0.79,
-        'sigma_q'     : 0.27,
+        'mu_q'        : 0.82,
+        'sigma_q'     : 0.32,
         'alpha_q'     : 2.4,
 
         # Rate evolution
-        'gamma'       : -14.87,     # <----- Rate evolution
-        'kappa'       : -2.54,
-        'zp'          : 2.09,
+        'gamma'       : -19.5,     # <----- Rate evolution
+        'kappa'       : -2.19,
+        'zp'          : 2.22,
         'R0'          : 0.,
 
         # Double peak
@@ -373,8 +384,8 @@ if __name__=='__main__':
         'mix_beta_z0' : 0.05,
         'mix_beta_z1' : 0.05,
 
-        'mix_alpha'   : 0.817856,
-        'mix_beta'    : 0.102476,
+        'mix_alpha'   : 0.79,
+        'mix_beta'    : 0.11,
     }
 
     filename = 'pop-{}_{}_{}_{}{}'.format(int(N_events), input_pars['model-primary'], input_pars['model-secondary'], input_pars['model-rate'], additional_text)
@@ -387,6 +398,7 @@ if __name__=='__main__':
     if not os.path.exists(plot_dir   ): os.makedirs(plot_dir)
     input_pars['output'] = results_dir
     input_pars['psd_dir'] = psd_dir
+    input_pars['base_dir'] = base_dir
 
     if not generate_population:
         try:
