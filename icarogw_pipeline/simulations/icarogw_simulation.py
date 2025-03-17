@@ -117,20 +117,21 @@ def generate_population(pars):
     m1s, m2s, zs, m1d, m2d, dL, _ = get_distribution_samples(pars)
 
     # Compute the SNR to select the detected events.
-    # Use the full waveform to compute the SNR.
-    if   pars['SNR-method'] == 'full-waveform':
-        SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL)
-    # Use the approximate waveform to compute the SNR.
-    elif pars['SNR-method'] == 'proxy-waveform':
-        SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs)
-    # Use the flat PSD to compute the SNR.
-    elif pars['SNR-method'] == 'flat-PSD':
-        SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
-    elif pars['SNR-method'] == 'lisabeta':
-        SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
-        idx_detected = snr_computation.cut_SNR(SNR)
-    else:
-        raise ValueError('Unknows method to compute the SNR. Exiting...')
+    # # Use the full waveform to compute the SNR.
+    # if   pars['SNR-method'] == 'full-waveform':
+    #     SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL)
+    # # Use the approximate waveform to compute the SNR.
+    # elif pars['SNR-method'] == 'proxy-waveform':
+    #     SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs)
+    # # Use the flat PSD to compute the SNR.
+    # elif pars['SNR-method'] == 'flat-PSD':
+    #     SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
+    # elif pars['SNR-method'] == 'lisabeta':
+    #     SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+    #     idx_detected = snr_computation.cut_SNR(SNR)
+    # else:
+    #     raise ValueError('Unknows method to compute the SNR. Exiting...')
+    SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
 
     # Save the number of detected events.
     print('\n * Number of detections: {}\n'.format(len(idx_detected)), flush = True)
@@ -144,10 +145,11 @@ def generate_population(pars):
     m2d_det = m2d[idx_detected]
     dL_det  = dL[ idx_detected]
     SNR_det = SNR[idx_detected]
+    additional_parameters_det = {key: val[idx_detected] for key, val in additional_parameters.items()}
     
     # Save the population.
-    samps_dict_observed      = {'m1s': m1s_det, 'm2s': m2s_det, 'z' : zs_det, 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det, 'snr': SNR_det}
-    samps_dict_astrophysical = {'m1s': m1s,     'm2s': m2s,     'z' : zs,     'm1d': m1d,     'm2d': m2d,     'dL': dL,     'snr': SNR    }
+    samps_dict_observed      = {'m1s': m1s_det, 'm2s': m2s_det, 'z' : zs_det, 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det, 'snr': SNR_det, **additional_parameters_det}
+    samps_dict_astrophysical = {'m1s': m1s,     'm2s': m2s,     'z' : zs,     'm1d': m1d,     'm2d': m2d,     'dL': dL,     'snr': SNR    , **additional_parameters    }
     
     return samps_dict_astrophysical, samps_dict_observed
 
@@ -199,20 +201,21 @@ def generate_injections(pars):
                 prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
 
             # Compute the SNR to select the detected events.
-            # Use the full waveform to compute the SNR.
-            if   pars['SNR-method'] == 'full-waveform':
-                SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL)
-            # Use the approximate waveform to compute the SNR.
-            elif pars['SNR-method'] == 'proxy-waveform':
-                SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs)
-            # Use the flat PSD to compute the SNR.
-            elif pars['SNR-method'] == 'flat-PSD':
-                SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
-            elif pars['SNR-method'] == 'lisabeta':
-                SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
-                idx_detected = snr_computation.cut_SNR(SNR)
-            else:
-                raise ValueError('Unknows method to compute the SNR. Exiting...')
+            # # Use the full waveform to compute the SNR.
+            # if   pars['SNR-method'] == 'full-waveform':
+            #     SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL)
+            # # Use the approximate waveform to compute the SNR.
+            # elif pars['SNR-method'] == 'proxy-waveform':
+            #     SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs)
+            # # Use the flat PSD to compute the SNR.
+            # elif pars['SNR-method'] == 'flat-PSD':
+            #     SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
+            # elif pars['SNR-method'] == 'lisabeta':
+            #     SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+            #     idx_detected = snr_computation.cut_SNR(SNR)
+            # else:
+            #     raise ValueError('Unknows method to compute the SNR. Exiting...')
+            SNR, idx_detected, _ = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
             
             number_detected_chuck = len(idx_detected)
             inj_number_tmp = inj_number_tmp + number_detected_chuck
@@ -290,7 +293,7 @@ def read_settings(path):
     for key in res.keys():
         if key == 'positive-peak' or key == 'low-smoothing' or key == 'single-mass' or key == 'flat-PSD':
             res[key] = int(  res[key])
-        if key == 'SNR-cut' or key == 'frequency-cut':
+        if key == 'SNR-cut' or key == 'snr-proxy-fgw-cut':
             res[key] = float(res[key])
         if key == 'model-primary' or key == 'model-secondary' or key == 'model-rate' or key == 'redshift-transition' or key == 'output':
             res[key] = res[key].replace(" ", "")
@@ -383,59 +386,245 @@ def get_distribution_samples(pars):
 
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
-def compute_SNR_full_waveform(pars, m1d, m2d, dL):
+
+def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     '''
-        Compute the SNR with the full waveform.
-        Returns the SNR and the indices of the detected events.
+    Compute the SNR with various methods for the input events
+
+    Methods (in pars['SNR-method'])
+    -------
+    bilby: 
+        Full matched filter SNR with bilby's Interferometer objects.
+    pycbc:
+        Optimal SNR with pycbc PSD and waveform objects.
+        Optional: add unit centered gaussian fluctuation to mimic 
+        matched filter SNR if pars['snr-pycbc-method']=='mf-fast'.
+    proxy:
+        Approximate SNR from inspiral leading order scaling with Mc and dL.
+    flat-PSD:
+        Approximation from redshift alone, assuming a flat PSD.
+    lisabeta:
+        For LISA analyses.
+
+    Parameters
+    ----------
+    pars: dict
+        At least 'SNR-method', and optional arguments.
+    m1s: (m,) shape array-like
+        source frame primary mass (used for proxy, flat-psd methods).
+    m2s: (m,) shape array-like
+        source frame secondary mass (used for proxy, flat-psd methods).
+    zs:  (m,) shape array-like
+        redshift (used for proxy, flat-psd methods).
+    m1d: (m,) shape array-like
+        detector frame primary mass (used for bilby, pycbc, lisabeta methods)
+    m2d: (m,) shape array-like
+        detector frame secondary mass (used for bilby, pycbc, lisabeta methods)
+    dL:  (m,) shape array-like
+        luminosity distance (for bilby, pycbc, lisabeta methods)
+
+    Returns
+    -------
+    SNR:                   (m,) shape array-like
+        Signal-to_Noise ratio of input events
+    idx_detected:          (m,) shape array-like
+        indices of detected events
+    additional_parameters: dict of (m,) shape array-like
+        dictionary with arrays of additional parameters
     '''
-    print('\n * Computing the SNR with the full waveform.')
-    SNR = np.zeros(pars['events-number'])
-    detector_network = snr_computation.DetectorNetwork(
-        observing_run = pars['snr-fw-observing-run'], 
-        flow          = pars['snr-fw-f-low'        ], 
-        delta_f       = pars['snr-fw-delta-f'      ],
-        sample_rate   = pars['snr-fw-sampling-rate'],
-        network       = pars['snr-fw-detectors'    ],
-        psd_directory = pars['snr-fw-PSD-path'     ],
-    )
-    detector_network.load_psds()
-    for i, (_m1, _m2, _dL) in tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d)):
-        SNR[i] = detector_network.hit_network(
-            m1=_m1, m2=_m2, dL=_dL,
-            t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), # GW190425 trigtime. FIXME: Improve this.
-            approximant = pars['snr-fw-waveform'  ],
-            precessing  = pars['snr-fw-precession'],
-            snr_method  = pars['snr-fw-method'    ],
+    # Use the full waveform to compute the SNR.
+    if   pars['SNR-method'] == 'bilby':
+
+        print('\n * Computing the MF SNR with the full waveform using bilby')
+
+        SNR = []
+        additional_parameters = []
+
+        bdp = BilbyDetectionPipeline(
+            psd_dir       = pars['PSD-path'               ],
+            observing_run = pars['snr-bilby-observing-run']
         )
-    idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
-    return SNR, idx_detected
+ 
+        if   pars['run-type'] == 'population': iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby")
+        elif pars['run-type'] == 'injections': iterator = zip(m1d, m2d, dL)
 
-def compute_SNR_proxy_waveform(pars, m1s, m2s, zs):
-    '''
-        Compute the SNR with the approximated waveform.
-        Returns the SNR and the indices of the detected events.
-    '''
-    print('\n * Computing the SNR with the approximate waveform.')
-    theta        = icarosim.rvs_theta(pars['events-number'], 0., 1.4, pars['snr-ap-theta-path']) # Average on extrinsic parameters.
-    SNR, _, _    = icarosim.snr_samples(
-        m1s, m2s, zs, theta = theta,
-        numdet = pars['snr-ap-N-detectors'  ],
-        rho_s  = pars['snr-ap-SNR-reference'],
-        dL_s   = pars['snr-ap-dL-reference' ],
-        Md_s   = pars['snr-ap-Mc-reference' ],
-    )
-    idx_detected = icarosim.snr_and_freq_cut(m1s, m2s, zs, SNR, snrthr = pars['SNR-cut'], fgw_cut = pars['frequency-cut'])
-    return SNR, idx_detected
+        for _m1, _m2, _dL in iterator:
+            bdp.set_event_dict({
+                'mass_1':              _m1,
+                'mass_2':              _m2,
+                'luminosity_distance': _dL,
+            })
+            bdp.set_ifos_and_inject_signal(
+                reference_frequency = pars['snr-bilby-reference-frequency'],
+                sampling_frequency  = pars['snr-bilby-sampling-frequency' ],
+                approximant         = pars['snr-bilby-waveform'           ],
+            )
+            event_dict = bdp.compute_matched_filter_snr()
 
-def compute_SNR_flat_PSD(pars, zs):
-    '''
-        Compute the SNR with the flat PSD.
-        Returns the SNR and the indices of the detected events.
-    '''
-    print('\n * Computing the SNR with the flat PSD.')
-    SNR          = icarosim.snr_samples_flat(zs)
-    idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
-    return SNR, idx_detected
+            SNR.append(event_dict['matched_filter_SNR'])
+            additional_parameters.append(event_dict)
+        
+        SNR = np.array(SNR)
+        idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
+        # additional_parameters is a list of single event dict, we convert it to a dict of arrays
+        additional_parameters = pd.DataFrame(additional_parameters).to_dict(orient="list")
+        for key in additional_parameters: additional_parameters[key] = np.array(additional_parameters[key])
+
+    # Use the full waveform to compute the optimal SNR with bilby
+    elif pars['SNR-method'] == 'pycbc':
+
+        tmp_str = " approximate MF"*(pars['snr-pycbc-method']=='mf-fast') + " optimal"*(pars['snr-pycbc-method']=='opt')
+        print(f'\n * Computing the{tmp_str} SNR with the full waveform using pycbc')
+
+        SNR = np.zeros(pars['events-number'])
+
+        detector_network = snr_computation.DetectorNetwork(
+            observing_run = pars['snr-pycbc-observing-run'], 
+            flow          = pars['snr-pycbc-f-low'        ], 
+            delta_f       = pars['snr-pycbc-delta-f'      ],
+            sample_rate   = pars['snr-pycbc-sampling-rate'],
+            network       = pars['snr-pycbc-detectors'    ],
+            psd_directory = pars['PSD-path'               ],
+        )
+        detector_network.load_psds()
+
+        if   pars['run-type'] == 'population': iterator = tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d), desc="Opt SNR pycbc")
+        elif pars['run-type'] == 'injections': iterator = enumerate(zip(m1d, m2d, dL))
+
+        for i, (_m1, _m2, _dL) in iterator:
+            SNR[i] = detector_network.hit_network(
+                m1=_m1, m2=_m2, dL=_dL,
+                t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), # GW190425 trigtime. FIXME: Improve this.
+                approximant = pars['snr-pycbc-waveform'  ],
+                precessing  = pars['snr-pycbc-precession'],
+                snr_method  = pars['snr-pycbc-method'    ],
+            )
+
+        idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
+        additional_parameters = {}
+
+
+    # Use the quadrupole inspiral approximation to compute the SNR.
+    elif pars['SNR-method'] == 'proxy':
+
+        print(f'\n * Computing the SNR with the inspiral leading order approximation')
+
+        theta        = icarosim.rvs_theta(pars['events-number'], 0., 1.4, pars['snr-proxy-theta-path']) # Average on extrinsic parameters.
+        SNR, _, _    = icarosim.snr_samples(
+            m1s, m2s, zs, theta = theta,
+            numdet = pars['snr-proxy-N-detectors'  ],
+            rho_s  = pars['snr-proxy-SNR-reference'],
+            dL_s   = pars['snr-proxy-dL-reference' ],
+            Md_s   = pars['snr-proxy-Mc-reference' ],
+        )
+        idx_detected = icarosim.snr_and_freq_cut(m1s, m2s, zs, SNR, snrthr = pars['SNR-cut'], fgw_cut = pars['snr-proxy-fgw-cut'])
+        additional_parameters = {}
+
+
+    # Use the flat PSD to compute the SNR.
+    elif pars['SNR-method'] == 'flat-PSD':
+
+        print('\n * Computing the SNR with the flat PSD.')
+        SNR          = icarosim.snr_samples_flat(zs)
+        idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
+        additional_parameters = {}
+
+    # Use lisabeta to compute the SNR for LISA interferometer
+    elif pars['SNR-method'] == 'lisabeta':
+
+        print('\n * Computing the SNR with lisabeta')
+
+        SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+        idx_detected = snr_computation.cut_SNR(SNR)
+        additional_parameters = {}
+
+    else:
+        raise ValueError('Unknown method to compute the SNR. Exiting...')
+
+    return SNR, idx_detected, additional_parameters
+
+
+
+# def compute_SNR_full_waveform(pars, m1d, m2d, dL):
+#     '''
+#     Compute the optimal SNR with the full waveform.
+#     Add unit centered gaussian fluctuation to mimic MF SNR if pars['snr-pycbc-method']=='mf-fast'
+
+#     Return
+#     ------
+#     SNR: (m,) shape array-like
+#         Signal-to_Noise ratio of input events
+#     idx_detected: (m,) shape array-like
+#         indices of detected events
+#     additional_parameters: dict of (m,) shape array-like
+#         dictionary with arrays of additional parameters
+#     '''
+#     print('\n * Computing the SNR with the full waveform.')
+#     SNR = np.zeros(pars['events-number'])
+#     detector_network = snr_computation.DetectorNetwork(
+#         observing_run = pars['snr-pycbc-observing-run'], 
+#         flow          = pars['snr-pycbc-f-low'        ], 
+#         delta_f       = pars['snr-pycbc-delta-f'      ],
+#         sample_rate   = pars['snr-pycbc-sampling-rate'],
+#         network       = pars['snr-pycbc-detectors'    ],
+#         psd_directory = pars['snr-pycbc-PSD-path'     ],
+#     )
+#     detector_network.load_psds()
+#     if   pars['run-type'] == 'population': iterator = tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d))
+#     elif pars['run-type'] == 'injections': iterator = enumerate(zip(m1d, m2d, dL))
+#     for i, (_m1, _m2, _dL) in iterator:
+#         SNR[i] = detector_network.hit_network(
+#             m1=_m1, m2=_m2, dL=_dL,
+#             t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), # GW190425 trigtime. FIXME: Improve this.
+#             approximant = pars['snr-pycbc-waveform'  ],
+#             precessing  = pars['snr-pycbc-precession'],
+#             snr_method  = pars['snr-pycbc-method'    ],
+#         )
+#     idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
+#     return SNR, idx_detected, None
+
+# def compute_SNR_proxy_waveform(pars, m1s, m2s, zs):
+#     '''
+#     Compute the SNR with the approximated waveform.
+    
+#     Return
+#     ------
+#     SNR: (m,) shape array-like
+#         Signal-to_Noise ratio of input events
+#     idx_detected: (m,) shape array-like
+#         indices of detected events
+#     additional_parameters: dict of (m,) shape array-like
+#         dictionary with arrays of additional parameters
+#     '''
+#     print('\n * Computing the SNR with the approximate waveform.')
+#     theta        = icarosim.rvs_theta(pars['events-number'], 0., 1.4, pars['snr-proxy-theta-path']) # Average on extrinsic parameters.
+#     SNR, _, _    = icarosim.snr_samples(
+#         m1s, m2s, zs, theta = theta,
+#         numdet = pars['snr-proxy-N-detectors'  ],
+#         rho_s  = pars['snr-proxy-SNR-reference'],
+#         dL_s   = pars['snr-proxy-dL-reference' ],
+#         Md_s   = pars['snr-proxy-Mc-reference' ],
+#     )
+#     idx_detected = icarosim.snr_and_freq_cut(m1s, m2s, zs, SNR, snrthr = pars['SNR-cut'], fgw_cut = pars['snr-proxy-fgw-cut'])
+#     return SNR, idx_detected, None
+
+# def compute_SNR_flat_PSD(pars, zs):
+#     '''
+#     Compute the SNR with the flat PSD.
+    
+#     Return
+#     ------
+#     SNR: (m,) shape array-like
+#         Signal-to_Noise ratio of input events
+#     idx_detected: (m,) shape array-like
+#         indices of detected events
+#     additional_parameters: dict of (m,) shape array-like
+#         dictionary with arrays of additional parameters
+#     '''
+#     print('\n * Computing the SNR with the flat PSD.')
+#     SNR          = icarosim.snr_samples_flat(zs)
+#     idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
+#     return SNR, idx_detected, None
 
 def draw_samples_CDF_1D(x, PDF, N):
     '''
