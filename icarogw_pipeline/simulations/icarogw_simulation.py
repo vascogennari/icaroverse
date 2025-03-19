@@ -2,6 +2,7 @@ import os, sys, shutil, configparser
 import numpy as np, pickle, pandas as pd
 import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
+from scipy.integrate import simps
 from tqdm import tqdm
 
 # Internal imports
@@ -120,10 +121,10 @@ def generate_population(pars):
     # Compute the SNR to select the detected events.
     # Use the full waveform to compute the SNR.
     if   pars['SNR-method'] == 'full-waveform':
-        SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL)
+        SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL, pars['events-number'])
     # Use the approximate waveform to compute the SNR.
     elif pars['SNR-method'] == 'proxy-waveform':
-        SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs)
+        SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs, pars['events-number'])
     # Use the flat PSD to compute the SNR.
     elif pars['SNR-method'] == 'flat-PSD':
         SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
@@ -202,10 +203,10 @@ def generate_injections(pars):
             # Compute the SNR to select the detected events.
             # Use the full waveform to compute the SNR.
             if   pars['SNR-method'] == 'full-waveform':
-                SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL)
+                SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL, pars['injections-number-bank'])
             # Use the approximate waveform to compute the SNR.
             elif pars['SNR-method'] == 'proxy-waveform':
-                SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs)
+                SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs, pars['injections-number-bank'])
             # Use the flat PSD to compute the SNR.
             elif pars['SNR-method'] == 'flat-PSD':
                 SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
@@ -305,6 +306,21 @@ def build_filter_subsample(N_evs, N_subset):
     for idx in idxs: filt[idx] = True
     return filt
 
+def estimate_events_number(pars):
+
+    print('\n * Estimating the number of astrophysical events from the rate, using R0 = {} [Gpc^-3 yr^-1] and Tobs = {} [yr].'.format(pars['R0'], pars['observation-time']))
+
+    z_array = np.linspace(pars['bounds-z'][ 0], pars['bounds-z'][ 1], pars['N-points'])
+    # Set the rate evolution.
+    update_weights(pars['wrappers']['rw'], pars['truths'])
+    # Project the rate on the light cone.
+    tmp = pars['R0'] * pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
+    # Integrate in redshift and multiply by the observation time.
+    events_number = round(simps(tmp, z_array) * pars['observation-time'])
+
+    print('\n * Drawing {} events from the population.'.format(events_number))
+    return events_number
+
 def get_distribution_samples(pars):
     '''
         Draw samples from the selected sitribution.
@@ -319,10 +335,13 @@ def get_distribution_samples(pars):
     q_array  = np.linspace(pars['bounds-q'][ 0], pars['bounds-q'][ 1], pars['N-points'])
     z_array  = np.linspace(pars['bounds-z'][ 0], pars['bounds-z'][ 1], pars['N-points'])
 
+    # Compute the number of astrophysical events, if required.
+    if pars['estimate-events-number']: pars['events-number'] = estimate_events_number(pars)
+
     # Rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
     # Convert from rate to probability distribution.
-    tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) / (1+z_array)
+    tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
     zs, pdf_z = rejection_sampling_1D(z_array, tmp, pars['events-number'])
     plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
 
@@ -391,13 +410,13 @@ def get_distribution_samples(pars):
 
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
-def compute_SNR_full_waveform(pars, m1d, m2d, dL):
+def compute_SNR_full_waveform(pars, m1d, m2d, dL, number):
     '''
         Compute the SNR with the full waveform.
         Returns the SNR and the indices of the detected events.
     '''
     print('\n * Computing the SNR with the full waveform.')
-    SNR = np.zeros(pars['events-number'])
+    SNR = np.zeros(number)
     detector_network = snr_computation.DetectorNetwork(
         observing_run = pars['snr-fw-observing-run'], 
         flow          = pars['snr-fw-f-low'        ], 
@@ -418,13 +437,13 @@ def compute_SNR_full_waveform(pars, m1d, m2d, dL):
     idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
     return SNR, idx_detected
 
-def compute_SNR_proxy_waveform(pars, m1s, m2s, zs):
+def compute_SNR_proxy_waveform(pars, m1s, m2s, zs, number):
     '''
         Compute the SNR with the approximated waveform.
         Returns the SNR and the indices of the detected events.
     '''
     print('\n * Computing the SNR with the approximate waveform.')
-    theta        = icarosim.rvs_theta(pars['events-number'], 0., 1.4, pars['snr-app-theta-path']) # Average on extrinsic parameters.
+    theta        = icarosim.rvs_theta(number, 0., 1.4, pars['snr-ap-theta-path']) # Average on extrinsic parameters.
     SNR, _, _    = icarosim.snr_samples(
         m1s, m2s, zs, theta = theta,
         numdet = pars['snr-ap-N-detectors'  ],
