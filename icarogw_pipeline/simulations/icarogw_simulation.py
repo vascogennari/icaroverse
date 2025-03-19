@@ -117,21 +117,8 @@ def generate_population(pars):
     m1s, m2s, zs, m1d, m2d, dL, _ = get_distribution_samples(pars)
 
     # Compute the SNR to select the detected events.
-    # # Use the full waveform to compute the SNR.
-    # if   pars['SNR-method'] == 'full-waveform':
-    #     SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL)
-    # # Use the approximate waveform to compute the SNR.
-    # elif pars['SNR-method'] == 'proxy-waveform':
-    #     SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs)
-    # # Use the flat PSD to compute the SNR.
-    # elif pars['SNR-method'] == 'flat-PSD':
-    #     SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
-    # elif pars['SNR-method'] == 'lisabeta':
-    #     SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
-    #     idx_detected = snr_computation.cut_SNR(SNR)
-    # else:
-    #     raise ValueError('Unknows method to compute the SNR. Exiting...')
     SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+    clean_result_dict_from_compute_SNR(additional_parameters)
 
     # Save the number of detected events.
     print('\n * Number of detections: {}\n'.format(len(idx_detected)), flush = True)
@@ -201,21 +188,8 @@ def generate_injections(pars):
                 prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
 
             # Compute the SNR to select the detected events.
-            # # Use the full waveform to compute the SNR.
-            # if   pars['SNR-method'] == 'full-waveform':
-            #     SNR, idx_detected = compute_SNR_full_waveform( pars, m1d, m2d, dL)
-            # # Use the approximate waveform to compute the SNR.
-            # elif pars['SNR-method'] == 'proxy-waveform':
-            #     SNR, idx_detected = compute_SNR_proxy_waveform(pars, m1s, m2s, zs)
-            # # Use the flat PSD to compute the SNR.
-            # elif pars['SNR-method'] == 'flat-PSD':
-            #     SNR, idx_detected = compute_SNR_flat_PSD(      pars, zs)
-            # elif pars['SNR-method'] == 'lisabeta':
-            #     SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
-            #     idx_detected = snr_computation.cut_SNR(SNR)
-            # else:
-            #     raise ValueError('Unknows method to compute the SNR. Exiting...')
-            SNR, idx_detected, _ = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+            SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+            clean_result_dict_from_compute_SNR(additional_parameters)
             
             number_detected_chuck = len(idx_detected)
             inj_number_tmp = inj_number_tmp + number_detected_chuck
@@ -237,6 +211,15 @@ def generate_injections(pars):
             samps_dict_observed['dL'   ].append(dL[   idx_detected])
             samps_dict_observed['snr'  ].append(SNR[  idx_detected])
             samps_dict_observed['prior'].append(prior[idx_detected])
+
+            # Collect additional event parameters
+            for key in additional_parameters:
+                if   key in samps_dict_astrophysical: 
+                    samps_dict_astrophysical[key].append(additional_parameters[key])
+                    samps_dict_observed[key].append(additional_parameters[key][idx_detected])
+                else                                : 
+                    samps_dict_astrophysical[key] = [additional_parameters[key], ]
+                    samps_dict_observed[key] = [additional_parameters[key][idx_detected], ]
 
             if inj_number_tmp > pars['injections-number']: pbar.update(pars['injections-number'])
             else:               pbar.update(number_detected_chuck)
@@ -264,12 +247,14 @@ def update_weights(w, val_dict):
     filt = {key: val_dict[key] for key in w.population_parameters}
     w.update(**filt)
 
+
 def save_truths(path, dictionary):
     
     with open(os.path.join(path, 'true_parameters.txt'), 'w') as f:
         for key in dictionary.keys():
             max_len = len(max(dictionary.keys(), key = len))
             f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
+
 
 def read_truths(path):
 
@@ -279,12 +264,14 @@ def read_truths(path):
 
     return res
 
+
 def save_settings(path, dictionary):
 
     with open(os.path.join(path, 'analysis_settings.txt'), 'w') as f:
         for key in dictionary.keys():
             max_len = len(max(dictionary.keys(), key = len))
             f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
+
 
 def read_settings(path):
 
@@ -300,12 +287,14 @@ def read_settings(path):
 
     return res
 
+
 def build_filter_subsample(N_evs, N_subset):
 
     filt = np.full(N_evs, False, dtype = bool)
     idxs = np.random.choice(filt.shape[0], N_subset, replace = False)
     for idx in idxs: filt[idx] = True
     return filt
+
 
 def get_distribution_samples(pars):
     '''
@@ -315,24 +304,28 @@ def get_distribution_samples(pars):
         Whatever distribution is used, the output prior is expressed in the detector frame using the variables (m1d,m2d,dL).
         Please make sure to properly account for any variable transformation involved, by including the corresponding Jacobian.
     '''
+    # Extract the number of events to generate, distinguishing between population and injections simulations
+    if   pars['run-type'] == 'population': N_events = pars['events-number'         ]
+    elif pars['run-type'] == 'injections': N_events = pars['injections-number-bank']
+    else: raise ValueError("Unknown run-type. Please choose between 'population' and 'injections'.")
     # Initialise the arrays.
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
     m2_array = np.linspace(pars['bounds-m2'][0], pars['bounds-m2'][1], pars['N-points'])
-    q_array  = np.linspace(pars['bounds-q'][ 0], pars['bounds-q'][ 1], pars['N-points'])
-    z_array  = np.linspace(pars['bounds-z'][ 0], pars['bounds-z'][ 1], pars['N-points'])
+    q_array  = np.linspace(pars['bounds-q' ][0], pars['bounds-q' ][1], pars['N-points'])
+    z_array  = np.linspace(pars['bounds-z' ][0], pars['bounds-z' ][1], pars['N-points'])
 
     # Rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
     # Convert from rate to probability distribution.
     tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) / (1+z_array)
-    zs, pdf_z = rejection_sampling_1D(z_array, tmp, pars['events-number'])
+    zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
     plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
     if 'Redshift' in pars['model-primary']:
-        m1s    = np.zeros(pars['events-number'])
-        pdf_m1 = np.zeros(pars['events-number'])
+        m1s    = np.zeros(N_events)
+        pdf_m1 = np.zeros(N_events)
         for i,z in tqdm(enumerate(zs),  total = len(zs)):
             tmp = pars['wrappers']['m1w'].pdf(m1_array, z)
             # For redshift evolving distributions, we use the redshift samples to draw the masses.
@@ -340,7 +333,7 @@ def get_distribution_samples(pars):
         plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
-        m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, pars['events-number'])
+        m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, N_events)
 
     # If required, remove the log10 contribution.
     if pars['log10-PDF']:
@@ -351,7 +344,7 @@ def get_distribution_samples(pars):
     if 'MassRatio' in pars['model-secondary']:
         update_weights(pars['wrappers']['m2w'], pars['truths'])
         tmp = pars['wrappers']['m2w'].pdf(q_array)
-        qs, pdf_q = rejection_sampling_1D(q_array, tmp, pars['events-number'])
+        qs, pdf_q = rejection_sampling_1D(q_array, tmp, N_events)
 
         # If required, remove the log10 contribution.
         if pars['log10-PDF']:
@@ -373,7 +366,7 @@ def get_distribution_samples(pars):
             raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
         pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m2w']) # Condition the secondary on the primary.
         update_weights(pars['wrappers']['m2w'], pars['truths'])
-        m1s, m2s = pars['wrappers']['m2w'].prior.sample(pars['events-number'])
+        m1s, m2s = pars['wrappers']['m2w'].prior.sample(N_events)
         pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)
 
     # Get detector frame quantities.
@@ -386,6 +379,63 @@ def get_distribution_samples(pars):
 
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
+
+def draw_samples_CDF_1D(x, PDF, N):
+    '''
+        Draw N samples from a distribution that follows the array PDF.
+
+        Compute the cumulative distribution (CDF) and draw uniformly from [0,1].
+        Interpolate the resulting samples to get a continuous extraction on x.
+    '''
+    # Normalize PDF to ensure it sums to 1.
+    PDF = PDF / np.sum(PDF)
+    # Compute CDF and ensure it starts at 0.
+    CDF = np.cumsum(PDF)
+    CDF = np.insert(CDF, 0, 0)  # Insert 0 at the beginning
+    x_extended = np.insert(x, 0, x[0])  # Extend x for interpolation
+    # Draw uniform samples from [0,1].
+    tmp = np.random.uniform(0, 1, N)
+    # Inverse transform sampling: interpolate using the CDF.
+    samps = np.interp(tmp, CDF, x_extended)
+    # Compute the derivative of the CDF (which is the PDF) using finite differences
+    dCDF_dx = np.gradient(CDF, x_extended)  # Approximate derivative
+    pdf_s = np.interp(samps, x_extended, dCDF_dx)  # Interpolate to get PDF values
+
+    return samps, pdf_s
+
+
+def rejection_sampling_1D(x, PDF, N):
+    '''
+        Draw N samples from a distribution that follows the array PDF,
+        using a rejection sampling algorithm.
+    '''
+    # Normalize PDF.
+    PDF = PDF / np.sum(PDF)
+    # Define proposal distribution (Uniform over range).
+    x_min, x_max = np.min(x), np.max(x)
+    M = np.max(PDF)  # Upper bound for rejection sampling.
+
+    samples = []
+    while len(samples) < N:
+        # Sample uniformly from domain.
+        x_s = np.random.uniform(x_min, x_max)
+        # Compute probability density at x_s (interpolated).
+        pdf_s = np.interp(x_s, x, PDF)
+        # Accept or reject
+        if np.random.uniform(0, M) < pdf_s: samples.append(x_s)
+
+    # Convert to numpy array.
+    samples = np.array(samples)
+    # Compute corresponding probability densities.
+    pdf_samples = np.interp(samples, x, PDF)
+
+    return samples, pdf_samples
+
+
+
+#######################
+#      SNR utils      #
+#######################
 
 def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     '''
@@ -426,7 +476,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     Returns
     -------
     SNR:                   (m,) shape array-like
-        Signal-to_Noise ratio of input events
+        Signal-to-Noise ratio of input events
     idx_detected:          (m,) shape array-like
         indices of detected events
     additional_parameters: dict of (m,) shape array-like
@@ -440,9 +490,12 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
         SNR = []
         additional_parameters = []
 
-        bdp = BilbyDetectionPipeline(
-            psd_dir       = pars['PSD-path'               ],
-            observing_run = pars['snr-bilby-observing-run']
+        bdp = snr_computation.BilbyDetectionPipeline(
+            psd_dir             = pars['PSD-path'                     ],
+            observing_run       = pars['snr-bilby-observing-run'      ],
+            reference_frequency = pars['snr-bilby-reference-frequency'],
+            sampling_frequency  = pars['snr-bilby-sampling-frequency' ],
+            approximant         = pars['snr-bilby-waveform'           ],
         )
  
         if   pars['run-type'] == 'population': iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby")
@@ -454,12 +507,8 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
                 'mass_2':              _m2,
                 'luminosity_distance': _dL,
             })
-            bdp.set_ifos_and_inject_signal(
-                reference_frequency = pars['snr-bilby-reference-frequency'],
-                sampling_frequency  = pars['snr-bilby-sampling-frequency' ],
-                approximant         = pars['snr-bilby-waveform'           ],
-            )
-            event_dict = bdp.compute_matched_filter_snr()
+            bdp.set_ifos_and_inject_signal()
+            event_dict = bdp.compute_matched_filter_SNR()
 
             SNR.append(event_dict['matched_filter_SNR'])
             additional_parameters.append(event_dict)
@@ -544,137 +593,17 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     return SNR, idx_detected, additional_parameters
 
 
-
-# def compute_SNR_full_waveform(pars, m1d, m2d, dL):
-#     '''
-#     Compute the optimal SNR with the full waveform.
-#     Add unit centered gaussian fluctuation to mimic MF SNR if pars['snr-pycbc-method']=='mf-fast'
-
-#     Return
-#     ------
-#     SNR: (m,) shape array-like
-#         Signal-to_Noise ratio of input events
-#     idx_detected: (m,) shape array-like
-#         indices of detected events
-#     additional_parameters: dict of (m,) shape array-like
-#         dictionary with arrays of additional parameters
-#     '''
-#     print('\n * Computing the SNR with the full waveform.')
-#     SNR = np.zeros(pars['events-number'])
-#     detector_network = snr_computation.DetectorNetwork(
-#         observing_run = pars['snr-pycbc-observing-run'], 
-#         flow          = pars['snr-pycbc-f-low'        ], 
-#         delta_f       = pars['snr-pycbc-delta-f'      ],
-#         sample_rate   = pars['snr-pycbc-sampling-rate'],
-#         network       = pars['snr-pycbc-detectors'    ],
-#         psd_directory = pars['snr-pycbc-PSD-path'     ],
-#     )
-#     detector_network.load_psds()
-#     if   pars['run-type'] == 'population': iterator = tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d))
-#     elif pars['run-type'] == 'injections': iterator = enumerate(zip(m1d, m2d, dL))
-#     for i, (_m1, _m2, _dL) in iterator:
-#         SNR[i] = detector_network.hit_network(
-#             m1=_m1, m2=_m2, dL=_dL,
-#             t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), # GW190425 trigtime. FIXME: Improve this.
-#             approximant = pars['snr-pycbc-waveform'  ],
-#             precessing  = pars['snr-pycbc-precession'],
-#             snr_method  = pars['snr-pycbc-method'    ],
-#         )
-#     idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
-#     return SNR, idx_detected, None
-
-# def compute_SNR_proxy_waveform(pars, m1s, m2s, zs):
-#     '''
-#     Compute the SNR with the approximated waveform.
-    
-#     Return
-#     ------
-#     SNR: (m,) shape array-like
-#         Signal-to_Noise ratio of input events
-#     idx_detected: (m,) shape array-like
-#         indices of detected events
-#     additional_parameters: dict of (m,) shape array-like
-#         dictionary with arrays of additional parameters
-#     '''
-#     print('\n * Computing the SNR with the approximate waveform.')
-#     theta        = icarosim.rvs_theta(pars['events-number'], 0., 1.4, pars['snr-proxy-theta-path']) # Average on extrinsic parameters.
-#     SNR, _, _    = icarosim.snr_samples(
-#         m1s, m2s, zs, theta = theta,
-#         numdet = pars['snr-proxy-N-detectors'  ],
-#         rho_s  = pars['snr-proxy-SNR-reference'],
-#         dL_s   = pars['snr-proxy-dL-reference' ],
-#         Md_s   = pars['snr-proxy-Mc-reference' ],
-#     )
-#     idx_detected = icarosim.snr_and_freq_cut(m1s, m2s, zs, SNR, snrthr = pars['SNR-cut'], fgw_cut = pars['snr-proxy-fgw-cut'])
-#     return SNR, idx_detected, None
-
-# def compute_SNR_flat_PSD(pars, zs):
-#     '''
-#     Compute the SNR with the flat PSD.
-    
-#     Return
-#     ------
-#     SNR: (m,) shape array-like
-#         Signal-to_Noise ratio of input events
-#     idx_detected: (m,) shape array-like
-#         indices of detected events
-#     additional_parameters: dict of (m,) shape array-like
-#         dictionary with arrays of additional parameters
-#     '''
-#     print('\n * Computing the SNR with the flat PSD.')
-#     SNR          = icarosim.snr_samples_flat(zs)
-#     idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
-#     return SNR, idx_detected, None
-
-def draw_samples_CDF_1D(x, PDF, N):
-    '''
-        Draw N samples from a distribution that follows the array PDF.
-
-        Compute the cumulative distribution (CDF) and draw uniformly from [0,1].
-        Interpolate the resulting samples to get a continuous extraction on x.
-    '''
-    # Normalize PDF to ensure it sums to 1.
-    PDF = PDF / np.sum(PDF)
-    # Compute CDF and ensure it starts at 0.
-    CDF = np.cumsum(PDF)
-    CDF = np.insert(CDF, 0, 0)  # Insert 0 at the beginning
-    x_extended = np.insert(x, 0, x[0])  # Extend x for interpolation
-    # Draw uniform samples from [0,1].
-    tmp = np.random.uniform(0, 1, N)
-    # Inverse transform sampling: interpolate using the CDF.
-    samps = np.interp(tmp, CDF, x_extended)
-    # Compute the derivative of the CDF (which is the PDF) using finite differences
-    dCDF_dx = np.gradient(CDF, x_extended)  # Approximate derivative
-    pdf_s = np.interp(samps, x_extended, dCDF_dx)  # Interpolate to get PDF values
-
-    return samps, pdf_s
-
-def rejection_sampling_1D(x, PDF, N):
-    '''
-        Draw N samples from a distribution that follows the array PDF,
-        using a rejection sampling algorithm.
-    '''
-    # Normalize PDF.
-    PDF = PDF / np.sum(PDF)
-    # Define proposal distribution (Uniform over range).
-    x_min, x_max = np.min(x), np.max(x)
-    M = np.max(PDF)  # Upper bound for rejection sampling.
-
-    samples = []
-    while len(samples) < N:
-        # Sample uniformly from domain.
-        x_s = np.random.uniform(x_min, x_max)
-        # Compute probability density at x_s (interpolated).
-        pdf_s = np.interp(x_s, x, PDF)
-        # Accept or reject
-        if np.random.uniform(0, M) < pdf_s: samples.append(x_s)
-
-    # Convert to numpy array.
-    samples = np.array(samples)
-    # Compute corresponding probability densities.
-    pdf_samples = np.interp(samples, x, PDF)
-
-    return samples, pdf_samples
+def clean_result_dict_from_compute_SNR(result_dir):
+    """
+    Remove dictionary entries that are redundant
+    NB: - mass_1/mass_2 are the same as m1d/m2d
+        - luminosity_distance is the same as dL
+        - matched_filter_SNR is the same as snr
+    """
+    result_dir.pop('mass_1')
+    result_dir.pop('mass_2')
+    result_dir.pop('luminosity_distance')
+    result_dir.pop('matched_filter_SNR')
 
 
 
@@ -767,6 +696,7 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     plt.close()
 
     return 0
+
 
 def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, rate_evolution = 0, q_samps = 0):
 

@@ -18,7 +18,7 @@ def InitialiseOptions(Config):
         'selection-effects-cut'         : 'snr',
         'SNR-cut'                       : 12.,
 
-        'SNR-method'                    : 'full-waveform',
+        'SNR-method'                    : 'bilby',
         'PSD-path'                      : '',
 
         'snr-bilby-observing-run'       : 'O3',
@@ -74,38 +74,38 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if ('output' in key) or ('run-type' in key) or ('selection-effects-cut' in key) or ('SNR-method' in key) or ('snr-fw-observing-run' in key) or ('snr-fw-waveform' in key) or ('snr-fw-method' in key) or ('snr-fw-PSD-path' in key) or ('snr-app-theta-path' in key) or ('icarogw-sim-mass-model' in key) or ('icarogw-sim-draw-dL' in key):
+        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'PSD-path') or (key == 'snr-bilby-observing-run') or (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-observing-run') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if ('SNR-cut' in key) or ('frequency-cut' in key) or ('snr-fw-sampling-rate' in key) or ('snr-fw-delta-f' in key) or ('snr-fw-f-low' in key) or ('snr-app-SNR-reference' in key) or ('snr-app-dL-reference' in key) or ('snr-app-Mc-reference' in key) or ('icarogw-sim-z-max' in key):
+        if (key == 'SNR-cut') or (key == 'frequency-cut') or (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'icarogw-sim-z-max'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if ('events-number' in key) or ('injections-number' in key) or ('injections-number-bank' in key) or ('snr-app-N-detectors' in key):
+        if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'snr-proxy-N-detectors'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if ('screen-output' in key) or ('postprocessing' in key) or ('flat-PSD' in key) or ('use-icarogw-sim-inj' in key) or ('snr-fw-precession' in key) or ('use-icarogw-sim-inj' in key) or ('log10-PDF' in key) or ('inverse-mass-ratio' in key):
+        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession') or (key == 'use-icarogw-sim-inj') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
-        if ('snr-fw-detectors' in key):
+        if (key == 'snr-pycbc-detectors'):
             try: input_pars[key] = ast.literal_eval(Config.get('input', key))
             except: pass
 
         # Model
-        if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
+        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('redshift-mixture' in key) or ('low-smoothing' in key) or ('single-mass' in key):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if ('truths' in key):
+        if (key == 'truths'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
         # Plots
-        if ('N-points' in key):
+        if (key == 'N-points'):
             try: input_pars[key] = Config.getint('plots', key)
             except: pass
-        if ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
+        if (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z'):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
     
