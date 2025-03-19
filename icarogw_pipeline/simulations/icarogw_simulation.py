@@ -64,7 +64,8 @@ def main():
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw, 'ref-cosmo': ref_cosmo}
 
     # Save and print true parameters.
-    population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['m2w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters
+    population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters
+    if not input_pars['single-mass']: population_parameters += input_pars['wrappers']['m2w'].population_parameters
     print('\n * Using the following population parameters.\n')
     print('\t{}'.format({key: input_pars['truths'][key] for key in population_parameters}))
     save_truths(input_pars['output'], {key: input_pars['truths'][key] for key in population_parameters})
@@ -345,41 +346,48 @@ def get_distribution_samples(pars):
         pdf_m1 *= np.log10(np.e) / m1s   # Compute the Jacobian: |J_(log10(m1s))->(m1s)| = log10(e) / m1s.
 
     # Secondary mass.
-    if 'MassRatio' in pars['model-secondary']:
-        update_weights(pars['wrappers']['m2w'], pars['truths'])
-        tmp = pars['wrappers']['m2w'].pdf(q_array)
-        qs, pdf_q = rejection_sampling_1D(q_array, tmp, pars['events-number'])
+    if not pars['single-mass']:
+        if 'MassRatio' in pars['model-secondary']:
+            update_weights(pars['wrappers']['m2w'], pars['truths'])
+            tmp = pars['wrappers']['m2w'].pdf(q_array)
+            qs, pdf_q = rejection_sampling_1D(q_array, tmp, pars['events-number'])
 
-        # If required, remove the log10 contribution.
-        if pars['log10-PDF']:
-            qs = np.power(10., qs)
-            pdf_q *= np.log10(np.e) / qs # Compute the Jacobian: |J_(log10(q))->(q)| = log10(e) / q.
+            # If required, remove the log10 contribution.
+            if pars['log10-PDF']:
+                qs = np.power(10., qs)
+                pdf_q *= np.log10(np.e) / qs # Compute the Jacobian: |J_(log10(q))->(q)| = log10(e) / q.
 
-        # If required, get m2 from q.
-        if not pars['inverse-mass-ratio']:
-            m2s = qs * m1s
-            pdf_m2 = pdf_q / m1s         # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = 1/m1s, with q = m2/m1.
+            # If required, get m2 from q.
+            if not pars['inverse-mass-ratio']:
+                m2s = qs * m1s
+                pdf_m2 = pdf_q / m1s         # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = 1/m1s, with q = m2/m1.
+            else:
+                m2s = m1s / qs
+                pdf_m2 = pdf_q / m1s * qs**2 # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = q**2/m1s, with q=m1/m2.
+
+            pdf_m1m2 = pdf_m1 * pdf_m2
+            plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
         else:
-            m2s = m1s / qs
-            pdf_m2 = pdf_q / m1s * qs**2 # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = q**2/m1s, with q=m1/m2.
-
-        pdf_m1m2 = pdf_m1 * pdf_m2
-        plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
+            if 'Redshift' in pars['model-primary']:
+                raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
+            pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m2w']) # Condition the secondary on the primary.
+            update_weights(pars['wrappers']['m2w'], pars['truths'])
+            m1s, m2s = pars['wrappers']['m2w'].prior.sample(pars['events-number'])
+            pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)
     else:
-        if 'Redshift' in pars['model-primary']:
-            raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
-        pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m2w']) # Condition the secondary on the primary.
-        update_weights(pars['wrappers']['m2w'], pars['truths'])
-        m1s, m2s = pars['wrappers']['m2w'].prior.sample(pars['events-number'])
-        pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)
+        m2s = np.zeros(pars['events-number'])
 
     # Get detector frame quantities.
     m1d = m1s * (1 + zs)
     m2d = m2s * (1 + zs)
     dL  = pars['wrappers']['ref-cosmo'].z2dl(zs)
 
-    # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz]
-    prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+    if not pars['single-mass']:
+        # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz].
+        prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+    else:
+        # Transform the prior from source to detector frame: |J_(m1s,z)->(m1d,dL)| = 1/ [(1+z) * ddL/dz].
+        prior = (pdf_m1   * pdf_z) / ((1 + zs)    * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
 
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
@@ -416,7 +424,7 @@ def compute_SNR_proxy_waveform(pars, m1s, m2s, zs):
         Returns the SNR and the indices of the detected events.
     '''
     print('\n * Computing the SNR with the approximate waveform.')
-    theta        = icarosim.rvs_theta(pars['events-number'], 0., 1.4, pars['snr-ap-theta-path']) # Average on extrinsic parameters.
+    theta        = icarosim.rvs_theta(pars['events-number'], 0., 1.4, pars['snr-app-theta-path']) # Average on extrinsic parameters.
     SNR, _, _    = icarosim.snr_samples(
         m1s, m2s, zs, theta = theta,
         numdet = pars['snr-ap-N-detectors'  ],
