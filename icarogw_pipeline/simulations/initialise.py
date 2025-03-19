@@ -12,11 +12,14 @@ def InitialiseOptions(Config):
         'screen-output'                 : 0,
         'postprocessing'                : 0,
 
-        'events-number'                 : 1000,
-        'injections-number'             : 1000,
-        'injections-number-bank'        : 100,
-        'selection-effects-cut'         : 'snr',
-        'SNR-cut'                       : 12.,
+        'events-number'               : 1000,
+        'injections-number'           : 1000,
+        'injections-number-bank'      : 100,
+        'selection-effects-cut'       : 'snr',
+        'SNR-cut'                     : 12.,
+        'estimate-events-number'      : 0,
+        'R0'                          : 25.,
+        'observation-time'            : 1.,
 
         'SNR-method'                    : 'bilby',
         'PSD-path'                      : '',
@@ -77,13 +80,13 @@ def InitialiseOptions(Config):
         if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'PSD-path') or (key == 'snr-bilby-observing-run') or (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-observing-run') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if (key == 'SNR-cut') or (key == 'frequency-cut') or (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'icarogw-sim-z-max'):
+        if (key == 'SNR-cut') or (key == 'frequency-cut') or (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'icarogw-sim-z-max') or (key == 'R0') or (key == 'observation-time'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
         if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'snr-proxy-N-detectors'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession') or (key == 'use-icarogw-sim-inj') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio'):
+        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession') or (key == 'use-icarogw-sim-inj') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio') or (key == 'estimate-events-number'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'snr-pycbc-detectors'):

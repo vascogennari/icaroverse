@@ -2,6 +2,7 @@ import os, sys, shutil, configparser
 import numpy as np, pickle, pandas as pd
 import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
+from scipy.integrate import simps
 from tqdm import tqdm
 
 # Internal imports
@@ -64,7 +65,8 @@ def main():
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw, 'ref-cosmo': ref_cosmo}
 
     # Save and print true parameters.
-    population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['m2w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters
+    population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters
+    if not input_pars['single-mass']: population_parameters += input_pars['wrappers']['m2w'].population_parameters
     print('\n * Using the following population parameters.\n')
     print('\t{}'.format({key: input_pars['truths'][key] for key in population_parameters}))
     save_truths(input_pars['output'], {key: input_pars['truths'][key] for key in population_parameters})
@@ -295,6 +297,20 @@ def build_filter_subsample(N_evs, N_subset):
     for idx in idxs: filt[idx] = True
     return filt
 
+def estimate_events_number(pars):
+
+    print('\n * Estimating the number of astrophysical events from the rate, using R0 = {} [Gpc^-3 yr^-1] and Tobs = {} [yr].'.format(pars['R0'], pars['observation-time']))
+
+    z_array = np.linspace(pars['bounds-z'][ 0], pars['bounds-z'][ 1], pars['N-points'])
+    # Set the rate evolution.
+    update_weights(pars['wrappers']['rw'], pars['truths'])
+    # Project the rate on the light cone.
+    tmp = pars['R0'] * pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
+    # Integrate in redshift and multiply by the observation time.
+    events_number = round(simps(tmp, z_array) * pars['observation-time'])
+
+    print('\n * Drawing {} events from the population.'.format(events_number))
+    return events_number
 
 def get_distribution_samples(pars):
     '''
@@ -304,10 +320,14 @@ def get_distribution_samples(pars):
         Whatever distribution is used, the output prior is expressed in the detector frame using the variables (m1d,m2d,dL).
         Please make sure to properly account for any variable transformation involved, by including the corresponding Jacobian.
     '''
+    # Compute the number of astrophysical events, if required.
+    if pars['estimate-events-number']: pars['events-number'] = estimate_events_number(pars)
+
     # Extract the number of events to generate, distinguishing between population and injections simulations
     if   pars['run-type'] == 'population': N_events = pars['events-number'         ]
     elif pars['run-type'] == 'injections': N_events = pars['injections-number-bank']
     else: raise ValueError("Unknown run-type. Please choose between 'population' and 'injections'.")
+
     # Initialise the arrays.
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
     m2_array = np.linspace(pars['bounds-m2'][0], pars['bounds-m2'][1], pars['N-points'])
@@ -316,8 +336,9 @@ def get_distribution_samples(pars):
 
     # Rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
+    
     # Convert from rate to probability distribution.
-    tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) / (1+z_array)
+    tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
     zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
     plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
 
@@ -341,41 +362,48 @@ def get_distribution_samples(pars):
         pdf_m1 *= np.log10(np.e) / m1s   # Compute the Jacobian: |J_(log10(m1s))->(m1s)| = log10(e) / m1s.
 
     # Secondary mass.
-    if 'MassRatio' in pars['model-secondary']:
-        update_weights(pars['wrappers']['m2w'], pars['truths'])
-        tmp = pars['wrappers']['m2w'].pdf(q_array)
-        qs, pdf_q = rejection_sampling_1D(q_array, tmp, N_events)
+    if not pars['single-mass']:
+        if 'MassRatio' in pars['model-secondary']:
+            update_weights(pars['wrappers']['m2w'], pars['truths'])
+            tmp = pars['wrappers']['m2w'].pdf(q_array)
+            qs, pdf_q = rejection_sampling_1D(q_array, tmp, N_events)
 
-        # If required, remove the log10 contribution.
-        if pars['log10-PDF']:
-            qs = np.power(10., qs)
-            pdf_q *= np.log10(np.e) / qs # Compute the Jacobian: |J_(log10(q))->(q)| = log10(e) / q.
+            # If required, remove the log10 contribution.
+            if pars['log10-PDF']:
+                qs = np.power(10., qs)
+                pdf_q *= np.log10(np.e) / qs # Compute the Jacobian: |J_(log10(q))->(q)| = log10(e) / q.
 
-        # If required, get m2 from q.
-        if not pars['inverse-mass-ratio']:
-            m2s = qs * m1s
-            pdf_m2 = pdf_q / m1s         # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = 1/m1s, with q = m2/m1.
+            # If required, get m2 from q.
+            if not pars['inverse-mass-ratio']:
+                m2s = qs * m1s
+                pdf_m2 = pdf_q / m1s         # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = 1/m1s, with q = m2/m1.
+            else:
+                m2s = m1s / qs
+                pdf_m2 = pdf_q / m1s * qs**2 # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = q**2/m1s, with q=m1/m2.
+
+            pdf_m1m2 = pdf_m1 * pdf_m2
+            plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
         else:
-            m2s = m1s / qs
-            pdf_m2 = pdf_q / m1s * qs**2 # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = q**2/m1s, with q=m1/m2.
-
-        pdf_m1m2 = pdf_m1 * pdf_m2
-        plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
+            if 'Redshift' in pars['model-primary']:
+                raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
+            pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m2w']) # Condition the secondary on the primary.
+            update_weights(pars['wrappers']['m2w'], pars['truths'])
+            m1s, m2s = pars['wrappers']['m2w'].prior.sample(N_events)
+            pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)
     else:
-        if 'Redshift' in pars['model-primary']:
-            raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
-        pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m2w']) # Condition the secondary on the primary.
-        update_weights(pars['wrappers']['m2w'], pars['truths'])
-        m1s, m2s = pars['wrappers']['m2w'].prior.sample(N_events)
-        pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)
+        m2s = np.zeros(N_events)
 
     # Get detector frame quantities.
     m1d = m1s * (1 + zs)
     m2d = m2s * (1 + zs)
     dL  = pars['wrappers']['ref-cosmo'].z2dl(zs)
 
-    # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz]
-    prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+    if not pars['single-mass']:
+        # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz].
+        prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+    else:
+        # Transform the prior from source to detector frame: |J_(m1s,z)->(m1d,dL)| = 1/ [(1+z) * ddL/dz].
+        prior = (pdf_m1   * pdf_z) / ((1 + zs)    * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
 
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
