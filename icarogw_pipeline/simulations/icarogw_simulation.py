@@ -482,6 +482,11 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     additional_parameters: dict of (m,) shape array-like
         dictionary with arrays of additional parameters
     '''
+    # Extract the number of events to generate, distinguishing between population and injections simulations
+    if   pars['run-type'] == 'population': N_events = pars['events-number'         ]
+    elif pars['run-type'] == 'injections': N_events = pars['injections-number-bank']
+    else: raise ValueError("Unknown run-type. Please choose between 'population' and 'injections'.")
+
     # Use the full waveform to compute the SNR.
     if   pars['SNR-method'] == 'bilby':
 
@@ -525,7 +530,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
         tmp_str = " approximate MF"*(pars['snr-pycbc-method']=='mf-fast') + " optimal"*(pars['snr-pycbc-method']=='opt')
         print(f'\n * Computing the{tmp_str} SNR with the full waveform using pycbc')
 
-        SNR = np.zeros(pars['events-number'])
+        SNR = np.zeros(N_events)
 
         detector_network = snr_computation.DetectorNetwork(
             observing_run = pars['snr-pycbc-observing-run'], 
@@ -558,7 +563,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
 
         print(f'\n * Computing the SNR with the inspiral leading order approximation')
 
-        theta        = icarosim.rvs_theta(pars['events-number'], 0., 1.4, pars['snr-proxy-theta-path']) # Average on extrinsic parameters.
+        theta        = icarosim.rvs_theta(N_events, 0., 1.4, pars['snr-proxy-theta-path']) # Average on extrinsic parameters.
         SNR, _, _    = icarosim.snr_samples(
             m1s, m2s, zs, theta = theta,
             numdet = pars['snr-proxy-N-detectors'  ],
