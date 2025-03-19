@@ -1,13 +1,16 @@
 import numpy as np
 import os
+import time
 
 import pycbc.psd # PYCBC MUST BE IMPORTED BEFORE ICAROGW
 from pycbc.waveform import get_fd_waveform
 from pycbc.filter import get_cutoff_indices
 from pycbc.detector import Detector
 
-import lisabeta.lisa.lisa as lisa
 
+# -------------------------------------------------------------------------- #
+#                            pycbc implementation                            #
+# -------------------------------------------------------------------------- #
 
 
 class Event():
@@ -304,7 +307,449 @@ class DetectorNetwork():
             raise AssertionError(f"Unknown snr computation method: {snr_method}")
 
 
+# -------------------------------------------------------------------------- #
+#                            bilby implementation                            #
+# -------------------------------------------------------------------------- #
+
+
+import bilby
+from gwpy.time import to_gps
+
+# Utils
+def chieff_from_wf_params(event_pars_dict):
+    """
+    Compute the effective spin parameter from the masses and spins
+    
+    Parameters
+    ----------
+    event_pars_dict: dict of float or array-like
+        Dictionary containing masses and spins with following keys:
+        (mass_1, mass_2, a_1, a_2, tilt_1, tilt_2)
+    """
+    mass_1, mass_2 = event_pars_dict['mass_1'], event_pars_dict['mass_2']
+    a_1, a_2       = event_pars_dict['a_1']   , event_pars_dict['a_2']
+    tilt_1, tilt_2 = event_pars_dict['tilt_1'], event_pars_dict['tilt_2']
+    chi_1, chi_2 = a_1 * np.cos(tilt_1), a_2 * np.cos(tilt_2)
+    chi_eff = (mass_1 * chi_1 + mass_2 * chi_2) / (mass_1 + mass_2)
+    return chi_eff
+
+def tell_me_ifos_on(run='opt'):
+    """
+    Function to return the IFOs on. Based on IGWN reported and expected duty cycles.
+
+    * For O3, values are based on S. Mastrogiovanni's scripts for MICEcat MDC.
+
+    * For O4, total runtime spans May 24th 2023 to October 7th 2025.
+      Two commisionning breaks are taken into account (that contribute to the [] output),
+      V1 starts O4 after 1st break, K1 starts after second break.
+      The present function only implements duty cycles of the periods outside the commisionning breaks.
+      (ie. to be consistent in a simulation the total observation time should be set to the total O4 duration, 
+      minus the duration of the two commisionning breaks)
+      (see https://observing.docs.ligo.org/plan/ and https://wiki.ligo.org/LSC/JRPComm/ObsRun4)
+
+    * For O5, 70% duty cycle is assumed for each detector independently.
+
+    Parameters
+    ----------
+    run: str
+        observing run, available: O3, O4, O5, opt (NB: opt yields 100% full network)
+
+    Returns
+    -------
+    ifos: list
+        list of IFOs on, random subset of [H1, L1, V1, K1] based on run's duty cycle
+    """
+    if run == 'opt':
+        ifos = ['H1', 'L1', 'V1', 'K1']
+    elif run == 'O3':
+        lucky = np.random.rand()
+        if   lucky < 0.50: ifos = ['H1', 'L1', 'V1']
+        elif lucky < 0.64: ifos = ['H1', 'L1', '  ']
+        elif lucky < 0.78: ifos = ['H1', '  ', 'V1']
+        elif lucky < 0.92: ifos = ['  ', 'L1', 'V1']
+        elif lucky < 0.94: ifos = ['H1', '  ', '  ']
+        elif lucky < 0.96: ifos = ['  ', 'L1', '  ']
+        elif lucky < 0.98: ifos = ['  ', '  ', 'V1']
+        else:              ifos = ['  ', '  ', '  ']
+    elif run == 'O4':
+        lucky = np.random.rand()
+        if   lucky < 0.0371: ifos = ['L1', 'H1', 'V1', 'K1']
+        elif lucky < 0.2438: ifos = ['L1', 'H1', 'V1', '  ']
+        elif lucky < 0.2858: ifos = ['L1', 'H1', '  ', 'K1']
+        elif lucky < 0.5200: ifos = ['L1', 'H1', '  ', '  ']
+        elif lucky < 0.5400: ifos = ['L1', '  ', 'V1', 'K1']
+        elif lucky < 0.6513: ifos = ['L1', '  ', 'V1', '  ']
+        elif lucky < 0.6739: ifos = ['L1', '  ', '  ', 'K1']
+        elif lucky < 0.8000: ifos = ['L1', '  ', '  ', '  ']
+        elif lucky < 0.8093: ifos = ['  ', 'H1', 'V1', 'K1']
+        elif lucky < 0.8610: ifos = ['  ', 'H1', 'V1', '  ']
+        elif lucky < 0.8715: ifos = ['  ', 'H1', '  ', 'K1']
+        elif lucky < 0.9300: ifos = ['  ', 'H1', '  ', '  ']
+        elif lucky < 0.9350: ifos = ['  ', '  ', 'V1', 'K1']
+        elif lucky < 0.9628: ifos = ['  ', '  ', 'V1', '  ']
+        elif lucky < 0.9685: ifos = ['  ', '  ', '  ', 'K1']
+        else:                ifos = ['  ', '  ', '  ', '  ']
+    elif run == 'O5':
+        lucky = np.random.rand()
+        if   lucky < 0.2744: ifos = ['L1', 'H1', 'V1', 'K1']
+        elif lucky < 0.3920: ifos = ['L1', 'H1', 'V1', '  ']
+        elif lucky < 0.5096: ifos = ['L1', 'H1', '  ', 'K1']
+        elif lucky < 0.5600: ifos = ['L1', 'H1', '  ', '  ']
+        elif lucky < 0.6776: ifos = ['L1', '  ', 'V1', 'K1']
+        elif lucky < 0.7280: ifos = ['L1', '  ', 'V1', '  ']
+        elif lucky < 0.7784: ifos = ['L1', '  ', '  ', 'K1']
+        elif lucky < 0.8000: ifos = ['L1', '  ', '  ', '  ']
+        elif lucky < 0.8686: ifos = ['  ', 'H1', 'V1', 'K1']
+        elif lucky < 0.8980: ifos = ['  ', 'H1', 'V1', '  ']
+        elif lucky < 0.9274: ifos = ['  ', 'H1', '  ', 'K1']
+        elif lucky < 0.9400: ifos = ['  ', 'H1', '  ', '  ']
+        elif lucky < 0.9694: ifos = ['  ', '  ', 'V1', 'K1']
+        elif lucky < 0.9820: ifos = ['  ', '  ', 'V1', '  ']
+        elif lucky < 0.9946: ifos = ['  ', '  ', '  ', 'K1']
+        else:                ifos = ['  ', '  ', '  ', '  ']
+    else:
+        raise AssertionError(f"{run} is not an available option for tell_me_ifos_on(). Please choose from 'O3', 'O4', 'O5', 'opt'.")
+    return ifos
+
+def run_to_time_window(observing_run='O3'):
+    """
+    Computes the gps time for the start and end of the observing run.
+
+    For O4, the starting date is artificially forwarded in time 
+    by the duration fo the two commmisionning breaks
+    (see https://observing.docs.ligo.org/plan/ and https://wiki.ligo.org/LSC/JRPComm/ObsRun4)
+    
+    Parameters
+    ----------
+    observing_run: str
+        Choose from O3, O4, O5
+    
+    Returns
+    -------
+    (start, end): 2-tuple of floats
+        starting and ending gps time of the observing_run 
+    """
+    if observing_run == 'O3':
+        return (to_gps('April   01 2019'), to_gps('March    27 2020'))
+    elif observing_run == 'O4':
+        return (to_gps('October 20 2023'), to_gps('October  07 2025'))
+    elif observing_run == 'O5':
+        return (to_gps('January 01 2028'), to_gps('December 01 2030'))
+    else:
+        raise AssertionError(f"{observing_run} is not an available option for run_to_time_window(). Please choose from 'O3', 'O4', 'O5'.")
+
+def there_is_fully_parametrised_spins(event_dict):
+    """
+    Check if event_dict contains all six parameters for the binary spins
+    in (a_1, a_2, tilt_1, tilt_2, phi_12, phi_jl) parametrization.
+
+    Parameters
+    ----------
+    event_dict: dict
+        dictionary containing CBC parameters
+
+    Returns
+    -------
+    res: bool
+        True if all six spin parameters are given in the event_dict
+    """
+    return (
+        ('a_1'    in event_dict) and 
+        ('a_2'    in event_dict) and 
+        ('tilt_1' in event_dict) and 
+        ('tilt_2' in event_dict) and 
+        ('phi_12' in event_dict) and 
+        ('phi_jl' in event_dict) 
+    )
+
+is_precessing = {
+    'IMRPhenomXHM' : False,
+    'IMRPhenomXPHM': True,
+}
+
+
+# Class to compute SNR & draw missing single event parameters
+class BilbyDetectionPipeline():
+
+    def __init__(self, psd_dir, observing_run, reference_frequency=20., sampling_frequency=2048., approximant='IMRPhenomXPHM'):
+        self.psd_dir = psd_dir
+        self.observing_run = observing_run
+        self.load_psd_from_file()
+        self.reference_frequency = reference_frequency
+        self.sampling_frequency = sampling_frequency
+        self.approximant = approximant
+
+    def load_psd_from_file(self):
+        self.all_ifos_available_psd_dict = {
+            ifo: bilby.gw.detector.PowerSpectralDensity(
+                asd_file = os.path.join(self.psd_dir, f"{ifo}_{self.observing_run}.txt")
+            )
+            for ifo in ['H1', 'L1', 'V1'] + ['K1']*(self.observing_run in {'O4', 'O5'})
+        }
+
+    def set_event_dict(self, init_dict):
+        """
+        Stocks all single event parameters in a dictionary eventually containing 
+        - geocent_time
+        - mass_1
+        - mass_2
+        - luminosity_distance
+        - dec
+        - ra
+        - theta_jn
+        - psi
+        - phase
+        - a_1
+        - a_2
+        - tilt_1
+        - tilt_2
+        - phi_12
+        - phi_jl
+        - ifos_on
+        
+        Parameter
+        ---------
+        init_dict: dict
+            dictionary with single event parameters, 
+            at least (mass_1, mass_2, luminosity_distance)
+        """
+        self.event_dict = init_dict
+        if 'geocent_time' not in self.event_dict: 
+            self.draw_geocent_time()
+        if not there_is_fully_parametrised_spins(self.event_dict): 
+            self.draw_spins()
+        if ('ra' not in self.event_dict) or ('dec' not in self.event_dict):
+            self.draw_skyloc()
+        if 'theta_jn' not in self.event_dict: 
+            self.draw_inclination()
+        if 'psi' not in self.event_dict: 
+            self.draw_polarization()
+        if 'phase' not in self.event_dict: 
+            self.draw_phase()
+        if 'ifos_on' not in self.event_dict: 
+            self.draw_ifos_on()
+
+    def draw_geocent_time(self):
+        """
+        Draw GPS time uniformly in the time window associated to self.observing_run
+        """
+        t_gps_start, t_gps_end = run_to_time_window(self.observing_run)
+        self.event_dict['geocent_time'] = np.random.uniform(t_gps_start, t_gps_end)
+
+    def draw_spins(self):
+        """
+        Draw spins, within the (a_1, tilt_1, a_2, tilt_2, phi_12, phi_jl) parametrisation.
+        Each reduced spin is drawn uniformly in a unit 2-ball
+        (see eg. http://corysimon.github.io/articles/uniformdistn-on-sphere/ for unit 2-sphere sampling)
+
+        * Kerr parameters a are drawn such that a^3 is uniform in [0, 1]
+        * cos(tilt) is drawn uniformly from [-1, 1] 
+          (So that spin orientation is sampled uniformly on the unit sphere), 
+        * phi_12 and phi_jl are drawn uniformly from [0, 2*pi]
+
+        If self.approximant is a non precessing one, then only the z component is extracted.
+        """
+        u_1, costilt_1 = np.random.uniform(0., 1./3.), np.random.uniform(-1., 1.)
+        u_2, costilt_2 = np.random.uniform(0., 1./3.), np.random.uniform(-1., 1.)
+        try:
+            if is_precessing[self.approximant]:
+                self.event_dict['a_1']    = np.power(3 * u_1, 1./3.)
+                self.event_dict['a_2']    = np.power(3 * u_2, 1./3.)
+                self.event_dict['tilt_1'] = np.arccos(costilt_1)
+                self.event_dict['tilt_2'] = np.arccos(costilt_2)
+            else:
+                self.event_dict['a_1']    = np.power(u_1, 1./3.) * abs(costilt_1)
+                self.event_dict['a_2']    = np.power(u_2, 1./3.) * abs(costilt_2)
+                self.event_dict['tilt_1'] = np.arccos(np.sign(costilt_1))
+                self.event_dict['tilt_2'] = np.arccos(np.sign(costilt_2))
+            self.event_dict['phi_12']     = np.random.uniform(0., 2*np.pi)
+            self.event_dict['phi_jl']     = np.random.uniform(0., 2*np.pi)
+        except KeyError as err:
+            raise KeyError(str(err) + " Unsupported approximant. Please consult the available waveform models.")
+
+    def draw_skyloc(self):
+        """
+        Draw the sky localization uniformly on the unit sphere
+        (see http://corysimon.github.io/articles/uniformdistn-on-sphere/)
+        
+        * rignt ascention is drawn uniformly from [0, 2*pi]
+        * cos(pi/2 - declination) is drawn randomly in [-1, 1]
+        """
+        self.event_dict['ra']           = np.random.uniform(0., 2*np.pi)
+        self.event_dict['dec']          = np.pi/2 - np.arccos(np.random.uniform(-1., 1.))
+
+    def draw_inclination(self):
+        """
+        Draw the inclination so that binary orientation is uniform on unit sphere
+        
+        * cos(theta_jn) is drawn randomly in [-1, 1]
+        """
+        self.event_dict['theta_jn']     = np.arccos(np.random.uniform(-1., 1.))
+
+    def draw_polarization(self):
+        """
+        Draw polarization angle uniformly in [0, 2*pi]
+        """
+        self.event_dict['psi']          = np.random.uniform(0., 2*np.pi)
+
+    def draw_phase(self):
+        """
+        Draw reference phare uniformly in [0, 2*pi]
+        """
+        self.event_dict['phase']        = np.random.uniform(0., 2*np.pi)
+
+    def draw_ifos_on(self):
+        """
+        Draw ifos_on based on detectors duty cycles.
+        """
+        self.event_dict['ifos_on']      = tell_me_ifos_on(run = self.observing_run)
+        # self.event_dict['ifos_on']      = tell_me_ifos_on('opt')
+    
+    def check_all_parameters_present(self):
+        """
+        Checks that all the expected CBC parameters are present in self.event_dict
+        """
+        if not (
+            ('geocent_time' in self.event_dict) and
+            ('mass_1' in self.event_dict) and
+            ('mass_2' in self.event_dict) and
+            ('luminosity_distance' in self.event_dict) and
+            ('dec' in self.event_dict) and
+            ('ra' in self.event_dict) and
+            ('theta_jn' in self.event_dict) and
+            ('psi' in self.event_dict) and
+            ('phase' in self.event_dict) and
+            ('a_1' in self.event_dict) and
+            ('a_2' in self.event_dict) and
+            ('tilt_1' in self.event_dict) and
+            ('tilt_2' in self.event_dict) and
+            ('phi_12' in self.event_dict) and
+            ('phi_jl' in self.event_dict) and
+            ('ifos_on' in self.event_dict)
+        ):
+            raise KeyError("Some single event parameters are missing for SNR computation. Please consider reloading the event dict with the set_event_dict() method")
+
+    def set_random_seed(self):
+        """
+        Sets numpy's RNG seed to the one tied to the event  in self.event_dict.
+        If no seed is present in self.event_dict, draws one.
+        """
+        if 'seed' not in self.event_dict:
+            self.event_dict['seed'] = int(time.time()) + np.random.randint(1000000)
+        np.random.seed(self.event_dict['seed'])
+
+    def set_ifos_list(self):
+        """
+        Initialize bilby's interferometers list 
+        from the (already loaded) available PSDs
+        stored in self.all_ifos_available_psd_dict.
+        """
+        ifos_on = [ifo for ifo in self.event_dict['ifos_on'] if ifo != '  ']
+        self.ifos_list = bilby.gw.detector.InterferometerList(ifos_on)
+        for i, ifo in enumerate(ifos_on):
+            self.ifos_list[i].power_spectral_density = self.all_ifos_available_psd_dict[ifo]
+
+    def set_frequency_mask(self):
+        """
+        Manually sets the frequency_mask attribute of bilby's Interferometers objects
+        based on the frequency_array, the minimum and maximum frequencies of each Interferometer
+        """
+        for ifo in self.ifos_list:
+            ifo.frequency_mask = ((ifo.strain_data.minimum_frequency < self.ifos_list.frequency_array) & 
+                                  (self.ifos_list.frequency_array < ifo.strain_data.maximum_frequency))
+    
+    def set_ifos_and_inject_signal(self):
+        """
+        Initialise bilby's Interferometers objects, 
+        compute strain data from psd, 
+        and inject signal for event with parameters contained in self.event_dict.
+
+        Requirements
+        ------------
+        self.event_dict initialised (with all ) 
+
+        Parameters
+        ----------
+        reference_frequency: float
+            lower bound of the frequency range used to compute signals inner products in frequency domain
+        sampling_frequency: float
+            twice the higher bound of the frequency range used to compute signals inner products in frequency domain 
+            (the latter often being the Nyquist frequency)
+        approximant: str
+            waveform approximant (default: IMRPhenomXPHM)
+        """
+        self.check_all_parameters_present()
+
+        # Calculate the time between the moment the binary's frequency enters the detector's band (default: 20 Hz) and the merger
+        time_to_merger = bilby.gw.utils.calculate_time_to_merger(
+            self.reference_frequency,
+            self.event_dict['mass_1'],
+            self.event_dict['mass_2'],
+            chi = chieff_from_wf_params(self.event_dict),
+            safety = 1.1,
+        )
+        # The duration of signal considered is time_to_merger + 4s
+        duration = int(np.ceil(time_to_merger)) + 4
+
+        # Setup the Bilby waveform
+        waveform_arguments = dict(
+            waveform_approximant = self.approximant,
+            reference_frequency  = self.reference_frequency
+        )
+        self.waveform_generator = bilby.gw.waveform_generator.WaveformGenerator(
+            sampling_frequency            = self.sampling_frequency, 
+            duration                      = duration,
+            frequency_domain_source_model = bilby.gw.source.lal_binary_black_hole,
+            parameter_conversion          = bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
+            waveform_arguments            = waveform_arguments
+        )
+
+        # Setup ifos list & respective psd
+        self.set_ifos_list()
+
+        # Setup ifos strain data from psd
+        self.set_random_seed()
+        self.ifos_list.set_strain_data_from_power_spectral_densities(
+            sampling_frequency = self.sampling_frequency, 
+            duration           = duration,
+            start_time         = self.event_dict['geocent_time'] - (duration - 1.)
+        )
+
+        # update the frequency mask (it doesn't update by itself : brute force way of solving the issue)
+        self.set_frequency_mask()
+
+        # Inject signals
+        self.ifos_list.inject_signal(
+            waveform_generator = self.waveform_generator,
+            parameters = self.event_dict
+        )
+
+    def compute_matched_filter_SNR(self):
+        """
+        Compute the matched filter SNR for the event with parameters stored in self.event_dict.
+        """
+        # Compute network SNR (with interferometers on)
+        matched_filter_SNR = np.sqrt(np.sum([
+            np.real(self.ifos_list.meta_data[ifo]['matched_filter_SNR'])**2. 
+            for ifo in self.event_dict['ifos_on']
+            if ifo != '  '
+        ]))
+        self.event_dict['matched_filter_SNR'] = matched_filter_SNR
+
+        return self.event_dict
+
+
+# -------------------------------------------------------------------------- #
+#                          lisabeta  implementation                          #
+# -------------------------------------------------------------------------- #
+
+
 def SNR_lisabeta(m1s, q, dL):
+
+    try:
+        import lisabeta.lisa.lisa as lisa
+    except:
+        raise ValueError("Please make sure lisabeta is properly installed. See https://pypi.org/project/lisabeta/")
 
     SNR = []
     # Randomize the remaining parameters
