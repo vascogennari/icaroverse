@@ -11,9 +11,9 @@ def InitialiseOptions(Config):
 
         'injections-path'             : '',
         'injections-number'           : 1,
+        'selection-effects-cut'       : 'snr',
         'snr-cut'                     : 12.,
         'ifar-cut'                    : 4.,
-        'selection-effects-cut'       : 'snr',
 
         'data-path'                   : '',
         'O3-cosmology'                : 0,
@@ -37,21 +37,22 @@ def InitialiseOptions(Config):
         'single-mass'                 : 0,
 
         # Sampler
-        'sampler'                     : 'nessai',
-        'nlive'                       : 200,
-        'naccept'                     : 60,
-        'queue-size'                  : 1,
+        'sampler'                     : 'dynesty',
+        'neffPE'                      : 10,
+        'neffINJ'                     : None,
+        'loglike-var'                 : 0,
+
+        'nlive'                       : 500,
         'print-method'                : 'interval-60',
         'sample'                      : 'acceptance-walk',
+        'naccept'                     : 60,
+        'queue-size'                  : 1,
+
         'nwalkers'                    : 64,
         'nsteps'                      : 1000,
         'ntemps'                      : 10,
-        'threads'                     : 10,
-
+        'threads'                     : 1,
         'nparallel'                   : 1,
-        'neffPE'                      : 1,
-        'neffINJ'                     : None,
-        'loglike-var'                 : 0,
 
         # Plots
         'N-points'                    : 500,
@@ -65,6 +66,7 @@ def InitialiseOptions(Config):
         'true-values'                 : {},
         'selection-effects'           : 0,
         'plot-prior'                  : 1,
+        'N-samps-prior'               : 500,
 
         'estimate-observed-method'    : 'KDE',
         'estimate-observed-method-m1' : 'GMM',
@@ -72,10 +74,9 @@ def InitialiseOptions(Config):
         'KDE-bandwidth-scale-m1'      : 8,
         'GMM-components'              : 6,
         'N-points-KDE-GMM'            : 500,
-        'N-samps-prior'               : 1000,
-        
-        'downsample-postprocessing'   : 1,
+
         'percentiles'                 : {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95},
+        'downsample-postprocessing'   : 1,
     }
 
     # Read options from config file.
@@ -274,81 +275,84 @@ usage = """
     # input #
     # ----- #
 
-        output                      Path where the run output is saved. Default: 'icarogw_run'
-        screen-output               Flag to deviate the standard output to screen. Default: '0'
+        output                      Path where the run output is saved. Default: 'icarogw_run'.
+        screen-output               Flag to deviate the standard output to screen. Default: '0'.
 
-        injections-path             Path of the injections used to evaluate selection effects. Default: ''
-        injections-number           Number of generated injections used for selection effects. Default: 1
-        selection-effects-cut       Type of cut to select events and injections. Options: 'snr', 'ifar'. Default: 'snr'
-        snr-cut                     Value of signal-to-noise ratio used to selected the events and injections. Default: 12
-        ifar-cut                    Value of inverse false-alarm-rate used to selected the events and injections. Default: 4
+        injections-path             Path of the injections used to evaluate selection effects. Default: ''.
+        injections-number           Number of generated injections used for selection effects. Default: 1.
+        selection-effects-cut       Type of cut to select events and injections. Options: 'snr', 'ifar'. Default: 'snr'.
+        snr-cut                     Value of signal-to-noise ratio used as detection threshold for events and injections. Default: 12.
+        ifar-cut                    Value of inverse false-alarm-rate used as detection threshold for events and injections. Default: 4.
 
         data-path                   Path of the single event data. Default: ''.
-        O3-cosmology                Option to process PE samples using O3 data from the GWTC-3 cosmology paper. Default: 0
-        simulation                  Option to process PE samples using simulated events. Default: 1
-        distance-prior-PE           Flag to re-weight the PE samples on the luminosity distance uniform in volume, accoringly to the GWTC-3 cosmology paper. Default: 1
-        remove-events               List of events to be removed from the analysis. Default: ['GW190412_053044']
-
+        O3-cosmology                Option to process PE samples using O3 data from the LVK GWTC-3 cosmology paper (https://arxiv.org/abs/2111.03604). Default: 0.
+        simulation                  Option to process PE samples using simulated events. Default: 1.
+        remove-events               List of events to be removed from the analysis. Example: ['GW190412_053044', 'GW190521_030229']. Default: [].
+        inverse-mass-ratio          Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
+        PE-prior-distance           Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in comoving volume). Default: 'dL3'.
+        PE-prior-masses             Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
+        true-data                   Flag to only use the true values for the events in the analysis instead of full posteriors. This is equivalent to use one PE sample for each event. Default: 0.
+    
     # ----- #
     # model #
     # ----- #
 
-        model-primary               Model distribution for the primary object. Options: 'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-Gaussian', 'PowerLaw-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftQuadratic', 'PowerLaw-GaussianRedshiftPowerLaw', 'PowerLaw-GaussianRedshiftSigmoid', 'PowerLawBroken-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear', 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear'. Default: 'PowerLaw-Gaussian'
-        model-secondary             Model distribution for the secondary object. Options: 'Mass2-PowerLaw', 'MassRatio-PowerLaw', 'MassRatio-Gaussian'. Default: 'MassRatio-Gaussian'
-        model-rate                  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution'. Default: 'PowerLaw'
+        model-primary               Model distribution for the primary object. Options: 'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-Gaussian', 'DoublePowerlaw', 'PowerLaw-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftQuadratic', 'PowerLaw-GaussianRedshiftPowerLaw', 'PowerLaw-GaussianRedshiftSigmoid', 'PowerLawBroken-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear', 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear'. Default: 'PowerLaw-Gaussian'.
+        model-secondary             Model distribution for the secondary object. Options: 'Mass2-PowerLaw', 'MassRatio-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-Gamma'. Default: 'MassRatio-Gaussian'.
+        model-rate                  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
         
-        low-smoothing               Flag to apply a smoothing function to the Powerlaw. Available in all primary mass models with a Powerlaw. Default: 0
-        priors                      Dictionary of the prior bounds for the population parameters. Default values can be found in 'icarogw_pipeline.options.default_priors'
-        scale-free                  Flag to use the scale-free likelihood fromulation. Default: 0
-        single-mass                 Flag to use only one mass for the single-event parameters. Default: 0
-
-        redshift-transition         Model function for the mixture redshift evolution. Only available for primary mass redshift evolving models. Options: 'linear', 'sigmoid', 'sinusoid'. Default: 'linear'
-        redshift-mixture            Flag to make the mixture transition function stationary in redshift. Only available for primary mass redshift evolving models. Default: 1
-        positive-gaussian-z0        Flag to constrain the Gaussian peak to be positive within 3 sigmas at redshift zero. Only available for primary mass redshift evolving models with a Gaussian. Default: 0
-        positive-gaussian-z         Flag to constrain the Gaussian peak to be positive within 3 sigmas at all redshifts. Only available for primary mass redshift evolving models with a Gaussian. Default: 0
-        separate-gaussians-z0       Flag to impose an ordering on the two Gaussian peaks at redshift zero.  Only available for primary mass redshift evolving models with two Gaussians. Default: 0
-        separate-gaussians-z        Flag to impose an ordering on the two Gaussian peaks at all redshifts.  Only available for primary mass redshift evolving models with two Gaussians. Default: 0
+        redshift-transition         Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
+        redshift-mixture            Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
+        low-smoothing               Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
+        priors                      Dictionary of the prior bounds for the population parameters. Default values are set in 'icarogw_pipeline.options.default_priors'.
+        scale-free                  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
+        single-mass                 Flag to use only one mass for the single-event parameters. Default: 0.
 
     # ------- #
     # sampler #
     # ------- #
 
-        nparallel                   Default: 1
-        neffPE                      Number of effective PE samples per event contributing to the numerical evaluation of the likelihood. Default: 1
-        neffINJ                     Number of effective injections contributing to the numerical evaluation of the likelihood. Default: None
-        loglike-var                 Cut the likelihood using the variance of the log-likelihood. If set to zero, the option is deactivated, otherwise we use the float passed. If not zero, the option superseed the Neff PE and injections. Default: 0
+        sampler                     Sampler to be used to draw samples from the likelihood. The samplers are called from the Bilby package (https://pypi.org/project/bilby/). Options: 'dynesty', 'nessai', 'ptemcee'. Default: 'dynesty'.
+        neffPE                      Threshold on the number of effective PE samples per event contributing to the numerical evaluation of the likelihood. The likelihood is set to zero for the population samples bringing neff PE lower than this threshold, to ensure numerical stability. Default: 10.
+        neffINJ                     Threshold on the number of effective injections contributing to the numerical evaluation of the likelihood. The likelihood is set to zero for the population samples bringing neff INJ lower than this threshold, to ensure numerical stability. If 'None', the threshold is set to four times the number of events. Default: None.
+        loglike-var                 Threshold on the log-likelihood variance for the numerical evaluation of the likelihood. The likelihood is set to zero for the population samples bringing log-likehood variance lower than this threshold, to ensure numerical stability. If set to zero, the option is deactivated, otherwise it uses the float passed. If not zero, the option superseed the Neff PE and injections. Default: 0.
 
-        sampler                     Type of sampler to be used to draw samples from the likelihood. Options: 'dynesty', 'nessai', 'ptemcee'. Default: 'dynesty'
-        nlive                       Number of live points used by the nested sampler. Option not available for the MCMC samplers. Default: 200
-        queue-size                  Number of parallel process to be executed (see dunesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1
-        naccept                     Default: 60
-        print-method                Default: 'interval-60'
-        sample                      Default: 'acceptance-walk'
-        nwalkers                    Default: 64
-        nsteps                      Default: 1000
-        ntemps                      Default: 10
-        threads                     Default: 10
+        nlive                       Number of live points used by the nested sampler. Option only available for Nested Samplers. Default: 500.
+        print-method                Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
+        sample                      Methods to perform the MCMC evolution to find a new point with a nested sampler. Option only available for Nested Samplers. More information on the different methods can be found in the related Bilby documentation (https://bilby-dev.github.io/bilby/dynesty-guide.html). Options: 'act-walk', 'acceptance-walk', 'rwalk'. Default: 'acceptance-walk'.
+        naccept                     The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
+        queue-size                  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
+
+        nwalkers                    Number of parallel chains (walkers) running in the MCMC ensemble. Option only available for MCMC samplers. Default: 64.
+        nsteps                      Number of steps taken by each walker in the MCMC samplers. Option only available for MCMC samplers. Default: 1000.
+        ntemps                      Number of parallel-tempered chains of the MCMC sampler. Option only available for MCMC samplers. Default: 10.
+        threads                     Number of CPU threads used for parallel computation. Option only available for MCMC samplers. Default: 1.
+        nparallel                   Number of likelihood evaluations performed simultaneously. While 'threads' distributes MCMC steps across CPU threads, 'nparallel' parallelizes across multiple processes. Option only available for MCMC samplers. Default: 1.
 
     # ----- #
     # plots #
     # ----- #
 
-        N-points                    Default: 500,
-        N-z-slices                  Default: 5,
-        bounds-m1                   Default: [0, 100],
-        bounds-m2                   Default: [0, 100],
-        bounds-q                    Default: [0, 1],
-        bounds-dL                   Default: [0, 10000],
-        bounds-z                    Default: [1e-5, 0.8],
-        true-values                 Default: {},
-        selection-effects           Default: 0,
-        plot-prior                  Default: 1,
-        estimate-observed-method    Default: 'KDE',
-        estimate-observed-method-m1 Default: 'GMM',
-        KDE-bandwidth-scale         Default: 3,
-        KDE-bandwidth-scale-m1      Default: 8,
-        GMM-components              Default: 6,
-        N-points-KDE-GMM            Default: 500,
-        N-samps-prior               Default: 1000,
-        percentiles                 Default: {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95},
+        N-points                    Number of points used to evaluate the reconstructed distributions. Default: 500.
+        N-z-slices                  Number of points in redshift for which the conditional primary mass distribution is evaluated. Default: 5.
+        bounds-m1                   Bounds used to reconstruct the primary mass distribution. Default: [0, 100].
+        bounds-m2                   Bounds used to reconstruct the secondary mass distribution. Default: [0, 100].
+        bounds-q                    Bounds used to reconstruct the mass ratio distribution. Default: [0, 1].
+        bounds-dL                   Bounds used to reconstruct the distribution in luminosity distance. Default: [0, 10000].
+        bounds-z                    Bounds used to reconstruct the distribution in redshift and the rate evolution. Default: [1e-5, 0.8].
+        m1-logscale                 Option to plot the primary mass distribution in log-scale. Default: 1.
+        true-values                 Option to plot the true values of the events population. Default: {}.
+        selection-effects           Option to show on the primary mass plot the 90% CI of the injections used to compute selection effects, qulitatively corresponding to the detector sensitivity. Default: 0.
+        plot-prior                  Option to plot reconstructed distributions from samples drawn from the analysis priors. Default: 1.
+        N-samps-prior               Number of samples drawn from the priors to estimate the prior reconstructed distributions. Default: 500.
+
+        estimate-observed-method    Method used to estimate the observed distribution from the injection samples. Options: 'KDE', 'GMM'. Default: 'KDE'.
+        estimate-observed-method-m1 Method used to estimate the observed distribution from the injection samples for the primary mass. Options: 'KDE', 'GMM'. Default: 'GMM'.
+        KDE-bandwidth-scale         Float to scale the bandwidth of the KDE estimator compared with the base Silverman's rule. Default: 3.
+        KDE-bandwidth-scale-m1      Float to scale the bandwidth of the KDE estimator compared with the base Silverman's rule for the primary mass. Default: 8.
+        GMM-components              Number of components used in the Gaussian Mixture Model estimator. Default: 6.
+        N-points-KDE-GMM            Number of points used to evaluate the KDE and GMM estimators. Default: 500.
+
+        percentiles                 Dictionary with the percentiles used to estimate the credible intervals. Default: {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95}.
+        downsample-postprocessing   Option to downsample the posterior samples used in the postprocessing, taking the corresponding percent value (downsampling=1, 100% of initial samples). Default: 1.
 """
