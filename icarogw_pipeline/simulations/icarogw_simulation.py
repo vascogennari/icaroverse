@@ -168,15 +168,15 @@ def generate_injections(pars):
 
             else: # Use the icarogw.simulation implementation.
                 # Draw the masses. Available options: PowerLaw, PowerLawPeak, MultiPeak.
-                m1s, m2s, pdf_m = icarosim.generate_mass_inj(Nsamp = int(pars['injections-number-bank']), mass_model = pars['icarogw-sim-dict']['mass-model'], dic_param = pars['truths'])
+                m1s, m2s, pdf_m = icarosim.generate_mass_inj(Nsamp = int(pars['injections-number-bank']), mass_model = pars['icarogw-sim-mass-model'], dic_param = pars['truths'])
 
                 # Draw the luminosity distance.
-                if   pars['icarogw-sim-dict']['draw-dL'] == 'uniform-dL':
-                    dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-dict']['z-max'])
-                elif pars['icarogw-sim-dict']['draw-dL'] == 'uniform-z':
-                    dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-dict']['z-max'])
-                elif pars['icarogw-sim-dict']['draw-dL'] == 'uniform-volume':
-                    dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-dict']['z-max'])
+                if   pars['icarogw-sim-draw-dL'] == 'uniform-dL':
+                    dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+                elif pars['icarogw-sim-draw-dL'] == 'uniform-z':
+                    dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+                elif pars['icarogw-sim-draw-dL'] == 'uniform-volume':
+                    dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
                 else:
                     raise ValueError('Unknown option for drawing the luminosity distance using icarogw.simulation. Exiting...')
 
