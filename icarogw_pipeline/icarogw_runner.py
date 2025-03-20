@@ -1,5 +1,6 @@
 import os, sys, configparser, shutil, time
 from optparse import OptionParser
+from inspect import getmembers, isclass
 
 import pickle, h5py, pandas as pd, json
 import numpy as np
@@ -157,25 +158,35 @@ class Wrappers:
     
     def Cosmology(self, pars):
 
-        general_relativity_models = {'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'}
-        modified_gravity_models   = {'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'}
+        # This is subject to be completed in the future with the addition of other cosmological models to icarogw
+        implemented_GR_models = ['FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE']
+        implemented_MG_models = ['Xi0', 'eps0', 'extraD', 'cM', 'alphalog']
+        wrap_name = {
+            'FlatLambdaCDM': 'FlatLambdaCDM_wrap', 
+            'FlatwCDM':      'FlatwCDM_wrap', 
+            'Flatw0waCDM':   'Flatw0waCDM_wrap', 
+            'wIDS_linDE':    'wIDS_linDE_wrap', 
+            'Xi0':           'Xi0_mod_wrap', 
+            'eps0':          'eps0_mod_wrap', 
+            'extraD':        'extraD_mod_wrap', 
+            'cM':            'cM_mod_wrap', 
+            'alphalog':      'alphalog_mod_wrap', 
+        }
 
-        if (pars['model-cosmology'] in modified_gravity_models) and (pars['model-bkg-cosmo'] in general_relativity_models):
-            if   pars['model-cosmology'] == 'Xi0':       w = get_wrapper('Xi0_mod_wrap',       cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
-            elif pars['model-cosmology'] == 'eps0':      w = get_wrapper('eps0_mod_wrap',      cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
-            elif pars['model-cosmology'] == 'extraD':    w = get_wrapper('extraD_mod_wrap',    cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
-            elif pars['model-cosmology'] == 'cM':        w = get_wrapper('cM_mod_wrap',        cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
-            elif pars['model-cosmology'] == 'alphalog':  w = get_wrapper('alphalog_mod_wrap',  cosmo_wrap=True, bkg_cosmo_wrap_name=pars['model-bkg-cosmo']+"_wrap")
-            else:
-                raise ValueError(f"Unknown modified gravity cosmological model: {pars['model-cosmology']}. Please choose from the available models\n\t{modified_gravity_models}")
-        elif (pars['model-cosmology'] in modified_gravity_models) and (pars['model-bkg-cosmo'] not in general_relativity_models):
-            raise ValueError('Unknown GR model for the background cosmology {}. Please consult the available GR models.'.format(pars['model-bkg-cosmo']))
-        elif pars['model-cosmology'] == 'FlatLambdaCDM':     w = get_wrapper('FlatLambdaCDM_wrap', cosmo_wrap=True)
-        elif pars['model-cosmology'] == 'FlatwCDM':          w = get_wrapper('FlatwCDM_wrap',      cosmo_wrap=True)
-        elif pars['model-cosmology'] == 'Flatw0waCDM':       w = get_wrapper('Flatw0waCDM_wrap',   cosmo_wrap=True)
-        elif pars['model-cosmology'] == 'wIDS_linDE':        w = get_wrapper('wIDS_linDE_wrap',    cosmo_wrap=True)
+        # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, 
+        # AND that the present pipeline can handle.
+        icarogw_models = dict(getmembers(icarogw.wrappers, isclass)).keys()
+        implemented_icarogw_GR_models = [model for model in implemented_GR_models if wrap_name[model] in icarogw_models]
+        implemented_icarogw_MG_models = [model for model in implemented_MG_models if wrap_name[model] in icarogw_models]
+
+        if   (pars['model-cosmology'] in implemented_icarogw_MG_models) and (pars['model-bkg-cosmo'] not in implemented_icarogw_GR_models):
+            raise ValueError(f"Unknown GR model for the background cosmology: {pars['model-bkg-cosmo']}. Please choose from the available models:\n\t{implemented_icarogw_GR_models}")
+        elif (pars['model-cosmology'] in implemented_icarogw_MG_models):
+            w = get_wrapper(wrap_name[pars['model-cosmology']], cosmo_wrap=True, bkg_cosmo_wrap_name=wrap_name[pars['model-bkg-cosmo']])
+        elif (pars['model-cosmology'] in implemented_icarogw_GR_models):
+            w = get_wrapper(wrap_name[pars['model-cosmology']], cosmo_wrap=True, bkg_cosmo_wrap_name=None)
         else:
-            raise ValueError(f"Unknown general relativity cosmological model: {pars['model-cosmology']}. Please choose from the available models\n\t{general_relativity_models}")
+            raise ValueError(f"Unknown cosmological model: {pars['model-cosmology']}. Please choose from the available models:\n\t{implemented_icarogw_GR_models+implemented_icarogw_MG_models}")
         return w
 
     def ReferenceCosmology(self):
