@@ -23,6 +23,7 @@ def InitialiseOptions(Config):
         'SNR-method'                    : 'bilby',
         'PSD-path'                      : '',
 
+        # SNR-options
         'snr-bilby-observing-run'       : 'O3',
         'snr-bilby-waveform'            : 'IMRPhenomXHM',
         'snr-bilby-reference-frequency' : 20.,
@@ -49,9 +50,6 @@ def InitialiseOptions(Config):
         'icarogw-sim-draw-dL'           : 'uniform-dL',
         'icarogw-sim-z-max'             : 1.5,
 
-        'log10-PDF'                     : 0,
-        'inverse-mass-ratio'            : 1,
-
         # Model
         'model-primary'                 : 'PowerLaw-Gaussian',                     
         'model-secondary'               : 'MassRatio-Gaussian',
@@ -62,6 +60,9 @@ def InitialiseOptions(Config):
         'low-smoothing'                 : 0,
         'single-mass'                   : 0,
         'truths'                        : {},
+
+        'log10-PDF'                     : 0,
+        'inverse-mass-ratio'            : 1,
 
         # Plots
         'N-points'                      : 10000,
@@ -76,20 +77,34 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'PSD-path') or (key == 'snr-bilby-observing-run') or (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-observing-run') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'):
+        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'PSD-path'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if (key == 'SNR-cut') or (key == 'frequency-cut') or (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'icarogw-sim-z-max') or (key == 'R0') or (key == 'observation-time'):
+        if (key == 'SNR-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'snr-proxy-N-detectors'):
+        if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession') or (key == 'use-icarogw-sim-inj') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio') or (key == 'estimate-events-number'):
+        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio') or (key == 'estimate-events-number'):
             try: input_pars[key] = Config.getboolean('input', key)
+            except: pass
+
+        # SNR-options
+        if (key == 'snr-bilby-observing-run') or (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-observing-run') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'): 
+            try: input_pars[key] = Config.get('snr-options', key)
+            except: pass
+        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'icarogw-sim-z-max'):
+            try: input_pars[key] = Config.getfloat('snr-options', key)
+            except: pass
+        if (key == 'snr-proxy-N-detectors'):
+            try: input_pars[key] = Config.getint('snr-options', key)
             except: pass
         if (key == 'snr-pycbc-detectors'):
             try: input_pars[key] = ast.literal_eval(Config.get('input', key))
+            except: pass
+        if (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession'):
+            try: input_pars[key] = Config.getboolean('snr-options', key)
             except: pass
 
         # Model
@@ -267,9 +282,9 @@ usage = """
         SNR-method                    Method to compute the SNR. Options: 'bilby', 'pycbc', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
         PSD-path                      Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'pycbc'. Default: ''.
 
-    # --- #
-    # snr #
-    # --- #
+    # ----------- #
+    # snr-options #
+    # ----------- #
 
         snr-bilby-observing-run       Detector sensitivity used to compute the SNR with Bilby. Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         snr-bilby-waveform            Waveform model used to compute the SNR with Bilby. Default: 'IMRPhenomXHM'.
@@ -297,9 +312,6 @@ usage = """
         icarogw-sim-draw-dL           Method used to draw the luminosity distance samples. Options: 'uniform-dL' (uniform in luminosity distance), 'uniform-z' (uniform in redshift), 'uniform-volume' (uniform in comoving volume). Default: 'uniform-dL'.
         icarogw-sim-z-max             Maximum redshift used to draw the samples. Default: 1.5.
 
-        log10-PDF                     Flag to use distributions defined in log10 scale. Default: 0.
-        inverse-mass-ratio            Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
-
     # ----- #
     # model #
     # ----- #
@@ -313,6 +325,9 @@ usage = """
         low-smoothing                 Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
         single-mass                   Flag to use only one mass for the single-event parameters. Default: 0.
         truths                        Dictionary with the true values of the population parameters. Default: {}.
+
+        log10-PDF                     Flag to use distributions defined in log10 scale. Default: 0.
+        inverse-mass-ratio            Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
 
     # ----- #
     # plots #
