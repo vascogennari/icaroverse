@@ -1,6 +1,5 @@
 import ast
 
-
 def InitialiseOptions(Config):
 
     # Dictionary with the default options.
@@ -10,7 +9,22 @@ def InitialiseOptions(Config):
         'output'                      : 'icarogw_run',
         'screen-output'               : 0,
 
-        # Wrappers
+        'injections-path'             : '',
+        'injections-number'           : 1,
+        'snr-cut'                     : 12.,
+        'ifar-cut'                    : 4.,
+        'selection-effects-cut'       : 'snr',
+
+        'data-path'                   : '',
+        'O3-cosmology'                : 0,
+        'simulation'                  : 1,
+        'remove-events'               : [],
+        'inverse-mass-ratio'          : 0,
+        'PE-prior-distance'           : 'dL3',
+        'PE-prior-masses'             : 'm1-m2',
+        'true-data'                   : 0,
+
+        # Model
         'model-primary'               : 'PowerLaw-Gaussian',                     
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
@@ -21,29 +35,6 @@ def InitialiseOptions(Config):
         'priors'                      : {},
         'scale-free'                  : 0,
         'single-mass'                 : 0,
-
-        # Selection effects
-        'injections-path'             : '',
-        'injections-number'           : 1,
-        'snr-cut'                     : 12.,
-        'ifar-cut'                    : 4.,
-        'selection-effects-cut'       : 'snr',
-        'inverse-mass-ratio'          : 0,
-
-        # Data
-        'O3-cosmology'                : 0,
-        'simulation'                  : 1,
-        'data-path'                   : '',
-        'remove-events'               : ['GW190412_053044'],
-        'PE-prior-distance'           : 'dL3',
-        'PE-prior-masses'             : 'm1-m2',
-        'true-data'                   : 0,
-    
-        # Likelihood
-        'nparallel'                   : 1,
-        'neffPE'                      : 1,
-        'neffINJ'                     : None,
-        'loglike-var'                 : 0,
 
         # Sampler
         'sampler'                     : 'nessai',
@@ -57,6 +48,11 @@ def InitialiseOptions(Config):
         'ntemps'                      : 10,
         'threads'                     : 10,
 
+        'nparallel'                   : 1,
+        'neffPE'                      : 1,
+        'neffINJ'                     : None,
+        'loglike-var'                 : 0,
+
         # Plots
         'N-points'                    : 500,
         'N-z-slices'                  : 5,
@@ -69,6 +65,7 @@ def InitialiseOptions(Config):
         'true-values'                 : {},
         'selection-effects'           : 0,
         'plot-prior'                  : 1,
+
         'estimate-observed-method'    : 'KDE',
         'estimate-observed-method-m1' : 'GMM',
         'KDE-bandwidth-scale'         : 3,
@@ -76,6 +73,7 @@ def InitialiseOptions(Config):
         'GMM-components'              : 6,
         'N-points-KDE-GMM'            : 500,
         'N-samps-prior'               : 1000,
+        
         'downsample-postprocessing'   : 1,
         'percentiles'                 : {'ll': 5, 'l': 16, 'm': 50, 'h': 84, 'hh': 95},
     }
@@ -84,55 +82,55 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if ('output' in key) or ('injections-path' in key) or ('selection-effects-cut' in key) or ('data-path' in key) or ('PE-prior-distance' in key) or ('PE-prior-masses' in key):
+        if (key == 'output') or (key == 'injections-path') or (key == 'selection-effects-cut') or (key == 'data-path') or (key == 'PE-prior-distance') or (key == 'PE-prior-masses'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if ('injections-number' in key) or ('snr-cut' in key) or ('ifar-cut' in key):
+        if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if ('O3-cosmology' in key) or ('simulation' in key) or ('distance-prior-PE' in key) or ('screen-output' in key) or ('true-data' in key) or ('inverse-mass-ratio' in key):
+        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
-        if ('remove-events' in key):
+        if (key == 'remove-events'):
             try: input_pars[key] = ast.literal_eval(Config.get('input', key))
             except: pass
 
         # Model
-        if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
+        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('redshift-mixture' in key) or ('low-smoothing' in key) or ('scale-free' in key) or ('single-mass' in key):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if ('priors' in key):
+        if (key == 'priors'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
         # Sampler
-        if ('sampler' in key):
+        if (key == 'sampler'):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if ('nparallel' in key) or ('neffPE' in key) or ('neffINJ' in key) or ('nlive' in key) or ('queue-size' in key) or ('nwalkers' in key) or ('nsteps' in key) or ('ntemps' in key):
+        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps'):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
-        if ('loglike-var' in key):
+        if (key == 'loglike-var'):
             try: input_pars[key] = Config.getfloat('sampler', key)
             except: pass
 
         # Plots
-        if ('estimate-observed-method' in key) or ('estimate-observed-method-m1' in key):
+        if (key == 'estimate-observed-method') or (key == 'estimate-observed-method-m1'):
             try: input_pars[key] = Config.get('plots', key)
             except: pass
-        if ('N-points' in key) or ('N-z-slices' in key) or ('N-points-KDE-GMM' in key) or ('N-samps-prior' in key) or ('GMM-components' in key):
+        if (key == 'N-points') or (key == 'N-z-slices') or (key == 'N-points-KDE-GMM') or (key == 'N-samps-prior') or (key == 'GMM-components'):
             try: input_pars[key] = Config.getint('plots', key)
             except: pass
-        if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key)  or ('percentiles' in key):
+        if (key == 'true-values') or (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z')  or (key == 'percentiles'):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if ('selection-effects' in key) or ('plot-prior' in key) or ('m1-logscale' in key):
+        if (key == 'selection-effects') or (key == 'plot-prior') or (key == 'm1-logscale'):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
-        if ('downsample-postprocessing' in key) or ('KDE-bandwidth-scale' in key) or ('KDE-bandwidth-scale-m1' in key):
+        if (key == 'downsample-postprocessing') or (key == 'KDE-bandwidth-scale') or (key == 'KDE-bandwidth-scale-m1'):
             try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
     
@@ -145,124 +143,124 @@ def InitialiseOptions(Config):
 
 
 def default_priors():
-      
+
     prior = {
         # Cosmology
-        'H0'          : 67.7,
-        'Om0'         : 0.308,
+        'H0'            : 67.7,
+        'Om0'           : 0.308,
 
         # Primary mass distribution
-        'delta_m'     : [0.,  10. ],
-        'delta_m_a'   : [0.,  30. ],
-        'delta_m_b'   : [0.,  30. ],
-        'delta_m_c'   : [0.,  30. ],
-        'delta'       : [0.,  0.15],
+        'delta_m'       : [   0.  ,  10.  ],
+        'delta_m_a'     : [   0.  ,  30.  ],
+        'delta_m_b'     : [   0.  ,  30.  ],
+        'delta_m_c'     : [   0.  ,  30.  ],
+        'delta'         : [   0.  ,   0.15],
 
-        'alpha'       : [-4., 120.],
-        'alpha_z0'    : [-4., 120.],
-        'alpha_z1'    : [-100.,100.],
-        'mu_alpha'    : [0.,  100.],
+        'alpha'         : [  -4.  , 120.  ],
+        'alpha_z0'      : [  -4.  , 120.  ],
+        'alpha_z1'      : [-100.  , 100.  ],
+        'mu_alpha'      : [   0.  , 100.  ],
 
-        'alpha_a'     : [-4., 120.],
-        'alpha_b'     : [-4.,  20.],
-        'alpha_c'     : [-4.,  20.],
-        'break_p'     : [0.,    1.],
-        'm_b'         : [5.,    7.],
+        'alpha_a'       : [  -4.  , 120.  ],
+        'alpha_b'       : [  -4.  ,  20.  ],
+        'alpha_c'       : [  -4.  ,  20.  ],
+        'break_p'       : [   0.  ,   1.  ],
+        'm_b'           : [   5.  ,   7.  ],
 
-        'alpha_a_z0'  : [-4., 120.],
-        'alpha_b_z0'  : [-4., 120.],
-        'alpha_c_z0'  : [-4., 120.],
-        'alpha_a_z1'  : [-100.,100.],
-        'alpha_b_z1'  : [-100.,100.],
-        'alpha_c_z1'  : [-100.,100.],
-        'mmin_a_z0'   : [1. , 100.],
-        'mmin_b_z0'   : [1. , 100.],
-        'mmin_c_z0'   : [1. , 100.],
-        'mmin_a_z1'   : [-100.,100.],
-        'mmin_b_z1'   : [-100.,100.],
-        'mmin_c_z1'   : [-100.,100.],
-        'mmax_a_z0'   : [30., 200.],
-        'mmax_b_z0'   : [30., 200.],
-        'mmax_c_z0'   : [30., 200.],
-        'mmax_a_z1'   : 0.,
-        'mmax_b_z1'   : 0.,
-        'mmax_c_z1'   : 0.,
+        'alpha_a_z0'    : [  -4.  , 120.  ],
+        'alpha_b_z0'    : [  -4.  , 120.  ],
+        'alpha_c_z0'    : [  -4.  , 120.  ],
+        'alpha_a_z1'    : [-100.  , 100.  ],
+        'alpha_b_z1'    : [-100.  , 100.  ],
+        'alpha_c_z1'    : [-100.  , 100.  ],
+        'mmin_a_z0'     : [   1.  , 100.  ],
+        'mmin_b_z0'     : [   1.  , 100.  ],
+        'mmin_c_z0'     : [   1.  , 100.  ],
+        'mmin_a_z1'     : [-100.  , 100.  ],
+        'mmin_b_z1'     : [-100.  , 100.  ],
+        'mmin_c_z1'     : [-100.  , 100.  ],
+        'mmax_a_z0'     : [  30.  , 200.  ],
+        'mmax_b_z0'     : [  30.  , 200.  ],
+        'mmax_c_z0'     : [  30.  , 200.  ],
+        'mmax_a_z1'     : 0.,
+        'mmax_b_z1'     : 0.,
+        'mmax_c_z1'     : 0.,
 
-        'mmin'        : [1. , 100.],
-        'mmin_z0'     : [1. , 100.],
-        'mmin_z1'     : [-100.,100.],
-        'mmax'        : [30., 200.],
-        'mmax_z0'     : [30., 200.],
-        'mmax_z1'     : 0.,
+        'mmin'          : [   1.  , 100.  ],
+        'mmin_z0'       : [   1.  , 100.  ],
+        'mmin_z1'       : [-100.  , 100.  ],
+        'mmax'          : [  30.  , 200.  ],
+        'mmax_z0'       : [  30.  , 200.  ],
+        'mmax_z1'       : 0.,
 
-        'mu_zt'       : [0. , 1.  ],
-        'mu_delta_zt' : [1. , 100.],
-        'sigma_zt'    : [0. , 1.  ],
-        'sigma_delta_zt': [1. , 100.],
+        'mu_zt'         : [   0.  ,   1.  ],
+        'mu_delta_zt'   : [   1.  , 100.  ],
+        'sigma_zt'      : [   0.  ,   1.  ],
+        'sigma_delta_zt': [   1.  , 100.  ],
 
-        'mmin_a'      : [1. , 100.],
-        'mmin_b'      : [1. , 100.],
-        'mmin_c'      : [1. , 100.],
-        'mmax_a'      : [30., 200.],
-        'mmax_b'      : [30., 200.],
-        'mmax_c'      : [30., 200.],
+        'mmin_a'        : [   1.  , 100.  ],
+        'mmin_b'        : [   1.  , 100.  ],
+        'mmin_c'        : [   1.  , 100.  ],
+        'mmax_a'        : [  30.  , 200.  ],
+        'mmax_b'        : [  30.  , 200.  ],
+        'mmax_c'        : [  30.  , 200.  ],
 
-        'mu_g'        : [20., 60. ],
-        'mu_z0'       : [20., 60. ],
-        'mu_z1'       : [-80., 80.],
-        'mu_z2'       : [-80., 80.],
-        'sigma_g'     : [1. , 30. ],
-        'sigma_z0'    : [1. , 30. ],
-        'sigma_z1'    : [0.,  20. ],
-        'sigma_z2'    : [0.,  20. ],
-        'mmin_g'      : [2. , 50. ],
+        'mu_g'          : [  20.  ,  60.  ],
+        'mu_z0'         : [  20.  ,  60.  ],
+        'mu_z1'         : [ -80.  ,  80.  ],
+        'mu_z2'         : [ -80.  ,  80.  ],
+        'sigma_g'       : [   1.  ,  30.  ],
+        'sigma_z0'      : [   1.  ,  30.  ],
+        'sigma_z1'      : [   0.  ,  20.  ],
+        'sigma_z2'      : [   0.  ,  20.  ],
+        'mmin_g'        : [   2.  ,  50.  ],
 
-        'mu_z0_a'     : [1.,  100.],
-        'mu_z0_b'     : [1.,  100.],
-        'mu_z0_c'     : [1.,  100.],
-        'mu_z1_a'     : [-100.,100.],
-        'mu_z1_b'     : [-100.,100.],
-        'mu_z1_c'     : [-100.,100.],
-        'sigma_z0_a'  : [1. , 50. ],
-        'sigma_z0_b'  : [1. , 50. ],
-        'sigma_z0_c'  : [1. , 50. ],
-        'sigma_z1_a'  : [0.,  100.],
-        'sigma_z1_b'  : [0.,  100.],
-        'sigma_z1_c'  : [0.,  100.],
+        'mu_z0_a'       : [   1.  , 100.  ],
+        'mu_z0_b'       : [   1.  , 100.  ],
+        'mu_z0_c'       : [   1.  , 100.  ],
+        'mu_z1_a'       : [-100.  , 100.  ],
+        'mu_z1_b'       : [-100.  , 100.  ],
+        'mu_z1_c'       : [-100.  , 100.  ],
+        'sigma_z0_a'    : [   1.  ,  50.  ],
+        'sigma_z0_b'    : [   1.  ,  50.  ],
+        'sigma_z0_c'    : [   1.  ,  50.  ],
+        'sigma_z1_a'    : [   0.  , 100.  ],
+        'sigma_z1_b'    : [   0.  , 100.  ],
+        'sigma_z1_c'    : [   0.  , 100.  ],
 
-        'lambda_peak' : [0. , 1.  ],
-        'mix_z0'      : [0. , 1.  ],
-        'mix_z1'      : [0. , 1.  ],
-        'mix_alpha_z0': [0. , 1.  ],
-        'mix_alpha_z1': [0. , 1.  ],
-        'mix_beta_z0' : [0. , 1.  ],
-        'mix_beta_z1' : [0. , 1.  ],
-        'mix'         : [0. , 1.  ],
-        'mix_alpha'   : [0. , 1.  ],
-        'mix_beta'    : [0. , 1.  ],
+        'lambda_peak'   : [   0.  ,   1.  ],
+        'mix_z0'        : [   0.  ,   1.  ],
+        'mix_z1'        : [   0.  ,   1.  ],
+        'mix_alpha_z0'  : [   0.  ,   1.  ],
+        'mix_alpha_z1'  : [   0.  ,   1.  ],
+        'mix_beta_z0'   : [   0.  ,   1.  ],
+        'mix_beta_z1'   : [   0.  ,   1.  ],
+        'mix_alpha'     : [   0.  ,   1.  ],
+        'mix_beta'      : [   0.  ,   1.  ],
+        'mix'           : [   0.  ,   1.  ],
 
-        'amp'         : [0. , 0.2 ],
-        'freq'        : [-20., 20.],
-        'zt'          : [0. , 1.  ],
-        'delta_zt'    : [1. , 100.],
+        'amp'           : [   0.  ,   0.2 ],
+        'freq'          : [ -20.  ,  20.  ],
+        'zt'            : [   0.  ,   1.  ],
+        'delta_zt'      : [   1.  , 100.  ],
 
         # Secondary mass distribution
-        'beta'        : [-20., 20.],
-        'mu_q'        : [0.1, 1.  ],
-        'sigma_q'     : [0.01, 0.9],
-        'alpha_q'     : [-20., 20.],
+        'beta'          : [ -20.  ,  20.  ],
+        'mu_q'          : [   0.1 ,   1.  ],
+        'sigma_q'       : [   0.01,   0.9 ],
+        'alpha_q'       : [ -20.  ,  20.  ],
 
-        'a_gamma'     : [  1., 10.],
-        'theta'       : [0.01,  1.],
+        'a_gamma'       : [   1.  ,  10.  ],
+        'theta'         : [   0.01,   1.  ],
 
         # Rate evolution
-        'gamma'       : [-50., 30.],
-        'kappa'       : [-20., 10.],
-        'zp'          : [0. , 4.  ],
-        'R0'          : [0. , 100.],
-        'mu_r'        : [-10000.,0.],
-        'sigma_r'     : [1. , 100.],
-        'amp_r'       : [1. , 200.],
+        'gamma'         : [ -50.  ,  30.  ],
+        'kappa'         : [ -20.  ,  10.  ],
+        'zp'            : [   0.  ,   4.  ],
+        'R0'            : [   0.  , 100.  ],
+        'mu_r'          : [-100.  ,   0.  ],
+        'sigma_r'       : [   1.  , 100.  ],
+        'amp_r'         : [   1.  , 200.  ],
     }
 
     return prior
