@@ -107,7 +107,7 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'redshift-transition'):
+        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass'):
