@@ -21,16 +21,15 @@ def InitialiseOptions(Config):
         'observation-time'              : 1.,
 
         'SNR-method'                    : 'bilby',
+        'observing-run'                 : 'O3',
         'PSD-path'                      : '',
 
         # SNR-options
-        'snr-bilby-observing-run'       : 'O3',
         'snr-bilby-waveform'            : 'IMRPhenomXHM',
         'snr-bilby-reference-frequency' : 20.,
         'snr-bilby-sampling-frequency'  : 2048.,
 
         'snr-pycbc-detectors'           : ['H1', 'L1', 'V1'],
-        'snr-pycbc-observing-run'       : 'O3',
         'snr-pycbc-sampling-rate'       : 2048.,
         'snr-pycbc-delta-f'             : 1./128.,
         'snr-pycbc-f-low'               : 16.,
@@ -77,7 +76,7 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'PSD-path'):
+        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if (key == 'SNR-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
@@ -91,7 +90,7 @@ def InitialiseOptions(Config):
             except: pass
 
         # SNR-options
-        if (key == 'snr-bilby-observing-run') or (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-observing-run') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'): 
+        if (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'): 
             try: input_pars[key] = Config.get('snr-options', key)
             except: pass
         if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'icarogw-sim-z-max'):
@@ -259,7 +258,7 @@ def default_population():
 
 usage = """
 
-\nWelcome to the ICAROGW runner helper!\n
+\nWelcome to the ICAROGW simulation pipeline helper!\n
 
     # ----- #
     # input #
@@ -277,28 +276,27 @@ usage = """
         SNR-cut                       SNR threshold to consider an event detectable. Default: 12.
         estimate-events-number        Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.
         R0                            Astrophysical rate of events today [Gpc^(-3)yr^(-1)]. Used to compute the number of generated events if 'estimate-events-number' is active. Default: 25.
-        observation-time              Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Default: 1.
+        observation-time              Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Is overwritten by official IGWN observing-run duration if a negative value is given. Default: 1.
 
         SNR-method                    Method to compute the SNR. Options: 'bilby', 'pycbc', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
+        observing-run                 IGWN observing run. Further defines the detectors sensitivity for SNR computation (with PyCBC and Bilby) and PE (with Bilby), as well as observation-time (if a negative value is given). Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         PSD-path                      Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'pycbc'. Default: ''.
 
     # ----------- #
     # snr-options #
     # ----------- #
 
-        snr-bilby-observing-run       Detector sensitivity used to compute the SNR with Bilby. Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         snr-bilby-waveform            Waveform model used to compute the SNR with Bilby. Default: 'IMRPhenomXHM'.
-        snr-bilby-reference-frequency Frequency at which the binary parameters are defined when Bilby generates the waveforms. Default: 20.
-        snr-bilby-sampling-frequency  Sampling rate used to generate the waveform with Bilby. Default: 2048.
+        snr-bilby-reference-frequency Reference frequency [Hz] used by Bilby to compute the duration of the signal injected in detectors (Bilby's time to merger is defined as the duration from the time the signal is at reference-frequency, to the time of the merger). Default: 20.
+        snr-bilby-sampling-frequency  Sampling rate [Hz] used to generate the waveform with Bilby. Default: 2048.
         
         snr-pycbc-detectors           List of detectors used to compute the SNR with PyCBC. Options: 'H1', 'L1', 'V1', 'K1'. Default: ['H1', 'L1', 'V1'].
-        snr-pycbc-observing-run       Detector sensitivity used to compute the SNR with PyCBC. Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         snr-pycbc-sampling-rate       Sampling rate used to generate the waveform with PyCBC. Default: 2048.
         snr-pycbc-delta-f             Frequency resolution used to generate the waveform with PyCBC. Default: 1/128.
         snr-pycbc-f-low               Lower frequency cut-off used to generate the waveform with PyCBC. Default: 16.
         snr-pycbc-waveform            Waveform model used to compute the SNR with PyCBC. Default: 'IMRPhenomXHM'.
         snr-pycbc-method              Method used to compute the SNR with PyCBC. Options: 'opt' (optimal SNR), 'mf_fast' (matched-filter SNR with noise contribution estimated from a unit Gaussian). Default: 'mf_fast'.
-        snr-pycbc-precession          Flag to include precession in the waveform model. Default: 0.
+        snr-pycbc-precession          Flag to specify whether or not the waveform model includes precession (should match snr-pycbc-waveform). Default: 0.
 
         snr-proxy-N-detectors         Number of detectors used to compute the SNR with the proxy method. Default: 2.
         snr-proxy-fgw_cut             Condition on detection additional to the SNR cut. An event is detected if its estimated frequency at ISCO is higher than this value. Default: 15.
@@ -319,6 +317,8 @@ usage = """
         model-primary                 Model distribution for the primary object. Options: 'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-Gaussian', 'DoublePowerlaw', 'PowerLaw-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftQuadratic', 'PowerLaw-GaussianRedshiftPowerLaw', 'PowerLaw-GaussianRedshiftSigmoid', 'PowerLawBroken-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear', 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear'. Default: 'PowerLaw-Gaussian'.
         model-secondary               Model distribution for the secondary object. Options: 'Mass2-PowerLaw', 'MassRatio-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-Gamma'. Default: 'MassRatio-Gaussian'.
         model-rate                    Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
+        model-cosmology               Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
+        model-bkg-cosmo               Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
         
         redshift-transition           Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture              Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
