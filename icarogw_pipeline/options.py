@@ -28,6 +28,8 @@ def InitialiseOptions(Config):
         'model-primary'               : 'PowerLaw-Gaussian',                     
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
+        'model-cosmology'             : 'FlatLambdaCDM',
+        'model-bkg-cosmo'             : 'FlatLambdaCDM',
 
         'redshift-transition'         : 'linear',
         'redshift-mixture'            : 1,
@@ -97,7 +99,7 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'redshift-transition'):
+        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass'):
@@ -147,8 +149,20 @@ def default_priors():
 
     prior = {
         # Cosmology
-        'H0'            : 67.7,
-        'Om0'           : 0.308,
+        'H0'          : 67.7,
+        'Om0'         : 0.308,
+        'w0'          : -1.,
+        'wa'          : 0.,
+        'xi'          : 0.,
+        'eps0'        : 0.,
+        'Xi0'         : 1.,
+        'n'           : 1.,
+        'D'           : 4.,
+        'Rc'          : 1., # Mpc: same units as dL 
+        'cM'          : 0.,
+        'alphalog_1'  : 0.,
+        'alphalog_2'  : 0.,
+        'alphalog_3'  : 0.,
 
         # Primary mass distribution
         'delta_m'       : [   0.  ,  10.  ],
@@ -300,7 +314,9 @@ usage = """
         model-primary               Model distribution for the primary object. Options: 'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-Gaussian', 'DoublePowerlaw', 'PowerLaw-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftQuadratic', 'PowerLaw-GaussianRedshiftPowerLaw', 'PowerLaw-GaussianRedshiftSigmoid', 'PowerLawBroken-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear', 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear'. Default: 'PowerLaw-Gaussian'.
         model-secondary             Model distribution for the secondary object. Options: 'Mass2-PowerLaw', 'MassRatio-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-Gamma'. Default: 'MassRatio-Gaussian'.
         model-rate                  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
-        
+        model-cosmology             Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
+        model-bkg-cosmo             Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
+
         redshift-transition         Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture            Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
         low-smoothing               Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
