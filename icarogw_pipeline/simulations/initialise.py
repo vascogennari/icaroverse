@@ -38,7 +38,7 @@ def InitialiseOptions(Config):
         'snr-pycbc-precession'          : 0,
 
         'snr-proxy-N-detectors'         : 2,
-        'snr-proxy-fgw_cut'             : 15,
+        'snr-proxy-fgw-cut'             : 15.,
         'snr-proxy-SNR-reference'       : 9.,
         'snr-proxy-dL-reference'        : 1.5,
         'snr-proxy-Mc-reference'        : 25.,
@@ -53,6 +53,8 @@ def InitialiseOptions(Config):
         'model-primary'                 : 'PowerLaw-Gaussian',                     
         'model-secondary'               : 'MassRatio-Gaussian',
         'model-rate'                    : 'PowerLaw',
+        'model-cosmology'               : 'FlatLambdaCDM',
+        'model-bkg-cosmo'               : 'FlatLambdaCDM',
 
         'redshift-transition'           : 'linear',
         'redshift-mixture'              : 1,
@@ -93,7 +95,7 @@ def InitialiseOptions(Config):
         if (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'): 
             try: input_pars[key] = Config.get('snr-options', key)
             except: pass
-        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'icarogw-sim-z-max'):
+        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'snr-proxy-fgw-cut') or (key == 'icarogw-sim-z-max'):
             try: input_pars[key] = Config.getfloat('snr-options', key)
             except: pass
         if (key == 'snr-proxy-N-detectors'):
@@ -139,8 +141,20 @@ def default_population():
 
     pop = {
         # Cosmology
-        'H0'            : 67.7,
-        'Om0'           : 0.308,
+        'H0'          : 67.7,
+        'Om0'         : 0.308,
+        'w0'          : -1.,
+        'wa'          : 0.,
+        'xi'          : 0.,
+        'eps0'        : 0.,
+        'Xi0'         : 1.,
+        'n'           : 1.,
+        'D'           : 4.,
+        'Rc'          : 1., # Mpc: same units as dL 
+        'cM'          : 0.,
+        'alphalog_1'  : 0.,
+        'alphalog_2'  : 0.,
+        'alphalog_3'  : 0.,
 
         # Primary mass distribution
         'delta_m'       : 5.,
@@ -299,7 +313,7 @@ usage = """
         snr-pycbc-precession          Flag to specify whether or not the waveform model includes precession (should match snr-pycbc-waveform). Default: 0.
 
         snr-proxy-N-detectors         Number of detectors used to compute the SNR with the proxy method. Default: 2.
-        snr-proxy-fgw_cut             Condition on detection additional to the SNR cut. An event is detected if its estimated frequency at ISCO is higher than this value. Default: 15.
+        snr-proxy-fgw-cut             Condition on detection additional to the SNR cut. An event is detected if its estimated frequency at ISCO is higher than this value. Default: 15.
         snr-proxy-SNR-reference       Reference SNR used to compute the approximate analytical SNR. Default: 9.
         snr-proxy-dL-reference        Reference luminosity distance that should give an approximate SNR of 'snr-proxy-SNR-reference'. Default: 1.5.
         snr-proxy-Mc-reference        Reference chirp mass that should give an approximate SNR of 'snr-proxy-SNR-reference'. Default: 25.

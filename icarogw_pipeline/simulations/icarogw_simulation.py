@@ -120,7 +120,8 @@ def generate_population(pars):
 
     # Compute the SNR to select the detected events.
     SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-    clean_result_dict_from_compute_SNR(additional_parameters)
+    try: clean_result_dict_from_compute_SNR(additional_parameters)
+    except: pass
 
     # Save the number of detected events.
     print('\n * Number of detections: {}\n'.format(len(idx_detected)), flush = True)
@@ -191,8 +192,9 @@ def generate_injections(pars):
 
             # Compute the SNR to select the detected events.
             SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-            clean_result_dict_from_compute_SNR(additional_parameters)
-            
+            try: clean_result_dict_from_compute_SNR(additional_parameters)
+            except: pass
+
             number_detected_chuck = len(idx_detected)
             inj_number_tmp = inj_number_tmp + number_detected_chuck
             c = c+1
