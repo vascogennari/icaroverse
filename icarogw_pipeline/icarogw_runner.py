@@ -349,27 +349,52 @@ class Data:
         # Internal simulations
         elif pars['simulation']:
 
-            if '.pickle' in pars['data-path']:
-                with open(pars['data-path'], 'rb') as f: data_evs = pickle.load(f)
+            if pars['true-data']:
+
+                if '.pickle' in pars['data-path']:
+                    with open(pars['data-path'], 'rb') as f: data_evs = pickle.load(f)
+                else:
+                    raise ValueError('Unknown format for the file containing the single events samples. Please make sure the file is correct:\n{}'.format(pars['data-path']))
+
+                samps_dict = {}
+                for i in range(len(data_evs['m1d'])):
+                    pos_dict = {
+                        'mass_1':              np.array([data_evs['m1d'][i]]),
+                        'mass_2':              np.array([data_evs['m2d'][i]]),
+                        'luminosity_distance': np.array([data_evs['dL'][i]])}
+
+                    # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
+                    prior = np.full(len(pos_dict['mass_1']), 1.)
+
+                    if 'MassRatio' in pars['model-secondary']:
+                        if not pars['inverse-mass-ratio']: pos_dict['mass_ratio'] = pos_dict['mass_2'] / pos_dict['mass_1']
+                        else:                              pos_dict['mass_ratio'] = pos_dict['mass_1'] / pos_dict['mass_2']
+
+                    # Account for PE prior.
+                    samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+
             else:
-                raise ValueError('Unknown format for the file containing the single events samples. Please make sure the file is correct:\n{}'.format(pars['data-path']))
 
-            samps_dict = {}
-            for i in range(len(data_evs['m1d'])):
-                pos_dict = {
-                    'mass_1':              np.array([data_evs['m1d'][i]]),
-                    'mass_2':              np.array([data_evs['m2d'][i]]),
-                    'luminosity_distance': np.array([data_evs['dL'][i]])}
+                if '.pickle' in pars['data-path']:
+                    with open(pars['data-path'], 'rb') as f: data_evs = pickle.load(f)
+                else:
+                    raise ValueError('Unknown format for the file containing the single events samples. Please make sure the file is correct:\n{}'.format(pars['data-path']))
 
-                # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
-                prior = np.full(len(pos_dict['mass_1']), 1.)
+                samps_dict = {}
+                for i in range(len(data_evs['m1d'])):
+                    pos_dict = {
+                        'mass_1':              np.array([data_evs['m1d'][i]]),
+                        'mass_2':              np.array([data_evs['m2d'][i]]),
+                        'luminosity_distance': np.array([data_evs['dL'][i]])}
 
-                if 'MassRatio' in pars['model-secondary']:
-                    if not pars['inverse-mass-ratio']: pos_dict['mass_ratio'] = pos_dict['mass_2'] / pos_dict['mass_1']
-                    else:                              pos_dict['mass_ratio'] = pos_dict['mass_1'] / pos_dict['mass_2']
+                    # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
+                    prior = np.full(len(pos_dict['mass_1']), 1.)
 
-                # Account for PE prior.
-                if not pars['true-data']:
+                    if 'MassRatio' in pars['model-secondary']:
+                        if not pars['inverse-mass-ratio']: pos_dict['mass_ratio'] = pos_dict['mass_2'] / pos_dict['mass_1']
+                        else:                              pos_dict['mass_ratio'] = pos_dict['mass_1'] / pos_dict['mass_2']
+
+                    # Account for PE prior.
                     # Luminosity distance. If the prior is uniform in dL, we leave it flat.
                     if pars['PE-prior-distance'] == 'dL3': prior *= data_evs['dL'][i]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
 
@@ -389,7 +414,9 @@ class Data:
                                 if   pars['PE-prior-masses'] == 'm1-m2': prior *= pos_dict['mass_1'] / pos_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
                                 elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
 
-                samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+                    samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+
+            
         else:
             raise ValueError('Unknown option to process single events data.')
         

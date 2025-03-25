@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
 from scipy.integrate import simps
 from tqdm import tqdm
+import json, re
+from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
 # Internal imports
 sys.path.append('../')
@@ -82,7 +84,8 @@ def main():
     # Generate new data.
     else:
         print('\n * Generating new {}.'.format(input_pars['run-type']))
-        save_settings(input_pars['output'], input_pars)
+        # save_settings(input_pars['output'], input_pars)
+        save_settings_pretty_json(input_pars['output'], input_pars)
         
         # Generate either a synthetic population or a set of injections for selection effects.
         if   input_pars['run-type'] == 'population': samps_dict_astrophysical, samps_dict_observed = generate_population(input_pars)
@@ -120,7 +123,8 @@ def generate_population(pars):
 
     # Compute the SNR to select the detected events.
     SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-    clean_result_dict_from_compute_SNR(additional_parameters)
+    try: clean_result_dict_from_compute_SNR(additional_parameters)
+    except: pass
 
     # Save the number of detected events.
     print('\n * Number of detections: {}\n'.format(len(idx_detected)), flush = True)
@@ -191,7 +195,8 @@ def generate_injections(pars):
 
             # Compute the SNR to select the detected events.
             SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-            clean_result_dict_from_compute_SNR(additional_parameters)
+            try: clean_result_dict_from_compute_SNR(additional_parameters)
+            except: pass
             
             number_detected_chuck = len(idx_detected)
             inj_number_tmp = inj_number_tmp + number_detected_chuck
@@ -273,6 +278,61 @@ def save_settings(path, dictionary):
         for key in dictionary.keys():
             max_len = len(max(dictionary.keys(), key = len))
             f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
+
+
+def save_settings_pretty_json(path, dictionary):
+    """Pretty JSON settings saving"""
+
+    class NoIndent(object):
+        """ Value wrapper."""
+        def __init__(self, value):
+            if not isinstance(value, (list, tuple, dict, np.ndarray)):
+                raise TypeError('Only lists, tuples, dict, numpy.ndarray can be wrapped')
+            self.value = value
+
+    class MyEncoder(json.JSONEncoder):
+        """
+        Custom JSON encoder, only 1st level indented
+        See https://stackoverflow.com/questions/42710879/write-two-dimensional-list-to-json-file
+        """
+
+        FORMAT_SPEC = '@@{}@@'  # Unique string pattern of NoIndent object ids.
+        regex = re.compile(FORMAT_SPEC.format(r'(\d+)'))  # compile(r'@@(\d+)@@')
+
+        def __init__(self, **kwargs):
+            # Keyword arguments to ignore when encoding NoIndent wrapped values.
+            ignore = {'cls', 'indent'}
+            # Save copy of any keyword argument values needed for use here.
+            self._kwargs = {k: v for k, v in kwargs.items() if k not in ignore}
+            super(MyEncoder, self).__init__(**kwargs)
+
+        def default(self, obj):
+            return (self.FORMAT_SPEC.format(id(obj)) if isinstance(obj, NoIndent)
+                        else super(MyEncoder, self).default(obj))
+        
+        def iterencode(self, obj, **kwargs):
+            format_spec = self.FORMAT_SPEC  # Local var to expedite access.
+            # Replace any marked-up NoIndent wrapped values in the JSON repr
+            # with the json.dumps() of the corresponding wrapped Python object.
+            for encoded in super(MyEncoder, self).iterencode(obj, **kwargs):
+                match = self.regex.search(encoded)
+                if match:
+                    id = int(match.group(1))
+                    no_indent = PyObj_FromPtr(id)
+                    json_repr = json.dumps(no_indent.value, **self._kwargs)
+                    # Replace the matched id string with json formatted representation
+                    # of the corresponding Python object.
+                    encoded = encoded.replace(
+                                '"{}"'.format(format_spec.format(id)), json_repr)
+                yield encoded
+
+    dictionary_tosave = {}
+    for key, value in dictionary.items():
+        if   key != 'wrappers' and isinstance(value, (list, tuple, dict, np.ndarray)): dictionary_tosave[key] = NoIndent(value)
+        elif key != 'wrappers':                                                        dictionary_tosave[key] = value
+        else: pass # the wrapper entry in the input_pars 
+    filename = os.path.join(path, 'analysis_settings.json')
+    with open(filename, 'w') as f: json.dump(dictionary_tosave, f, indent=4, cls=MyEncoder)
 
 
 def read_settings(path):

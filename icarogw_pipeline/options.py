@@ -108,10 +108,10 @@ def InitialiseOptions(Config):
             except: pass
 
         # Sampler
-        if (key == 'sampler'):
+        if (key == 'sampler') or (key == 'print-method'):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps'):
+        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps') or (key == 'threads'):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
         if (key == 'loglike-var'):

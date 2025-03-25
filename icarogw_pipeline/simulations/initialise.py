@@ -39,7 +39,7 @@ def InitialiseOptions(Config):
         'snr-pycbc-precession'          : 0,
 
         'snr-proxy-N-detectors'         : 2,
-        'snr-proxy-fgw_cut'             : 15,
+        'snr-proxy-fgw-cut'             : 15,
         'snr-proxy-SNR-reference'       : 9.,
         'snr-proxy-dL-reference'        : 1.5,
         'snr-proxy-Mc-reference'        : 25.,
@@ -94,7 +94,7 @@ def InitialiseOptions(Config):
         if (key == 'snr-bilby-observing-run') or (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-observing-run') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'): 
             try: input_pars[key] = Config.get('snr-options', key)
             except: pass
-        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'icarogw-sim-z-max'):
+        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'snr-proxy-fgw-cut') or (key == 'icarogw-sim-z-max'):
             try: input_pars[key] = Config.getfloat('snr-options', key)
             except: pass
         if (key == 'snr-proxy-N-detectors'):
@@ -280,7 +280,7 @@ usage = """
         observation-time              Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Default: 1.
 
         SNR-method                    Method to compute the SNR. Options: 'bilby', 'pycbc', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
-        PSD-path                      Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'pycbc'. Default: ''.
+        PSD-path                      Path to the directory where PSD files are stored. This is only used if SNR-method is 'pycbc' or 'bilby'. PSD files should be named of the form '{ifo}_{observing_run}.txt'. Default: ''.
 
     # ----------- #
     # snr-options #
@@ -301,7 +301,7 @@ usage = """
         snr-pycbc-precession          Flag to include precession in the waveform model. Default: 0.
 
         snr-proxy-N-detectors         Number of detectors used to compute the SNR with the proxy method. Default: 2.
-        snr-proxy-fgw_cut             Condition on detection additional to the SNR cut. An event is detected if its estimated frequency at ISCO is higher than this value. Default: 15.
+        snr-proxy-fgw-cut             Condition on detection additional to the SNR cut. An event is detected if its estimated frequency at ISCO is higher than this value. Default: 15.
         snr-proxy-SNR-reference       Reference SNR used to compute the approximate analytical SNR. Default: 9.
         snr-proxy-dL-reference        Reference luminosity distance that should give an approximate SNR of 'snr-proxy-SNR-reference'. Default: 1.5.
         snr-proxy-Mc-reference        Reference chirp mass that should give an approximate SNR of 'snr-proxy-SNR-reference'. Default: 25.

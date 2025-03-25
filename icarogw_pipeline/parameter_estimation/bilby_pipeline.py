@@ -79,7 +79,13 @@ def main():
     }
 
     # Initialise the Bilby class.
-    BilbyClass = snr.BilbyDetectionPipeline(input_pars['PSD-path'], input_pars['observing-run'], reference_frequency = input_pars['reference-frequency'], sampling_frequency = input_pars['sampling-frequency'], approximant = input_pars['waveform'])
+    BilbyClass = snr.BilbyDetectionPipeline(
+        psd_dir             = input_pars['PSD-path'], 
+        observing_run       = input_pars['observing-run'], 
+        reference_frequency = input_pars['reference-frequency'], 
+        sampling_frequency  = input_pars['sampling-frequency'], 
+        approximant         = input_pars['waveform']
+    )
     
     # Set the events and interferometers within Bilby.
     BilbyClass.set_event_dict(injection_parameters)
@@ -90,8 +96,8 @@ def main():
     # Default priors are here: input_pars['priors']
     priors = bilby.gw.prior.BBHPriorDict()
 
-    # FIXME: Do we need this?
-    time_delay = ifos[0].time_delay_from_geocenter(
+    # FIXME: Do we need this? Not necessarily, especially since we are not sure H1 is the firrst
+    time_delay = BilbyClass.ifos_list[0].time_delay_from_geocenter(
         injection_parameters['ra'],
         injection_parameters['dec'],
         injection_parameters['geocent_time'],
