@@ -287,7 +287,7 @@ usage = """
     # ----------- #
 
         snr-bilby-waveform            Waveform model used to compute the SNR with Bilby. Default: 'IMRPhenomXHM'.
-        snr-bilby-reference-frequency Reference frequency [Hz] used by Bilby to compute the duration of the signal injected in detectors (Bilby's time to merger is defined as the duration from the time the signal is at reference-frequency, to the time of the merger). Default: 20.
+        snr-bilby-reference-frequency Reference frequency [Hz] used by Bilby to compute the duration of the signal injected in detectors (Bilby's time to merger is defined as the duration from the time the signal is at reference-frequency, to the time of the merger. See https://lscsoft.docs.ligo.org/bilby/api/bilby.gw.utils.calculate_time_to_merger.html#bilby.gw.utils.calculate_time_to_merger). Default: 20.
         snr-bilby-sampling-frequency  Sampling rate [Hz] used to generate the waveform with Bilby. Default: 2048.
         
         snr-pycbc-detectors           List of detectors used to compute the SNR with PyCBC. Options: 'H1', 'L1', 'V1', 'K1'. Default: ['H1', 'L1', 'V1'].
