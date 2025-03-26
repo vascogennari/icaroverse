@@ -53,30 +53,11 @@ def main():
     print(' * I will be running with the following parameters.\n')
     icarorun.print_dictionary(input_pars)
 
-    # --------------------------------- #
-    # Generate population or injections #
-    # --------------------------------- #
-
-    # Read the event parameters.
-    injection_parameters = {
-        'mass_1'             : input_pars['event-parameters']['mass_1'],
-        'mass_2'             : input_pars['event-parameters']['mass_2'],
-        'a_1'                : input_pars['event-parameters']['a_1'],
-        'a_2'                : input_pars['event-parameters']['a_2'],
-        'tilt_1'             : input_pars['event-parameters']['tilt_1'],
-        'tilt_2'             : input_pars['event-parameters']['tilt_2'],
-        'phi_12'             : input_pars['event-parameters']['phi_12'],
-        'phi_jl'             : input_pars['event-parameters']['phi_jl'],
-        'luminosity_distance': input_pars['event-parameters']['luminosity_distance'],
-        'theta_jn'           : input_pars['event-parameters']['theta_jn'],
-        'psi'                : input_pars['event-parameters']['psi'],
-        'phase'              : input_pars['event-parameters']['phase'],
-        'geocent_time'       : input_pars['event-parameters']['geocent_time'],
-        'ra'                 : input_pars['event-parameters']['ra'],
-        'dec'                : input_pars['event-parameters']['dec'],
-        'ifos_on'            : input_pars['event-parameters']['detectors'],
-        'seed'               : input_pars['event-parameters']['seed'],
-    }
+    # Read the event parameters. (We just need to rename masses and distance to match the waveform generator's syntax)
+    injection_parameters = input_pars['event-parameters']
+    injection_parameters['mass_1'             ] = injection_parameters['m1d']
+    injection_parameters['mass_2'             ] = injection_parameters['m2d']
+    injection_parameters['luminosity_distance'] = injection_parameters['dL' ]
 
     # Initialise the Bilby class.
     BilbyClass = snr.BilbyDetectionPipeline(
@@ -96,7 +77,33 @@ def main():
     # Default priors are here: input_pars['priors']
     priors = bilby.gw.prior.BBHPriorDict()
 
-    # FIXME: Do we need this? Not necessarily, especially since we are not sure H1 is the firrst
+    priors = injection_parameters.copy()
+    # mass & distance priors
+    priors['mass_1']              = bilby.core.prior.Uniform(5., 200.)
+    priors['mass_2']              = bilby.core.prior.ConditionalUniform(
+        condition_func = bilby.gw.prior.secondary_mass_condition_function,
+        minimum        = 5.,
+        maximum        = 200.
+    )
+    priors['luminosity_distance'] = bilby.core.prior.PowerLaw(2.,0.,1.6e4)
+    # spin priors
+    priors['a_1']                 = bilby.core.prior.Uniform(0., 0.98)
+    priors['a_2']                 = bilby.core.prior.Uniform(0., 0.98)
+    priors['tilt_1']              = bilby.core.prior.analytical.Sine(minimum=0., maximum=np.pi)
+    priors['tilt_2']              = bilby.core.prior.analytical.Sine(minimum=0., maximum=np.pi)
+    priors['phi_12']              = bilby.core.prior.Uniform(0., 2*np.pi, boundary='periodic')
+    priors['phi_jl']              = bilby.core.prior.Uniform(0., 2*np.pi, boundary='periodic')
+    # sky localization priors
+    priors['dec']                 = bilby.core.prior.analytical.Cosine(minimum=-np.pi/2., maximum=np.pi/2.)
+    priors['ra']                  = bilby.core.prior.Uniform(0., 2*np.pi, boundary='periodic')
+    # other extrinsic parameters priors
+    priors['theta_jn']            = bilby.core.prior.analytical.Cosine(minimum=-np.pi/2., maximum=np.pi/2.)
+    priors['psi']                 = bilby.core.prior.Uniform(0., 2*np.pi, boundary='periodic')
+    priors['phase']               = bilby.core.prior.Uniform(0., 2*np.pi, boundary='periodic')
+    priors['psi']                 = bilby.core.prior.Uniform(0., 2*np.pi, boundary='periodic')
+
+
+    # FIXME: Do we need this? Not necessarily, especially since we are not sure H1 is the first 
     time_delay = BilbyClass.ifos_list[0].time_delay_from_geocenter(
         injection_parameters['ra'],
         injection_parameters['dec'],
@@ -109,6 +116,7 @@ def main():
         latex_label = '$t_H$',
         unit        = '$s$',
     )
+
 
     # Initialise the likelihood.
     likelihood = bilby.gw.GravitationalWaveTransient(

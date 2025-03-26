@@ -54,9 +54,8 @@ def main():
     parser.add_option('-r', '--threads',      type='int',    metavar = 'threads',      default = 1                )
     parser.add_option(      '--nparallel',    type='int',    metavar = 'nparallel',    default = 1                )
     (opts, _) = parser.parse_args()
-    # Check consistency of given arguments
+
     samplers_types = {'dynesty': 'nested', 'nessai': 'nested', 'ptemcee':'MCMC'}
-    # if samplers_types[opts.sampler] == 'nested':  
 
     # Retrieve population and transform it into a list of single event dict
     data_filepath = os.path.join(opts.pop_dir, "population_observed.pickle")
