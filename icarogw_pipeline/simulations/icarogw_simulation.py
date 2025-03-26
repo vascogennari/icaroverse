@@ -197,7 +197,7 @@ def generate_injections(pars):
             SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
             try: clean_result_dict_from_compute_SNR(additional_parameters)
             except: pass
-            
+
             number_detected_chuck = len(idx_detected)
             inj_number_tmp = inj_number_tmp + number_detected_chuck
             c = c+1
@@ -358,6 +358,10 @@ def build_filter_subsample(N_evs, N_subset):
     return filt
 
 def estimate_events_number(pars):
+
+    if pars['observation-time'] < 0.:
+        t_start, t_end = snr_computation.run_to_time_window(pars['observing-run'])
+        pars['observation-time'] = (t_end - t_start) / (3600*24*365)
 
     print('\n * Estimating the number of astrophysical events from the rate, using R0 = {} [Gpc^-3 yr^-1] and Tobs = {} [yr].'.format(pars['R0'], pars['observation-time']))
 
@@ -585,7 +589,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
 
         bdp = snr_computation.BilbyDetectionPipeline(
             psd_dir             = pars['PSD-path'                     ],
-            observing_run       = pars['snr-bilby-observing-run'      ],
+            observing_run       = pars['observing-run'                ],
             reference_frequency = pars['snr-bilby-reference-frequency'],
             sampling_frequency  = pars['snr-bilby-sampling-frequency' ],
             approximant         = pars['snr-bilby-waveform'           ],
@@ -620,14 +624,18 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
 
         SNR = np.zeros(N_events)
 
-        detector_network = snr_computation.DetectorNetwork(
-            observing_run = pars['snr-pycbc-observing-run'], 
-            flow          = pars['snr-pycbc-f-low'        ], 
-            delta_f       = pars['snr-pycbc-delta-f'      ],
-            sample_rate   = pars['snr-pycbc-sampling-rate'],
-            network       = pars['snr-pycbc-detectors'    ],
-            psd_directory = pars['PSD-path'               ],
-        )
+        try:
+            detector_network = snr_computation.DetectorNetwork(
+                observing_run = pars['observing-run'          ], 
+                flow          = pars['snr-pycbc-f-low'        ], 
+                delta_f       = pars['snr-pycbc-delta-f'      ],
+                sample_rate   = pars['snr-pycbc-sampling-rate'],
+                network       = pars['snr-pycbc-detectors'    ],
+                psd_directory = pars['PSD-path'               ],
+            )
+        except AttributeError:
+            raise ImportError("Please make sure PyCBC is properly installed if you wish to use it for SNR computation. (See https://pycbc.org/)")
+        
         detector_network.load_psds()
 
         if   pars['run-type'] == 'population': iterator = tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d), desc="Opt SNR pycbc")
@@ -676,9 +684,12 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
 
         print('\n * Computing the SNR with lisabeta')
 
-        SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
-        idx_detected = snr_computation.cut_SNR(SNR)
-        additional_parameters = {}
+        try:
+            SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+            idx_detected = snr_computation.cut_SNR(SNR)
+            additional_parameters = {}
+        except AttributeError:
+            raise ImportError("Please make sure lisabeta is properly installed if you wish to use it for SNR computation. (See https://pypi.org/project/lisabeta/)")
 
     else:
         raise ValueError('Unknown method to compute the SNR. Exiting...')
