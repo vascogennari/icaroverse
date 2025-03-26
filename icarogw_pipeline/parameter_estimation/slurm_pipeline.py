@@ -49,17 +49,17 @@ def activate_slurm_submit(event_dir_path, population_dir_path):
     os.system('sbatch {}'.format(submission_filename))
 
 # ---------------------------------------------------------------------- #
-conda_env    = 'icarogw_env'
-user_mail    = 'vasco.gennari@l2it.in2p3.fr'
+conda_env    = 'in2_env'
+user_mail    = 'tom.bertheas@l2it.in2p3.fr'
 slurm_nodes  = 1
 slurm_cpus   = 10
 slurm_memory = 5
 slurm_time   = {'days': 2, 'hours': 0, 'minutes': 0}
-slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
-slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline/icarogw_pipeline/parameter_estimation/bilby_pipeline.py'
+slurm_executable_path = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
+slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/parameter_estimation/bilby_pipeline.py'
 
-# Set the directory where the population is stored
-population_dir_path    = '/sps/virgo/USERS/vgennari/icarogw_pipeline/data/simulations/population/<pop_dir>'
+# MAIN INPUT: Set the directory where the population is stored
+population_dir_path    = '<population_dir_path>'
 # ---------------------------------------------------------------------- #
 
 population_PE_dir_path =  os.path.join(population_dir_path, "parameter_estimation")

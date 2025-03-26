@@ -79,7 +79,7 @@ def main():
     
     if population_generation_pars['SNR-method'] == 'bilby':
         psd_dir             = population_generation_pars['PSD-path']
-        observing_run       = population_generation_pars['snr-bilby-observing-run']
+        observing_run       = population_generation_pars['observing-run']
         waveform            = population_generation_pars['snr-bilby-waveform']
         reference_frequency = population_generation_pars['snr-bilby-reference-frequency']
         sampling_frequency  = population_generation_pars['snr-bilby-sampling-frequency']
