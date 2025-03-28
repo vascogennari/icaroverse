@@ -272,14 +272,6 @@ def read_truths(path):
     return res
 
 
-def save_settings(path, dictionary):
-
-    with open(os.path.join(path, 'analysis_settings.txt'), 'w') as f:
-        for key in dictionary.keys():
-            max_len = len(max(dictionary.keys(), key = len))
-            f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
-
-
 def save_settings_pretty_json(path, dictionary):
     """Pretty JSON settings saving"""
 
@@ -333,21 +325,6 @@ def save_settings_pretty_json(path, dictionary):
         else: pass # the wrapper entry in the input_pars 
     filename = os.path.join(path, 'analysis_settings.json')
     with open(filename, 'w') as f: json.dump(dictionary_tosave, f, indent=4, cls=MyEncoder)
-
-
-def read_settings(path):
-
-    with open(os.path.join(path, 'analysis_settings.txt'), 'r') as f:
-        res = dict([line.strip().split('  ', 1) for line in f])
-    for key in res.keys():
-        if key == 'positive-peak' or key == 'low-smoothing' or key == 'single-mass' or key == 'flat-PSD':
-            res[key] = int(  res[key])
-        if key == 'SNR-cut' or key == 'snr-proxy-fgw-cut':
-            res[key] = float(res[key])
-        if key == 'model-primary' or key == 'model-secondary' or key == 'model-rate' or key == 'redshift-transition' or key == 'output':
-            res[key] = res[key].replace(" ", "")
-
-    return res
 
 
 def build_filter_subsample(N_evs, N_subset):
@@ -583,6 +560,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     if   pars['SNR-method'] == 'bilby':
 
         print('\n * Computing the MF SNR with the full waveform using bilby')
+        bilby.core.utils.log.setup_logger(log_level=0)
 
         SNR = []
         additional_parameters = []

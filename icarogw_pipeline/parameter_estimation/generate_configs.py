@@ -125,7 +125,7 @@ def main():
             sampler_dependent_config = sampler_dependent_config,
         )
 
-        with open(os.path.join(event_subdir, "config_for_bilby_PE.ini"), 'w') as f:
+        with open(os.path.join(event_subdir, f"config_PE_{os.path.basename(opts.pop_dir)}_event_{i:04d}.ini"), 'w') as f:
             f.write(event_config_content)
 
     print('\n * Finished.\n')
