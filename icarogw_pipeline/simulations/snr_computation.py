@@ -270,8 +270,8 @@ class BilbyDetectionPipeline():
         * rignt ascention is drawn uniformly from [0, 2*pi]
         * cos(pi/2 - declination) is drawn randomly in [-1, 1]
         """
-        self.event_dict['ra']           = np.random.uniform(0., 2*np.pi)
-        self.event_dict['dec']          = np.pi/2 - np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['ra']  = np.random.uniform(0., 2*np.pi)
+        self.event_dict['dec'] = np.pi/2 - np.arccos(np.random.uniform(-1., 1.))
 
     def draw_inclination(self):
         """
@@ -279,48 +279,47 @@ class BilbyDetectionPipeline():
         
         * cos(theta_jn) is drawn randomly in [-1, 1]
         """
-        self.event_dict['theta_jn']     = np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['theta_jn'] = np.arccos(np.random.uniform(-1., 1.))
 
     def draw_polarization(self):
         """
         Draw polarization angle uniformly in [0, 2*pi]
         """
-        self.event_dict['psi']          = np.random.uniform(0., 2*np.pi)
+        self.event_dict['psi'] = np.random.uniform(0., 2*np.pi)
 
     def draw_phase(self):
         """
         Draw reference phare uniformly in [0, 2*pi]
         """
-        self.event_dict['phase']        = np.random.uniform(0., 2*np.pi)
+        self.event_dict['phase'] = np.random.uniform(0., 2*np.pi)
 
     def draw_ifos_on(self):
         """
         Draw ifos_on based on detectors duty cycles.
         """
-        self.event_dict['ifos_on']      = tell_me_ifos_on(run = self.observing_run)
-        # self.event_dict['ifos_on']      = tell_me_ifos_on('opt')
+        self.event_dict['ifos_on'] = tell_me_ifos_on(run = self.observing_run)
     
     def check_all_parameters_present(self):
         """
         Checks that all the expected CBC parameters are present in self.event_dict
         """
         if not (
-            ('geocent_time' in self.event_dict) and
-            ('mass_1' in self.event_dict) and
-            ('mass_2' in self.event_dict) and
+            ('geocent_time'        in self.event_dict) and
+            ('mass_1'              in self.event_dict) and
+            ('mass_2'              in self.event_dict) and
             ('luminosity_distance' in self.event_dict) and
-            ('dec' in self.event_dict) and
-            ('ra' in self.event_dict) and
-            ('theta_jn' in self.event_dict) and
-            ('psi' in self.event_dict) and
-            ('phase' in self.event_dict) and
-            ('a_1' in self.event_dict) and
-            ('a_2' in self.event_dict) and
-            ('tilt_1' in self.event_dict) and
-            ('tilt_2' in self.event_dict) and
-            ('phi_12' in self.event_dict) and
-            ('phi_jl' in self.event_dict) and
-            ('ifos_on' in self.event_dict)
+            ('dec'                 in self.event_dict) and
+            ('ra'                  in self.event_dict) and
+            ('theta_jn'            in self.event_dict) and
+            ('psi'                 in self.event_dict) and
+            ('phase'               in self.event_dict) and
+            ('a_1'                 in self.event_dict) and
+            ('a_2'                 in self.event_dict) and
+            ('tilt_1'              in self.event_dict) and
+            ('tilt_2'              in self.event_dict) and
+            ('phi_12'              in self.event_dict) and
+            ('phi_jl'              in self.event_dict) and
+            ('ifos_on'             in self.event_dict)
         ):
             raise KeyError("Some single event parameters are missing for SNR computation. Please consider reloading the event dict with the set_event_dict() method")
 

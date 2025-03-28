@@ -1,4 +1,4 @@
-import ast
+import ast, numpy as np
 
 
 def InitialiseOptions(Config):
@@ -7,32 +7,33 @@ def InitialiseOptions(Config):
     input_pars = {
 
         # Input
-        'output'                  : '',
-        'screen-output'           : 0,
-        'PSD-path'                : '',
+        'output'               : '',
+        'screen-output'        : 0,
+        'PSD-path'             : '',
+        'event-from-simulation': 0,
 
         # model
-        'event-parameters'        : {},
-        'priors'                  : {},
-        'observing-run'           : 'O3',
-        'waveform'                : 'IMRPhenomXHM',
-        'reference-frequency'     : 20.,
-        'sampling-frequency'      : 2048.,
+        'event-parameters'     : {},
+        'priors'               : {},
+        'observing-run'        : 'O3',
+        'waveform'             : 'IMRPhenomXHM',
+        'reference-frequency'  : 20.,
+        'sampling-frequency'   : 2048.,
 
         # Sampler
-        'sampler'                 : 'dynesty',
-        'print-method'            : 'interval-60',
+        'sampler'              : 'dynesty',
+        'print-method'         : 'interval-60',
 
-        'nlive'                   : 500,
+        'nlive'                : 500,
 
-        'sample'                  : 'acceptance-walk',
-        'naccept'                 : 60,
-        'queue-size'              : 1,
-        'nwalkers'                : 64,
-        'nsteps'                  : 1000,
-        'ntemps'                  : 10,
-        'threads'                 : 1,
-        'nparallel'               : 1,
+        'sample'               : 'acceptance-walk',
+        'naccept'              : 60,
+        'queue-size'           : 1,
+        'nwalkers'             : 64,
+        'nsteps'               : 1000,
+        'ntemps'               : 10,
+        'threads'              : 1,
+        'nparallel'            : 1,
 
         # Plots
     }
@@ -47,7 +48,7 @@ def InitialiseOptions(Config):
         if (key == 'output') or (key == 'PSD-path'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if (key == 'screen-output'):
+        if (key == 'screen-output') or (key == 'event-from-simulation'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
 
@@ -78,6 +79,7 @@ def InitialiseOptions(Config):
     input_pars['event-parameters-default'] = default_event_parameters()
     if not input_pars['event-parameters'] == {}:
         for key in input_pars['event-parameters']: input_pars['event-parameters-default'][key] = input_pars['event-parameters'][key]
+        input_pars['event-parameters'] = input_pars['event-parameters-default']
     else:
         input_pars['event-parameters'] = input_pars['event-parameters-default']
 
@@ -85,8 +87,12 @@ def InitialiseOptions(Config):
     input_pars['priors-default'] = default_PE_priors()
     if not input_pars['priors'] == {}:
         for key in input_pars['priors']: input_pars['priors-default'][key] = input_pars['priors'][key]
+        input_pars['priors'][key] = input_pars['priors-default']
     else:
         input_pars['priors'] = input_pars['priors-default']
+
+    del input_pars['event-parameters-default']
+    del input_pars['priors-default']
 
     return input_pars
 
@@ -107,32 +113,30 @@ def default_event_parameters():
         'theta_jn'           : 0.0,
         'psi'                : 0.0,
         'phase'              : 0.0,
-        'geocent_time'       : 1126259642.0,
         'ra'                 : 0.0,
         'dec'                : 0.0,
+        'geocent_time'       : 1126259462.4,
     }
 
     return dict
 
-# FIXME decide what default priors to choose
 def default_PE_priors():
 
     dict = {
-        'mass_1'             : [],
-        'mass_2'             : [],
-        'a_1'                : [],
-        'a_2'                : [],
-        'tilt_1'             : [],
-        'tilt_2'             : [],
-        'phi_12'             : [],
-        'phi_jl'             : [],
-        'luminosity_distance': [],
-        'theta_jn'           : [],
-        'psi'                : [],
-        'phase'              : [],
-        'geocent_time'       : [],
-        'ra'                 : [],
-        'dec'                : [],
+        'mass_1'             : [5., 300.],
+        'mass_2'             : [5., 300.],
+        'luminosity_distance': [0.,1.6e4],
+        'a_1'                : [0., 0.99],
+        'a_2'                : [0., 0.99],
+        'tilt_1'             : [0., np.pi],
+        'tilt_2'             : [0., np.pi],
+        'phi_12'             : [0., 2*np.pi],
+        'phi_jl'             : [0., 2*np.pi],
+        'theta_jn'           : [0., np.pi],
+        'psi'                : [0., 2*np.pi],
+        'phase'              : [0., 2*np.pi],
+        'ra'                 : [0., 2*np.pi],
+        'dec'                : [-np.pi/2., np.pi/2.],
     }
 
     return dict
