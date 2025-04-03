@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
 from scipy.integrate import simps
 from tqdm import tqdm
-import json, re
+import json, re, bilby
 from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
 # Internal imports
@@ -86,7 +86,6 @@ def main():
     # Generate new data.
     else:
         print('\n * Generating new {}.'.format(input_pars['run-type']))
-        # save_settings(input_pars['output'], input_pars)
         save_settings_pretty_json(input_pars['output'], input_pars)
         
         # Generate either a synthetic population or a set of injections for selection effects.
@@ -157,14 +156,24 @@ def generate_injections(pars):
         We convert the injections from source to detector frame, and include this transformation in the prior weight.
     '''
 
-    # Initialize the dictionaries.
-    samps_dict_observed      = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': [], 'prior': []}
-    samps_dict_astrophysical = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': []}
+    # Read checkpoint files if they exist.
+    try:
+        with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'rb') as handle:
+            samps_dict_observed      = pickle.load(handle)
+        with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle:
+            samps_dict_astrophysical = pickle.load(handle)
+        inj_number_tmp = len(samps_dict_observed['m1d'])
+        c = len(samps_dict_astrophysical['m1d']) // pars['injections-number-bank']
+        print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(len(samps_dict_astrophysical['m1d']), inj_number_tmp))
+    except:
+        # Initialize the dictionaries.
+        samps_dict_observed      = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': [], 'prior': []}
+        samps_dict_astrophysical = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': []}
+        inj_number_tmp = 0
+        c = 0
 
-    c = 0
-    inj_number_tmp = 0
     # Generate the injections.
-    with tqdm(total = pars['injections-number']) as pbar:
+    with tqdm(total = pars['injections-number'], initial = inj_number_tmp) as pbar:
         # Loop on banks of injections until the set number of detected injections is reached.
         while inj_number_tmp < pars['injections-number']:
 
@@ -200,48 +209,54 @@ def generate_injections(pars):
             try: clean_result_dict_from_compute_SNR(additional_parameters)
             except: pass
 
-            number_detected_chuck = len(idx_detected)
-            inj_number_tmp = inj_number_tmp + number_detected_chuck
-            c = c+1
-
-            samps_dict_astrophysical['m1s'].append(m1s)
-            samps_dict_astrophysical['m2s'].append(m2s)
-            samps_dict_astrophysical['z'  ].append(zs )
-            samps_dict_astrophysical['m1d'].append(m1d)
-            samps_dict_astrophysical['m2d'].append(m2d)
-            samps_dict_astrophysical['dL' ].append(dL )
-            samps_dict_astrophysical['snr'].append(SNR)
-
-            samps_dict_observed['m1s'  ].append(m1s[  idx_detected])
-            samps_dict_observed['m2s'  ].append(m2s[  idx_detected])
-            samps_dict_observed['z'    ].append(zs[   idx_detected])
-            samps_dict_observed['m1d'  ].append(m1d[  idx_detected])
-            samps_dict_observed['m2d'  ].append(m2d[  idx_detected])
-            samps_dict_observed['dL'   ].append(dL[   idx_detected])
-            samps_dict_observed['snr'  ].append(SNR[  idx_detected])
-            samps_dict_observed['prior'].append(prior[idx_detected])
+            samps_dict_astrophysical['m1s'] = np.concatenate((samps_dict_astrophysical['m1s'], m1s))
+            samps_dict_astrophysical['m2s'] = np.concatenate((samps_dict_astrophysical['m2s'], m2s))
+            samps_dict_astrophysical['z'  ] = np.concatenate((samps_dict_astrophysical['z'  ], zs ))
+            samps_dict_astrophysical['m1d'] = np.concatenate((samps_dict_astrophysical['m1d'], m1d))
+            samps_dict_astrophysical['m2d'] = np.concatenate((samps_dict_astrophysical['m2d'], m2d))
+            samps_dict_astrophysical['dL' ] = np.concatenate((samps_dict_astrophysical['dL' ], dL ))
+            samps_dict_astrophysical['snr'] = np.concatenate((samps_dict_astrophysical['snr'], SNR))
+            
+            samps_dict_observed['m1s'  ] = np.concatenate((samps_dict_observed['m1s'  ], m1s[  idx_detected]))
+            samps_dict_observed['m2s'  ] = np.concatenate((samps_dict_observed['m2s'  ], m2s[  idx_detected]))
+            samps_dict_observed['z'    ] = np.concatenate((samps_dict_observed['z'    ], zs[   idx_detected]))
+            samps_dict_observed['m1d'  ] = np.concatenate((samps_dict_observed['m1d'  ], m1d[  idx_detected]))
+            samps_dict_observed['m2d'  ] = np.concatenate((samps_dict_observed['m2d'  ], m2d[  idx_detected]))
+            samps_dict_observed['dL'   ] = np.concatenate((samps_dict_observed['dL'   ], dL[   idx_detected]))
+            samps_dict_observed['snr'  ] = np.concatenate((samps_dict_observed['snr'  ], SNR[  idx_detected]))
+            samps_dict_observed['prior'] = np.concatenate((samps_dict_observed['prior'], prior[idx_detected]))
 
             # Collect additional event parameters
             for key in additional_parameters:
-                if   key in samps_dict_astrophysical: 
+                if key in samps_dict_astrophysical: 
                     samps_dict_astrophysical[key].append(additional_parameters[key])
-                    samps_dict_observed[key].append(additional_parameters[key][idx_detected])
-                else                                : 
+                    samps_dict_observed[     key].append(additional_parameters[key][idx_detected])
+                else: 
                     samps_dict_astrophysical[key] = [additional_parameters[key], ]
-                    samps_dict_observed[key] = [additional_parameters[key][idx_detected], ]
+                    samps_dict_observed[     key] = [additional_parameters[key][idx_detected], ]
 
+
+            number_detected_chunk = len(idx_detected)
+            inj_number_tmp += number_detected_chunk
+            c = c+1
             if inj_number_tmp > pars['injections-number']: pbar.update(pars['injections-number'])
-            else:               pbar.update(number_detected_chuck)
+            else:               pbar.update(number_detected_chunk)
 
-    # Clean the dictionary.
-    for key in samps_dict_astrophysical.keys(): samps_dict_astrophysical[key] = np.concatenate(samps_dict_astrophysical[key])
-    for key in samps_dict_observed.keys():      samps_dict_observed[     key] = np.concatenate(samps_dict_observed[     key])
+            # Save injections to checkpoint files.
+            with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'wb') as handle:
+                pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
+            with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'wb') as handle:
+                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
     # Save the number of detected events.
     print('\n * Generated {} injections.'.format(pars['injections-number-bank'] * c))
     with open(os.path.join(pars['output'], 'injections_number.txt'), 'w') as f:
         f.write('Generated: {}\n'.format(int(pars['injections-number-bank'] * c)))
         f.write('Detected:  {}'.format(len(samps_dict_observed['m1d'])))
+    
+    # Remove the checkpoint files.
+    os.remove(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ))
+    os.remove(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'))
 
     return samps_dict_astrophysical, samps_dict_observed
 

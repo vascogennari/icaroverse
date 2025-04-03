@@ -13,25 +13,25 @@ import initialise
 # Read a population folder, and generate the corresponding subfolders & config files for PE #
 # ----------------------------------------------------------------------------------------- #
 
-
 config_template = """[input]
-output                = {output}
-screen-output         = 0
-PSD-path              = {psd_dir}
+output              = {output}
+PSD-path            = {psd_dir}
+screen-output       = {screen_output}
 
 [model]
-event-parameters      = {event_parameters}
-priors                = {priors}
-observing-run         = {observing_run}
-waveform              = {waveform}
-reference-frequency   = {reference_frequency}
-sampling-frequency    = {sampling_frequency}
+event-parameters    = {event_parameters}
+priors              = {priors}
+observing-run       = {observing_run}
+waveform            = {waveform}
+reference-frequency = {reference_frequency}
+sampling-frequency  = {sampling_frequency}
 
 [sampler]
-sampler               = {sampler}
-print-method          = {print_method}
+sampler             = {sampler}
+print-method        = {print_method}
 {sampler_dependent_config}
 """
+
 
 def main():
 
@@ -114,6 +114,7 @@ def main():
         event_config_content = config_template.format(
             output                   = event_subdir,
             psd_dir                  = psd_dir,
+            screen_output            = True,
             event_parameters         = event_parameters,
             priors                   = opts.priors,
             observing_run            = observing_run,
@@ -130,5 +131,7 @@ def main():
 
     print('\n * Finished.\n')
 
-if __name__=='__main__':
-    main()
+
+
+# Execute the main function.
+if __name__=='__main__': main()
