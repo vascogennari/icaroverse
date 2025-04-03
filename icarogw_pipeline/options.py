@@ -19,7 +19,6 @@ def InitialiseOptions(Config):
         'O3-cosmology'                : 0,
         'simulation'                  : 1,
         'remove-events'               : [],
-        'inverse-mass-ratio'          : 0,
         'PE-prior-distance'           : 'dL3',
         'PE-prior-masses'             : 'm1-m2',
         'true-data'                   : 0,
@@ -37,6 +36,7 @@ def InitialiseOptions(Config):
         'priors'                      : {},
         'scale-free'                  : 0,
         'single-mass'                 : 0,
+        'inverse-mass-ratio'          : 0,
 
         # Sampler
         'sampler'                     : 'dynesty',
@@ -91,7 +91,7 @@ def InitialiseOptions(Config):
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'inverse-mass-ratio'):
+        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
@@ -102,7 +102,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'priors'):
@@ -302,7 +302,6 @@ usage = """
         O3-cosmology                Option to process PE samples using O3 data from the LVK GWTC-3 cosmology paper (https://arxiv.org/abs/2111.03604). Default: 0.
         simulation                  Option to process PE samples using simulated events. Default: 1.
         remove-events               List of events to be removed from the analysis. Example: ['GW190412_053044', 'GW190521_030229']. Default: [].
-        inverse-mass-ratio          Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         PE-prior-distance           Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in comoving volume). Default: 'dL3'.
         PE-prior-masses             Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
         true-data                   Flag to only use the true values for the events in the analysis instead of full posteriors. This is equivalent to use one PE sample for each event. Default: 0.
@@ -323,6 +322,7 @@ usage = """
         priors                      Dictionary of the prior bounds for the population parameters. Default values are set in 'icarogw_pipeline.options.default_priors'.
         scale-free                  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
         single-mass                 Flag to use only one mass for the single-event parameters. Default: 0.
+        inverse-mass-ratio          Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
 
     # ------- #
     # sampler #
