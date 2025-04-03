@@ -1,5 +1,5 @@
 import os, sys, shutil, configparser
-import numpy as np, pickle, pandas as pd
+import numpy as np, pickle, pandas as pd, bilby
 import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
 from scipy.integrate import simps
@@ -70,6 +70,8 @@ def main():
     population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters
     if not input_pars['single-mass']: population_parameters += input_pars['wrappers']['m2w'].population_parameters
     print('\n * Using the following population parameters.\n')
+    for key in population_parameters:
+        if not key in input_pars['truths']: input_pars['truths'][key] = input_pars['all-truths'][key]
     print('\t{}'.format({key: input_pars['truths'][key] for key in population_parameters}))
     save_truths(input_pars['output'], {key: input_pars['truths'][key] for key in population_parameters})
 
@@ -559,7 +561,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     # Use the full waveform to compute the SNR.
     if   pars['SNR-method'] == 'bilby':
 
-        print('\n * Computing the MF SNR with the full waveform using bilby')
+        if pars['run-type'] == 'population': print('\n * Computing the MF SNR with the full waveform using bilby')
         bilby.core.utils.log.setup_logger(log_level=0)
 
         SNR = []
@@ -582,7 +584,10 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
                 'mass_2':              _m2,
                 'luminosity_distance': _dL,
             })
-            bdp.set_ifos_and_inject_signal()
+            try: bdp.set_ifos_and_inject_signal()
+            except RuntimeError as err: 
+                print(f"\n{bdp.event_dict}\n")
+                raise RuntimeError(err)
             event_dict = bdp.compute_matched_filter_SNR()
 
             SNR.append(event_dict['matched_filter_SNR'])
