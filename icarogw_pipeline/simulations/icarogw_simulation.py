@@ -1,9 +1,11 @@
 import os, sys, shutil, configparser
-import numpy as np, pickle, pandas as pd
+import numpy as np, pickle, pandas as pd, bilby
 import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
 from scipy.integrate import simps
 from tqdm import tqdm
+import json, re, bilby
+from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
 # Internal imports
 sys.path.append('../')
@@ -68,6 +70,8 @@ def main():
     population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters
     if not input_pars['single-mass']: population_parameters += input_pars['wrappers']['m2w'].population_parameters
     print('\n * Using the following population parameters.\n')
+    for key in population_parameters:
+        if not key in input_pars['truths']: input_pars['truths'][key] = input_pars['all-truths'][key]
     print('\t{}'.format({key: input_pars['truths'][key] for key in population_parameters}))
     save_truths(input_pars['output'], {key: input_pars['truths'][key] for key in population_parameters})
 
@@ -82,7 +86,7 @@ def main():
     # Generate new data.
     else:
         print('\n * Generating new {}.'.format(input_pars['run-type']))
-        save_settings(input_pars['output'], input_pars)
+        save_settings_pretty_json(input_pars['output'], input_pars)
         
         # Generate either a synthetic population or a set of injections for selection effects.
         if   input_pars['run-type'] == 'population': samps_dict_astrophysical, samps_dict_observed = generate_population(input_pars)
@@ -152,14 +156,24 @@ def generate_injections(pars):
         We convert the injections from source to detector frame, and include this transformation in the prior weight.
     '''
 
-    # Initialize the dictionaries.
-    samps_dict_observed      = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': [], 'prior': []}
-    samps_dict_astrophysical = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': []}
+    # Read checkpoint files if they exist.
+    try:
+        with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'rb') as handle:
+            samps_dict_observed      = pickle.load(handle)
+        with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle:
+            samps_dict_astrophysical = pickle.load(handle)
+        inj_number_tmp = len(samps_dict_observed['m1d'])
+        c = len(samps_dict_astrophysical['m1d']) // pars['injections-number-bank']
+        print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(len(samps_dict_astrophysical['m1d']), inj_number_tmp))
+    except:
+        # Initialize the dictionaries.
+        samps_dict_observed      = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': [], 'prior': []}
+        samps_dict_astrophysical = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': []}
+        inj_number_tmp = 0
+        c = 0
 
-    c = 0
-    inj_number_tmp = 0
     # Generate the injections.
-    with tqdm(total = pars['injections-number']) as pbar:
+    with tqdm(total = pars['injections-number'], initial = inj_number_tmp) as pbar:
         # Loop on banks of injections until the set number of detected injections is reached.
         while inj_number_tmp < pars['injections-number']:
 
@@ -195,48 +209,280 @@ def generate_injections(pars):
             try: clean_result_dict_from_compute_SNR(additional_parameters)
             except: pass
 
-            number_detected_chuck = len(idx_detected)
-            inj_number_tmp = inj_number_tmp + number_detected_chuck
-            c = c+1
-
-            samps_dict_astrophysical['m1s'].append(m1s)
-            samps_dict_astrophysical['m2s'].append(m2s)
-            samps_dict_astrophysical['z'  ].append(zs )
-            samps_dict_astrophysical['m1d'].append(m1d)
-            samps_dict_astrophysical['m2d'].append(m2d)
-            samps_dict_astrophysical['dL' ].append(dL )
-            samps_dict_astrophysical['snr'].append(SNR)
-
-            samps_dict_observed['m1s'  ].append(m1s[  idx_detected])
-            samps_dict_observed['m2s'  ].append(m2s[  idx_detected])
-            samps_dict_observed['z'    ].append(zs[   idx_detected])
-            samps_dict_observed['m1d'  ].append(m1d[  idx_detected])
-            samps_dict_observed['m2d'  ].append(m2d[  idx_detected])
-            samps_dict_observed['dL'   ].append(dL[   idx_detected])
-            samps_dict_observed['snr'  ].append(SNR[  idx_detected])
-            samps_dict_observed['prior'].append(prior[idx_detected])
+            samps_dict_astrophysical['m1s'] = np.concatenate((samps_dict_astrophysical['m1s'], m1s))
+            samps_dict_astrophysical['m2s'] = np.concatenate((samps_dict_astrophysical['m2s'], m2s))
+            samps_dict_astrophysical['z'  ] = np.concatenate((samps_dict_astrophysical['z'  ], zs ))
+            samps_dict_astrophysical['m1d'] = np.concatenate((samps_dict_astrophysical['m1d'], m1d))
+            samps_dict_astrophysical['m2d'] = np.concatenate((samps_dict_astrophysical['m2d'], m2d))
+            samps_dict_astrophysical['dL' ] = np.concatenate((samps_dict_astrophysical['dL' ], dL ))
+            samps_dict_astrophysical['snr'] = np.concatenate((samps_dict_astrophysical['snr'], SNR))
+            
+            samps_dict_observed['m1s'  ] = np.concatenate((samps_dict_observed['m1s'  ], m1s[  idx_detected]))
+            samps_dict_observed['m2s'  ] = np.concatenate((samps_dict_observed['m2s'  ], m2s[  idx_detected]))
+            samps_dict_observed['z'    ] = np.concatenate((samps_dict_observed['z'    ], zs[   idx_detected]))
+            samps_dict_observed['m1d'  ] = np.concatenate((samps_dict_observed['m1d'  ], m1d[  idx_detected]))
+            samps_dict_observed['m2d'  ] = np.concatenate((samps_dict_observed['m2d'  ], m2d[  idx_detected]))
+            samps_dict_observed['dL'   ] = np.concatenate((samps_dict_observed['dL'   ], dL[   idx_detected]))
+            samps_dict_observed['snr'  ] = np.concatenate((samps_dict_observed['snr'  ], SNR[  idx_detected]))
+            samps_dict_observed['prior'] = np.concatenate((samps_dict_observed['prior'], prior[idx_detected]))
 
             # Collect additional event parameters
             for key in additional_parameters:
-                if   key in samps_dict_astrophysical: 
+                if key in samps_dict_astrophysical: 
                     samps_dict_astrophysical[key].append(additional_parameters[key])
-                    samps_dict_observed[key].append(additional_parameters[key][idx_detected])
-                else                                : 
+                    samps_dict_observed[     key].append(additional_parameters[key][idx_detected])
+                else: 
                     samps_dict_astrophysical[key] = [additional_parameters[key], ]
-                    samps_dict_observed[key] = [additional_parameters[key][idx_detected], ]
+                    samps_dict_observed[     key] = [additional_parameters[key][idx_detected], ]
 
+
+            number_detected_chunk = len(idx_detected)
+            inj_number_tmp += number_detected_chunk
+            c = c+1
             if inj_number_tmp > pars['injections-number']: pbar.update(pars['injections-number'])
-            else:               pbar.update(number_detected_chuck)
+            else:               pbar.update(number_detected_chunk)
 
-    # Clean the dictionary.
-    for key in samps_dict_astrophysical.keys(): samps_dict_astrophysical[key] = np.concatenate(samps_dict_astrophysical[key])
-    for key in samps_dict_observed.keys():      samps_dict_observed[     key] = np.concatenate(samps_dict_observed[     key])
+            # Save injections to checkpoint files.
+            with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'wb') as handle:
+                pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
+            with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'wb') as handle:
+                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
     # Save the number of detected events.
     print('\n * Generated {} injections.'.format(pars['injections-number-bank'] * c))
     with open(os.path.join(pars['output'], 'injections_number.txt'), 'w') as f:
         f.write('Generated: {}\n'.format(int(pars['injections-number-bank'] * c)))
         f.write('Detected:  {}'.format(len(samps_dict_observed['m1d'])))
+    
+    # Remove the checkpoint files.
+    os.remove(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ))
+    os.remove(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'))
+
+    return samps_dict_astrophysical, samps_dict_observed
+
+
+def generate_injections_parallel(pars):
+    '''
+        Generate injections for selection effects. Launching multiple batches at once, within parallel processes.
+
+        The injection values are extracted in the source frame, but the hierarchical likelihood is expressed in the detector frame.
+        We convert the injections from source to detector frame, and include this transformation in the prior weight.
+    '''
+
+    # From COPILOT 
+    # import os
+    # import pickle
+    # from multiprocessing import Process, Value, Lock, Manager
+    # import time
+    # from tqdm import tqdm
+
+    # # Define the worker task
+    # def worker_task(process_id, counter, lock, max_value, result_dict):
+    #     time.sleep(1)  # Simulate work
+    #     result_array = [process_id, process_id * 2, process_id * 3]  # Example array result
+    #     with lock:
+    #         if counter.value < max_value:  # Update the counter safely
+    #             counter.value += 1
+    #             print(f"Task {process_id}: Counter updated to {counter.value}")
+    #             result_dict[process_id] = result_array  # Store the array result in the shared dictionary
+    #         else:
+    #             print(f"Task {process_id}: Counter reached max value {max_value}. No update.")
+
+    # # Save the checkpoint (concatenate arrays into a single list)
+    # def save_checkpoint(filename, result_dict, counter):
+    #     combined_list = []
+    #     for array in result_dict.values():
+    #         combined_list.extend(array)  # Concatenate all arrays into one big list
+    #     with open(filename, 'wb') as f:
+    #         pickle.dump({"combined_list": combined_list, "counter_value": counter.value}, f)
+    #     print("Checkpoint saved.")
+
+    # # Load the checkpoint
+    # def load_checkpoint(filename):
+    #     if os.path.exists(filename):
+    #         with open(filename, 'rb') as f:
+    #             checkpoint = pickle.load(f)
+    #         print("Checkpoint loaded.")
+    #         return checkpoint["combined_list"], checkpoint["counter_value"]
+    #     return [], 0
+
+    # def parallel_while_loop(max_processes, checkpoint_file):
+    #     # Load checkpoint if it exists
+    #     combined_list_data, initial_counter_value = load_checkpoint(checkpoint_file)
+
+    #     with Manager() as manager:
+    #         result_dict = manager.dict()  # Shared dictionary to store results
+    #         counter = Value('i', initial_counter_value)  # Shared counter to track progress
+    #         lock = Lock()  # Synchronization lock to avoid race conditions
+    #         max_counter_value = 10  # Stopping condition
+    #         processes = []  # List to manage active processes
+    #         process_id = 1 + (len(combined_list_data) // 3)  # Derive the starting process ID
+    #         iteration = 0  # Track iterations for checkpoint saving
+
+    #         # Initialize the tqdm progress bar
+    #         with tqdm(total=max_counter_value, desc="Progress", unit="task", initial=counter.value) as pbar:
+    #             while True:
+    #                 # Clean up completed processes
+    #                 processes = [p for p in processes if p.is_alive()]
+
+    #                 # Check the stopping condition
+    #                 with lock:
+    #                     completed = counter.value
+    #                     if completed >= max_counter_value:
+    #                         break
+
+    #                 # Update the progress bar with the completed tasks
+    #                 pbar.n = completed
+    #                 pbar.refresh()
+
+    #                 # Launch new processes if we haven't reached the max_process limit
+    #                 while len(processes) < max_processes and counter.value < max_counter_value:
+    #                     process = Process(target=worker_task, args=(process_id, counter, lock, max_counter_value, result_dict))
+    #                     process.start()
+    #                     processes.append(process)
+    #                     process_id += 1  # Increment process ID
+
+    #                 # Throttle process creation to avoid overwhelming the system
+    #                 time.sleep(0.1)
+
+    #                 # Increment the iteration counter
+    #                 iteration += 1
+
+    #                 # Save checkpoint every 3 iterations
+    #                 if iteration % 3 == 0:
+    #                     save_checkpoint(checkpoint_file, result_dict, counter)
+
+    #             # Wait for remaining processes to finish
+    #             for process in processes:
+    #                 process.join()
+
+    #             # Final update of the progress bar
+    #             pbar.n = max_counter_value
+    #             pbar.refresh()
+
+    #         print("\nAll tasks completed!")
+    #         print(f"Final counter value: {counter.value}")  # Consistency check
+
+    #         # Print all stored results
+    #         print("\nStored Results:")
+    #         for pid, result in result_dict.items():
+    #             print(f"Process {pid}: {result}")
+
+    #         # Print the combined array from the checkpoint
+    #         print("\nCombined List from Checkpoint:")
+    #         combined_list = []
+    #         for array in result_dict.values():
+    #             combined_list.extend(array)  # Concatenate all arrays into one big list
+    #         print(combined_list)
+
+    # # Run the function
+    # if __name__ == '__main__':
+    #     max_processes = 4  # Maximum number of concurrent processes
+    #     checkpoint_file = "checkpoint.pkl"  # File to store checkpoints
+    #     parallel_while_loop(max_processes, checkpoint_file)
+
+
+    # Read checkpoint files if they exist.
+    try:
+        with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'rb') as handle:
+            samps_dict_observed      = pickle.load(handle)
+        with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle:
+            samps_dict_astrophysical = pickle.load(handle)
+        inj_number_tmp = len(samps_dict_observed['m1d'])
+        c = len(samps_dict_astrophysical['m1d']) // pars['injections-number-bank']
+        print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(len(samps_dict_astrophysical['m1d']), inj_number_tmp))
+    except:
+        # Initialize the dictionaries.
+        samps_dict_observed      = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': [], 'prior': []}
+        samps_dict_astrophysical = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': []}
+        inj_number_tmp = 0
+        c = 0
+
+    # Generate the injections.
+    with tqdm(total = pars['injections-number'], initial = inj_number_tmp) as pbar:
+        # Loop on banks of injections until the set number of detected injections is reached.
+        while inj_number_tmp < pars['injections-number']:
+
+            # Get distribution samples.
+            if not pars['use-icarogw-sim-inj']:
+                m1s, m2s, zs, m1d, m2d, dL, prior = get_distribution_samples(pars)
+
+            else: # Use the icarogw.simulation implementation.
+                # Draw the masses. Available options: PowerLaw, PowerLawPeak, MultiPeak.
+                m1s, m2s, pdf_m = icarosim.generate_mass_inj(Nsamp = int(pars['injections-number-bank']), mass_model = pars['icarogw-sim-mass-model'], dic_param = pars['truths'])
+
+                # Draw the luminosity distance.
+                if   pars['icarogw-sim-draw-dL'] == 'uniform-dL':
+                    dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+                elif pars['icarogw-sim-draw-dL'] == 'uniform-z':
+                    dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+                elif pars['icarogw-sim-draw-dL'] == 'uniform-volume':
+                    dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+                else:
+                    raise ValueError('Unknown option for drawing the luminosity distance using icarogw.simulation. Exiting...')
+
+                # Get the redshift.
+                zs = icarosim.dl_to_z(dL)
+                # Convert the masses to detector frame
+                m1d = m1s * (1 + zs)
+                m2d = m2s * (1 + zs)
+                # Transform the prior from source to detector frame.
+                # Only need to account for the masses (m1s, m2s) --> (m1d, m2d), as we draw directly from dL (i.e. no ddL/dz contribution).
+                prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
+
+            # Compute the SNR to select the detected events.
+            SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+            try: clean_result_dict_from_compute_SNR(additional_parameters)
+            except: pass
+
+            samps_dict_astrophysical['m1s'] = np.concatenate((samps_dict_astrophysical['m1s'], m1s))
+            samps_dict_astrophysical['m2s'] = np.concatenate((samps_dict_astrophysical['m2s'], m2s))
+            samps_dict_astrophysical['z'  ] = np.concatenate((samps_dict_astrophysical['z'  ], zs ))
+            samps_dict_astrophysical['m1d'] = np.concatenate((samps_dict_astrophysical['m1d'], m1d))
+            samps_dict_astrophysical['m2d'] = np.concatenate((samps_dict_astrophysical['m2d'], m2d))
+            samps_dict_astrophysical['dL' ] = np.concatenate((samps_dict_astrophysical['dL' ], dL ))
+            samps_dict_astrophysical['snr'] = np.concatenate((samps_dict_astrophysical['snr'], SNR))
+            
+            samps_dict_observed['m1s'  ] = np.concatenate((samps_dict_observed['m1s'  ], m1s[  idx_detected]))
+            samps_dict_observed['m2s'  ] = np.concatenate((samps_dict_observed['m2s'  ], m2s[  idx_detected]))
+            samps_dict_observed['z'    ] = np.concatenate((samps_dict_observed['z'    ], zs[   idx_detected]))
+            samps_dict_observed['m1d'  ] = np.concatenate((samps_dict_observed['m1d'  ], m1d[  idx_detected]))
+            samps_dict_observed['m2d'  ] = np.concatenate((samps_dict_observed['m2d'  ], m2d[  idx_detected]))
+            samps_dict_observed['dL'   ] = np.concatenate((samps_dict_observed['dL'   ], dL[   idx_detected]))
+            samps_dict_observed['snr'  ] = np.concatenate((samps_dict_observed['snr'  ], SNR[  idx_detected]))
+            samps_dict_observed['prior'] = np.concatenate((samps_dict_observed['prior'], prior[idx_detected]))
+
+            # Collect additional event parameters
+            for key in additional_parameters:
+                if key in samps_dict_astrophysical: 
+                    samps_dict_astrophysical[key].append(additional_parameters[key])
+                    samps_dict_observed[     key].append(additional_parameters[key][idx_detected])
+                else: 
+                    samps_dict_astrophysical[key] = [additional_parameters[key], ]
+                    samps_dict_observed[     key] = [additional_parameters[key][idx_detected], ]
+
+
+            number_detected_chunk = len(idx_detected)
+            inj_number_tmp += number_detected_chunk
+            c = c+1
+            if inj_number_tmp > pars['injections-number']: pbar.update(pars['injections-number'])
+            else:               pbar.update(number_detected_chunk)
+
+            # Save injections to checkpoint files.
+            with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'wb') as handle:
+                pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
+            with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'wb') as handle:
+                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+
+    # Save the number of detected events.
+    print('\n * Generated {} injections.'.format(pars['injections-number-bank'] * c))
+    with open(os.path.join(pars['output'], 'injections_number.txt'), 'w') as f:
+        f.write('Generated: {}\n'.format(int(pars['injections-number-bank'] * c)))
+        f.write('Detected:  {}'.format(len(samps_dict_observed['m1d'])))
+    
+    # Remove the checkpoint files.
+    os.remove(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ))
+    os.remove(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'))
 
     return samps_dict_astrophysical, samps_dict_observed
 
@@ -269,27 +515,59 @@ def read_truths(path):
     return res
 
 
-def save_settings(path, dictionary):
+def save_settings_pretty_json(path, dictionary):
+    """Pretty JSON settings saving"""
 
-    with open(os.path.join(path, 'analysis_settings.txt'), 'w') as f:
-        for key in dictionary.keys():
-            max_len = len(max(dictionary.keys(), key = len))
-            f.write('{}  {}\n'.format(key.ljust(max_len), dictionary[key]))
+    class NoIndent(object):
+        """ Value wrapper."""
+        def __init__(self, value):
+            if not isinstance(value, (list, tuple, dict, np.ndarray)):
+                raise TypeError('Only lists, tuples, dict, numpy.ndarray can be wrapped')
+            self.value = value
 
+    class MyEncoder(json.JSONEncoder):
+        """
+        Custom JSON encoder, only 1st level indented
+        See https://stackoverflow.com/questions/42710879/write-two-dimensional-list-to-json-file
+        """
 
-def read_settings(path):
+        FORMAT_SPEC = '@@{}@@'  # Unique string pattern of NoIndent object ids.
+        regex = re.compile(FORMAT_SPEC.format(r'(\d+)'))  # compile(r'@@(\d+)@@')
 
-    with open(os.path.join(path, 'analysis_settings.txt'), 'r') as f:
-        res = dict([line.strip().split('  ', 1) for line in f])
-    for key in res.keys():
-        if key == 'positive-peak' or key == 'low-smoothing' or key == 'single-mass' or key == 'flat-PSD':
-            res[key] = int(  res[key])
-        if key == 'SNR-cut' or key == 'snr-proxy-fgw-cut':
-            res[key] = float(res[key])
-        if key == 'model-primary' or key == 'model-secondary' or key == 'model-rate' or key == 'redshift-transition' or key == 'output':
-            res[key] = res[key].replace(" ", "")
+        def __init__(self, **kwargs):
+            # Keyword arguments to ignore when encoding NoIndent wrapped values.
+            ignore = {'cls', 'indent'}
+            # Save copy of any keyword argument values needed for use here.
+            self._kwargs = {k: v for k, v in kwargs.items() if k not in ignore}
+            super(MyEncoder, self).__init__(**kwargs)
 
-    return res
+        def default(self, obj):
+            return (self.FORMAT_SPEC.format(id(obj)) if isinstance(obj, NoIndent)
+                        else super(MyEncoder, self).default(obj))
+        
+        def iterencode(self, obj, **kwargs):
+            format_spec = self.FORMAT_SPEC  # Local var to expedite access.
+            # Replace any marked-up NoIndent wrapped values in the JSON repr
+            # with the json.dumps() of the corresponding wrapped Python object.
+            for encoded in super(MyEncoder, self).iterencode(obj, **kwargs):
+                match = self.regex.search(encoded)
+                if match:
+                    id = int(match.group(1))
+                    no_indent = PyObj_FromPtr(id)
+                    json_repr = json.dumps(no_indent.value, **self._kwargs)
+                    # Replace the matched id string with json formatted representation
+                    # of the corresponding Python object.
+                    encoded = encoded.replace(
+                                '"{}"'.format(format_spec.format(id)), json_repr)
+                yield encoded
+
+    dictionary_tosave = {}
+    for key, value in dictionary.items():
+        if   key != 'wrappers' and isinstance(value, (list, tuple, dict, np.ndarray)): dictionary_tosave[key] = NoIndent(value)
+        elif key != 'wrappers':                                                        dictionary_tosave[key] = value
+        else: pass # the wrapper entry in the input_pars 
+    filename = os.path.join(path, 'analysis_settings.json')
+    with open(filename, 'w') as f: json.dump(dictionary_tosave, f, indent=4, cls=MyEncoder)
 
 
 def build_filter_subsample(N_evs, N_subset):
@@ -524,7 +802,8 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     # Use the full waveform to compute the SNR.
     if   pars['SNR-method'] == 'bilby':
 
-        print('\n * Computing the MF SNR with the full waveform using bilby')
+        if pars['run-type'] == 'population': print('\n * Computing the MF SNR with the full waveform using bilby')
+        bilby.core.utils.log.setup_logger(log_level=0)
 
         SNR = []
         additional_parameters = []
@@ -546,7 +825,10 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
                 'mass_2':              _m2,
                 'luminosity_distance': _dL,
             })
-            bdp.set_ifos_and_inject_signal()
+            try: bdp.set_ifos_and_inject_signal()
+            except RuntimeError as err: 
+                print(f"\n{bdp.event_dict}\n")
+                raise RuntimeError(err)
             event_dict = bdp.compute_matched_filter_SNR()
 
             SNR.append(event_dict['matched_filter_SNR'])
