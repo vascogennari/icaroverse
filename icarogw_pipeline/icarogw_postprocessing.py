@@ -471,6 +471,10 @@ class ReconstructDistributions:
                 m1d[idx,:] = np.full(N_samps_KDE_GMM, np.nan)
                 dL[idx,:]  = np.full(N_samps_KDE_GMM, np.nan)
 
+        if pars['log10-PDF']:
+            m1d = np.log10(m1d)
+            m2d = np.log10(m2d)
+
         # Compute KDE/GMM of the distribution for each PE sample.
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing {} detector frame distributions'.format(pars['estimate-observed-method'])):
             if np.isnan(np.min(m1d[i,:])): pass
@@ -557,10 +561,11 @@ class ReconstructDistributions:
             'curves-z' :    get_curves_percentiles(curves_z,   pars),
         }
         colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
-        if pars['m1-logscale']:
+        if not pars['log10-PDF']:
             plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] *         (1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'  ])
         else:
-            plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] * np.log10(1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'  ])
+            plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] + np.log10(1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'  ])
+
         plots_inputs[    'plot-dict-m2d'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                                   'SecondaryMassDistribution_DetectorFrame',       '#6A8820', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
         plots_inputs[    'plot-dict-dL' ] = get_plot_parameters(pars, dL_array,   pars['bounds-dL'][0], pars['bounds-dL'][1],                                   'LuminosityDistranceDistribution_DetectorFrame', '#7E375B', '$d_L\ [Mpc]$',       '$p(d_L)$', pars['model-rate'     ])
         plots_inputs[    'plot-dict-m1s'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1],                                   'PrimaryMassDistribution_NoSelectionEffects',    '#000000', '$m_1\ [M_{\odot}]$', '$z$'     , pars['model-primary'  ], colors = colors, z_grid = z_grid, y_label_R = '$p(m_1)$')
@@ -659,11 +664,7 @@ class Plots:
 
         self.curves_dict = {}
 
-<<<<<<< HEAD
-        # Downsample the df if required.
-=======
         # Downsample the df if required
->>>>>>> a53e5ef8f4db017b6a8edf7055c78006e35b0722
         if not pars['downsample-postprocessing'] == 1: self.df = downsampling(self.df, pars['downsample-postprocessing'])
 
     def PrimaryMass(self):
@@ -694,7 +695,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior,)
         else:
             curve_true, _ = self.distributions.SecondaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m2w, self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def RateEvolution(self):
 
@@ -707,7 +708,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def RateEvolutionProbability(self):
 
@@ -717,7 +718,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = 0)
         else:
             curve_true, _ = self.distributions.RateEvolutionFunctionProbability(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.cw, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = 0, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = 0, truth = curve_true[50])
     
     def RedshiftTransition(self):
 
@@ -730,7 +731,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RedshiftTransitionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def NoSelectionEffects(self):
 

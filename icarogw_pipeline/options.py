@@ -66,6 +66,7 @@ def InitialiseOptions(Config):
         'bounds-dL'                   : [0, 10000],
         'bounds-z'                    : [1e-5, 0.8],
         'm1-logscale'                 : 1,
+        'log10-PDF'                   : 0,  
         'true-values'                 : {},
         'selection-effects'           : 0,
         'plot-prior'                  : 1,
@@ -129,7 +130,7 @@ def InitialiseOptions(Config):
         if ('true-values' in key) or ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key)  or ('percentiles' in key):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if ('selection-effects' in key) or ('plot-prior' in key) or ('m1-logscale' in key):
+        if ('selection-effects' in key) or ('plot-prior' in key) or ('m1-logscale' in key) or ('log10-PDF' in key):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
         if ('downsample-postprocessing' in key) or ('KDE-bandwidth-scale' in key) or ('KDE-bandwidth-scale-m1' in key):
