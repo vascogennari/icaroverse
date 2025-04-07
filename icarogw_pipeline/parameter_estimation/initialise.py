@@ -35,14 +35,10 @@ def InitialiseOptions(Config):
         'threads'              : 1,
         'nparallel'            : 1,
 
-        # Plots
     }
 
     # Read options from config file.
     for key in input_pars.keys():
-
-        # FIXME: add all the options here.
-        pass
 
         # Input
         if (key == 'output') or (key == 'PSD-path'):
@@ -72,9 +68,9 @@ def InitialiseOptions(Config):
             except: pass
 
 
-        # Plots
+    # Set precession flag based on the waveform.
+    input_pars = set_precession(input_pars)
 
-    
     # Initialise the event parameters.
     input_pars['event-parameters-default'] = default_event_parameters()
     if not input_pars['event-parameters'] == {}:
@@ -84,7 +80,7 @@ def InitialiseOptions(Config):
         input_pars['event-parameters'] = input_pars['event-parameters-default']
 
     # Initialise the PE priors.
-    input_pars['priors-default'] = default_PE_priors()
+    input_pars['priors-default'] = default_PE_priors(precession = input_pars['precession'])
     if not input_pars['priors'] == {}:
         for key in input_pars['priors']: input_pars['priors-default'][key] = input_pars['priors'][key]
         input_pars['priors'][key] = input_pars['priors-default']
@@ -107,8 +103,8 @@ def default_event_parameters():
         'a_2'                : 0.0,
         'tilt_1'             : 0.0,
         'tilt_2'             : 0.0,
-        'phi_12'             : 0.0,
         'phi_jl'             : 0.0,
+        'phi_12'             : 0.0,
         'luminosity_distance': 2000.0,
         'theta_jn'           : 0.0,
         'psi'                : 0.0,
@@ -120,18 +116,14 @@ def default_event_parameters():
 
     return dict
 
-def default_PE_priors():
+def default_PE_priors(precession = False):
 
     dict = {
         'mass_1'             : [5., 300.],
         'mass_2'             : [5., 300.],
-        'luminosity_distance': [0.,1.6e4],
         'a_1'                : [0., 0.99],
         'a_2'                : [0., 0.99],
-        'tilt_1'             : [0., np.pi],
-        'tilt_2'             : [0., np.pi],
-        'phi_12'             : [0., 2*np.pi],
-        'phi_jl'             : [0., 2*np.pi],
+        'luminosity_distance': [0.,1.6e4],
         'theta_jn'           : [0., np.pi],
         'psi'                : [0., 2*np.pi],
         'phase'              : [0., 2*np.pi],
@@ -139,7 +131,33 @@ def default_PE_priors():
         'dec'                : [-np.pi/2., np.pi/2.],
     }
 
+    if precession:
+        dict['tilt_1']       = [0., np.pi]
+        dict['tilt_2']       = [0., np.pi]
+        dict['phi_jl']       = [0., 2*np.pi]
+        dict['phi_12']       = [0., 2*np.pi]
+    else:
+        dict['tilt_1']       = 0.0
+        dict['tilt_2']       = 0.0
+        dict['phi_jl']       = 0.0
+        dict['phi_12']       = 0.0
+
     return dict
+
+def set_precession(input_pars):
+
+    # Full list of known approximants
+    approx_nonprecessing = [
+        "IMRPhenomD", "IMRPhenomXAS", "IMRPhenomXHM", "SEOBNRv4", "SEOBNRv4HM", "TaylorF2", "EOBNRv2", "SEOBNRv2"]
+    approx_precessing = [
+        "IMRPhenomPv2", "IMRPhenomPv3", "IMRPhenomPv3HM", "SEOBNRv4PHM", "IMRPhenomTPHM", "SEOBNRv3", "SEOBNRv4", "IMRPhenomPv2", ]
+
+    if   input_pars['waveform'] in approx_precessing   : input_pars['precession'] = True
+    elif input_pars['waveform'] in approx_nonprecessing: input_pars['precession'] = False
+    else:
+        raise ValueError(f"Waveform {input_pars['waveform']} not recognized. Please use one of the following: {approx_nonprecessing + approx_precessing}")
+
+    return input_pars
 
 
 usage = """
@@ -183,9 +201,5 @@ usage = """
         ntemps                      Number of parallel-tempered chains of the MCMC sampler. Option only available for MCMC samplers. Default: 10.
         threads                     Number of CPU threads used for parallel computation. Option only available for MCMC samplers. Default: 1.
         nparallel                   Number of likelihood evaluations performed simultaneously. While 'threads' distributes MCMC steps across CPU threads, 'nparallel' parallelizes across multiple processes. Option only available for MCMC samplers. Default: 1.
-
-    # ----- #
-    # plots #
-    # ----- #
 
 """

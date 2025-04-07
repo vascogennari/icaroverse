@@ -38,7 +38,7 @@ def main():
     # parser = OptionParser(options.usage)
     parser = OptionParser(usage=initialise.usage)
     parser.add_option('-d', '--pop-dir',      type='string', metavar = 'pop_dir',      default = None             )
-    parser.add_option('-p', '--priors',       type='string', metavar = 'priors',       default = None             )
+    parser.add_option('-p', '--priors',       type='string', metavar = 'priors',       default = {}               )
     # sampler
     parser.add_option('-s', '--sampler',      type='string', metavar = 'sampler',      default = 'dynesty'        )
     parser.add_option('-m', '--print-method', type='string', metavar = 'print_method', default = 'interval-60'    )
@@ -89,13 +89,21 @@ def main():
     print('\n * Generating config files.\n')
     for i, event_parameters in tqdm(enumerate(events_list)):
 
+        # Use bilby conventions for the event parameters.
+        event_parameters['mass_1']              = event_parameters.pop('m1d')
+        event_parameters['mass_2']              = event_parameters.pop('m2d')
+        event_parameters['luminosity_distance'] = event_parameters.pop('dL' )
+
+        # Remove unused IFOs from list.
+        event_parameters['ifos_on'] = [ifo for ifo in event_parameters['ifos_on'] if ifo.strip()]
+
         # Create a sub directory for the results of each event
         event_subdir = os.path.join(parameter_estimation_subdir, f"event_{i:04d}")
         if not os.path.exists(event_subdir): os.makedirs(event_subdir)
         
         if   (opts.sampler in samplers_types) and (samplers_types[opts.sampler] == 'nested'):
             sampler_dependent_config = "\n".join([
-                f"{'nlive'     :<21} = {opts.nlive     }",
+                f"{'nlive'     :<19} = {opts.nlive     }",
             ])
         elif (opts.sampler in samplers_types) and (samplers_types[opts.sampler] == 'MCMC'):
             sampler_dependent_config = "\n".join([
@@ -114,7 +122,7 @@ def main():
         event_config_content = config_template.format(
             output                   = event_subdir,
             psd_dir                  = psd_dir,
-            screen_output            = True,
+            screen_output            = False,
             event_parameters         = event_parameters,
             priors                   = opts.priors,
             observing_run            = observing_run,

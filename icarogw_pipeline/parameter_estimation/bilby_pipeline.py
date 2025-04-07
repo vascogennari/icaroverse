@@ -79,7 +79,8 @@ def main():
     if not os.path.exists(os.path.join(input_pars['output'], 'plots')): os.makedirs(os.path.join(input_pars['output'], 'plots'))
 
     # Copy config file to output.
-    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    try:    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    except: pass # Config file already copied.
 
     # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
