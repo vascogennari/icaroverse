@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
 from scipy.integrate import simps
 from tqdm import tqdm
-import json, re, bilby
+from multiprocessing import Process, Value, Lock, Manager
+import json, re, time, datetime
 from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
 # Internal imports
@@ -89,14 +90,16 @@ def main():
         save_settings_pretty_json(input_pars['output'], input_pars)
         
         # Generate either a synthetic population or a set of injections for selection effects.
-        if   input_pars['run-type'] == 'population': samps_dict_astrophysical, samps_dict_observed = generate_population(input_pars)
-        elif input_pars['run-type'] == 'injections': samps_dict_astrophysical, samps_dict_observed = generate_injections(input_pars)
+        if   input_pars['run-type'] == 'population':                            samps_dict_astrophysical, samps_dict_observed = generate_population(input_pars)
+        elif input_pars['run-type'] == 'injections' and input_pars['parallel']: samps_dict_astrophysical, samps_dict_observed = generate_injections_parallel(input_pars)
+        elif input_pars['run-type'] == 'injections':                            samps_dict_astrophysical, samps_dict_observed = generate_injections(input_pars)
         else: raise ValueError('Invalid type of run. Please either select "population" or "injections".')
 
-        with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
-            pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
         with open(os.path.join(input_pars['output'], '{}_observed.pickle'     ).format(input_pars['run-type']), 'wb') as handle:
             pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
+        if input_pars['save-astrophysical']:
+            with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
+                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
     # Plots section.
     plot_population(input_pars, samps_dict_astrophysical, samps_dict_observed)
@@ -124,9 +127,8 @@ def generate_population(pars):
 
     # Compute the SNR to select the detected events.
     SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-    try: clean_result_dict_from_compute_SNR(additional_parameters)
-    except: pass
-
+    clean_result_dict_from_compute_SNR(additional_parameters)
+    
     # Save the number of detected events.
     print('\n * Number of detections: {}\n'.format(len(idx_detected)), flush = True)
     with open(os.path.join(pars['output'], 'number_detected_events.txt'), 'w') as f: f.write('{}'.format(len(idx_detected)))
@@ -162,6 +164,8 @@ def generate_injections(pars):
             samps_dict_observed      = pickle.load(handle)
         with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle:
             samps_dict_astrophysical = pickle.load(handle)
+        with open(os.path.join(pars['output'], 'duration_checkpoint.pickle'), 'rb') as handle:
+            duration_cp = pickle.load(handle)
         inj_number_tmp = len(samps_dict_observed['m1d'])
         c = len(samps_dict_astrophysical['m1d']) // pars['injections-number-bank']
         print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(len(samps_dict_astrophysical['m1d']), inj_number_tmp))
@@ -171,6 +175,9 @@ def generate_injections(pars):
         samps_dict_astrophysical = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': []}
         inj_number_tmp = 0
         c = 0
+        duration_cp = 0.
+    
+    start_time = time.time() - duration_cp
 
     # Generate the injections.
     with tqdm(total = pars['injections-number'], initial = inj_number_tmp) as pbar:
@@ -206,9 +213,8 @@ def generate_injections(pars):
 
             # Compute the SNR to select the detected events.
             SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-            try: clean_result_dict_from_compute_SNR(additional_parameters)
-            except: pass
-
+            clean_result_dict_from_compute_SNR(additional_parameters)
+            
             samps_dict_astrophysical['m1s'] = np.concatenate((samps_dict_astrophysical['m1s'], m1s))
             samps_dict_astrophysical['m2s'] = np.concatenate((samps_dict_astrophysical['m2s'], m2s))
             samps_dict_astrophysical['z'  ] = np.concatenate((samps_dict_astrophysical['z'  ], zs ))
@@ -243,22 +249,137 @@ def generate_injections(pars):
             else:               pbar.update(number_detected_chunk)
 
             # Save injections to checkpoint files.
-            with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'wb') as handle:
-                pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
-            with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'wb') as handle:
-                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+            if c % pars['inverse-checkpoint-rate'] == 0:
+                with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'wb') as handle:
+                    pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
+                with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'wb') as handle:
+                    pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+                with open(os.path.join(pars['output'], 'duration_checkpoint.pickle'), 'wb') as handle:
+                    pickle.dump(time.time() - start_time, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
+    total_duration = time.time() - start_time
     # Save the number of detected events.
     print('\n * Generated {} injections.'.format(pars['injections-number-bank'] * c))
     with open(os.path.join(pars['output'], 'injections_number.txt'), 'w') as f:
         f.write('Generated: {}\n'.format(int(pars['injections-number-bank'] * c)))
-        f.write('Detected:  {}'.format(len(samps_dict_observed['m1d'])))
+        f.write('Detected:  {}\n'.format(len(samps_dict_observed['m1d'])))
+        f.write(f"Duration:  {datetime.timedelta(seconds=total_duration)}")
     
     # Remove the checkpoint files.
     os.remove(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ))
     os.remove(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'))
 
     return samps_dict_astrophysical, samps_dict_observed
+
+
+def worker_generate_injection_batch(lock, pid, inj_number, n_batches, samps_dict_observed, samps_dict_astrophysical, pars):
+    """
+    Individual injections batch worker for parallelized injections generation
+    """
+    # Get distribution samples.
+    if not pars['use-icarogw-sim-inj']:
+        np.random.seed(pid) # Otherwise all workers seem to start with the same seed hence generating the same (m1s, m2s, z) batches.
+        m1s, m2s, zs, m1d, m2d, dL, prior = get_distribution_samples(pars)
+
+    else: # Use the icarogw.simulation implementation.
+        # Draw the masses. Available options: PowerLaw, PowerLawPeak, MultiPeak.
+        m1s, m2s, pdf_m = icarosim.generate_mass_inj(Nsamp = int(pars['injections-number-bank']), mass_model = pars['icarogw-sim-mass-model'], dic_param = pars['truths'])
+
+        # Draw the luminosity distance.
+        if   pars['icarogw-sim-draw-dL'] == 'uniform-dL':
+            dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+        elif pars['icarogw-sim-draw-dL'] == 'uniform-z':
+            dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+        elif pars['icarogw-sim-draw-dL'] == 'uniform-volume':
+            dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+        else:
+            raise ValueError('Unknown option for drawing the luminosity distance using icarogw.simulation. Exiting...')
+
+        # Get the redshift.
+        zs = icarosim.dl_to_z(dL)
+        # Convert the masses to detector frame
+        m1d = m1s * (1 + zs)
+        m2d = m2s * (1 + zs)
+        # Transform the prior from source to detector frame.
+        # Only need to account for the masses (m1s, m2s) --> (m1d, m2d), as we draw directly from dL (i.e. no ddL/dz contribution).
+        prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
+
+    # Compute the SNR to select the detected events.
+    SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+    clean_result_dict_from_compute_SNR(additional_parameters)
+
+    # Build dictionaries for the current batch
+    samps_batch_dict_astrophysical = {
+        'm1s': m1s, 
+        'm2s': m2s, 
+        'z':   zs, 
+        'm1d': m1d, 
+        'm2d': m2d, 
+        'dL':  dL, 
+        'snr': SNR,
+    }
+    samps_batch_dict_observed = {
+        'm1s':   m1s[  idx_detected], 
+        'm2s':   m2s[  idx_detected], 
+        'z':     zs[   idx_detected], 
+        'm1d':   m1d[  idx_detected], 
+        'm2d':   m2d[  idx_detected], 
+        'dL':    dL[   idx_detected], 
+        'snr':   SNR[  idx_detected], 
+        'prior': prior[idx_detected], 
+    }
+
+    # Collect additional event parameters
+    for key in additional_parameters:
+        # print(f"Additional parameters keys : {key}")
+        samps_batch_dict_astrophysical[key] = additional_parameters[key]
+        samps_batch_dict_observed[key]      = additional_parameters[key][idx_detected]
+        # print(samps_dict_observed[pid])
+
+    with lock:
+
+        if inj_number.value < pars['injections-number']: # Update the counter & the result dicts safely
+
+            samps_dict_astrophysical[pid] = samps_batch_dict_astrophysical
+            samps_dict_observed[pid] = samps_batch_dict_observed
+
+            n_det = len(idx_detected)
+
+            inj_number.value += n_det
+            n_batches.value  += 1
+
+            samps_dict_observed['n_det_so_far']     = inj_number.value
+            samps_dict_observed['n_batches_so_far'] = n_batches.value
+
+            print(f"Task {pid: 2d}: N_det this batch = {n_det:.0f}. Total : {inj_number.value: 9.0f}/{pars['injections-number']:.0f}")
+
+        else:
+            print(f"Task {pid}: already reached desired number of injections {pars['injections-number']}. No update.")
+
+
+def load_parallel_checkpoint(pars):
+    
+    try:
+        with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'rb') as handle:
+            samps_dict_observed          = pickle.load(handle)
+        if pars['save-astrophysical']:
+            with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle:
+                samps_dict_astrophysical = pickle.load(handle)
+        inj_number_cp = samps_dict_observed['n_det_so_far']
+        n_batches_cp = samps_dict_observed['n_batches_so_far']
+        run_time_cp = samps_dict_observed['run_time_so_far']
+        print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(n_batches_cp * pars['injections-number-bank'], inj_number_cp))
+    except:
+        # Initialize the dictionaries.
+        samps_dict_observed      = {}
+        samps_dict_astrophysical = {}
+        inj_number_cp = 0
+        n_batches_cp = 0
+        run_time_cp = 0
+        print('\n * No existing checkpoint file. Starting from scratch.\n')
+
+    if pars['save-astrophysical']: return samps_dict_observed, samps_dict_astrophysical, inj_number_cp, n_batches_cp, run_time_cp
+    else:                          return samps_dict_observed,                           inj_number_cp, n_batches_cp, run_time_cp
 
 
 def generate_injections_parallel(pars):
@@ -268,223 +389,110 @@ def generate_injections_parallel(pars):
         The injection values are extracted in the source frame, but the hierarchical likelihood is expressed in the detector frame.
         We convert the injections from source to detector frame, and include this transformation in the prior weight.
     '''
-
-    # From COPILOT 
-    # import os
-    # import pickle
-    # from multiprocessing import Process, Value, Lock, Manager
-    # import time
-    # from tqdm import tqdm
-
-    # # Define the worker task
-    # def worker_task(process_id, counter, lock, max_value, result_dict):
-    #     time.sleep(1)  # Simulate work
-    #     result_array = [process_id, process_id * 2, process_id * 3]  # Example array result
-    #     with lock:
-    #         if counter.value < max_value:  # Update the counter safely
-    #             counter.value += 1
-    #             print(f"Task {process_id}: Counter updated to {counter.value}")
-    #             result_dict[process_id] = result_array  # Store the array result in the shared dictionary
-    #         else:
-    #             print(f"Task {process_id}: Counter reached max value {max_value}. No update.")
-
-    # # Save the checkpoint (concatenate arrays into a single list)
-    # def save_checkpoint(filename, result_dict, counter):
-    #     combined_list = []
-    #     for array in result_dict.values():
-    #         combined_list.extend(array)  # Concatenate all arrays into one big list
-    #     with open(filename, 'wb') as f:
-    #         pickle.dump({"combined_list": combined_list, "counter_value": counter.value}, f)
-    #     print("Checkpoint saved.")
-
-    # # Load the checkpoint
-    # def load_checkpoint(filename):
-    #     if os.path.exists(filename):
-    #         with open(filename, 'rb') as f:
-    #             checkpoint = pickle.load(f)
-    #         print("Checkpoint loaded.")
-    #         return checkpoint["combined_list"], checkpoint["counter_value"]
-    #     return [], 0
-
-    # def parallel_while_loop(max_processes, checkpoint_file):
-    #     # Load checkpoint if it exists
-    #     combined_list_data, initial_counter_value = load_checkpoint(checkpoint_file)
-
-    #     with Manager() as manager:
-    #         result_dict = manager.dict()  # Shared dictionary to store results
-    #         counter = Value('i', initial_counter_value)  # Shared counter to track progress
-    #         lock = Lock()  # Synchronization lock to avoid race conditions
-    #         max_counter_value = 10  # Stopping condition
-    #         processes = []  # List to manage active processes
-    #         process_id = 1 + (len(combined_list_data) // 3)  # Derive the starting process ID
-    #         iteration = 0  # Track iterations for checkpoint saving
-
-    #         # Initialize the tqdm progress bar
-    #         with tqdm(total=max_counter_value, desc="Progress", unit="task", initial=counter.value) as pbar:
-    #             while True:
-    #                 # Clean up completed processes
-    #                 processes = [p for p in processes if p.is_alive()]
-
-    #                 # Check the stopping condition
-    #                 with lock:
-    #                     completed = counter.value
-    #                     if completed >= max_counter_value:
-    #                         break
-
-    #                 # Update the progress bar with the completed tasks
-    #                 pbar.n = completed
-    #                 pbar.refresh()
-
-    #                 # Launch new processes if we haven't reached the max_process limit
-    #                 while len(processes) < max_processes and counter.value < max_counter_value:
-    #                     process = Process(target=worker_task, args=(process_id, counter, lock, max_counter_value, result_dict))
-    #                     process.start()
-    #                     processes.append(process)
-    #                     process_id += 1  # Increment process ID
-
-    #                 # Throttle process creation to avoid overwhelming the system
-    #                 time.sleep(0.1)
-
-    #                 # Increment the iteration counter
-    #                 iteration += 1
-
-    #                 # Save checkpoint every 3 iterations
-    #                 if iteration % 3 == 0:
-    #                     save_checkpoint(checkpoint_file, result_dict, counter)
-
-    #             # Wait for remaining processes to finish
-    #             for process in processes:
-    #                 process.join()
-
-    #             # Final update of the progress bar
-    #             pbar.n = max_counter_value
-    #             pbar.refresh()
-
-    #         print("\nAll tasks completed!")
-    #         print(f"Final counter value: {counter.value}")  # Consistency check
-
-    #         # Print all stored results
-    #         print("\nStored Results:")
-    #         for pid, result in result_dict.items():
-    #             print(f"Process {pid}: {result}")
-
-    #         # Print the combined array from the checkpoint
-    #         print("\nCombined List from Checkpoint:")
-    #         combined_list = []
-    #         for array in result_dict.values():
-    #             combined_list.extend(array)  # Concatenate all arrays into one big list
-    #         print(combined_list)
-
-    # # Run the function
-    # if __name__ == '__main__':
-    #     max_processes = 4  # Maximum number of concurrent processes
-    #     checkpoint_file = "checkpoint.pkl"  # File to store checkpoints
-    #     parallel_while_loop(max_processes, checkpoint_file)
-
-
     # Read checkpoint files if they exist.
-    try:
-        with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'rb') as handle:
-            samps_dict_observed      = pickle.load(handle)
-        with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle:
-            samps_dict_astrophysical = pickle.load(handle)
-        inj_number_tmp = len(samps_dict_observed['m1d'])
-        c = len(samps_dict_astrophysical['m1d']) // pars['injections-number-bank']
-        print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(len(samps_dict_astrophysical['m1d']), inj_number_tmp))
-    except:
-        # Initialize the dictionaries.
-        samps_dict_observed      = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': [], 'prior': []}
-        samps_dict_astrophysical = {'m1s': [], 'm2s': [], 'z' : [], 'm1d': [], 'm2d': [], 'dL': [], 'snr': []}
-        inj_number_tmp = 0
-        c = 0
+    if pars['save-astrophysical']: samps_dict_observed, samps_dict_astrophysical, inj_number_cp, n_batches_cp, run_time_cp = load_parallel_checkpoint(pars)
+    else:                          samps_dict_observed,                           inj_number_cp, n_batches_cp, run_time_cp = load_parallel_checkpoint(pars)
+    start_time = time.time() - run_time_cp
 
-    # Generate the injections.
-    with tqdm(total = pars['injections-number'], initial = inj_number_tmp) as pbar:
-        # Loop on banks of injections until the set number of detected injections is reached.
-        while inj_number_tmp < pars['injections-number']:
+    with Manager() as manager:
+        lock = Lock()  # Synchronization lock to avoid race conditions
 
-            # Get distribution samples.
-            if not pars['use-icarogw-sim-inj']:
-                m1s, m2s, zs, m1d, m2d, dL, prior = get_distribution_samples(pars)
+        samps_dict_observed      = manager.dict(samps_dict_observed)
+        if pars['save-astrophysical']: samps_dict_astrophysical = manager.dict(samps_dict_astrophysical)
+        else:                          samps_dict_astrophysical = manager.dict()
+        inj_number = Value('i', inj_number_cp)
+        n_batches  = Value('i', n_batches_cp)
+        process_id = n_batches_cp
 
-            else: # Use the icarogw.simulation implementation.
-                # Draw the masses. Available options: PowerLaw, PowerLawPeak, MultiPeak.
-                m1s, m2s, pdf_m = icarosim.generate_mass_inj(Nsamp = int(pars['injections-number-bank']), mass_model = pars['icarogw-sim-mass-model'], dic_param = pars['truths'])
+        processes = []  # List to manage active processes
+        initial_counter_value = inj_number.value
 
-                # Draw the luminosity distance.
-                if   pars['icarogw-sim-draw-dL'] == 'uniform-dL':
-                    dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
-                elif pars['icarogw-sim-draw-dL'] == 'uniform-z':
-                    dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
-                elif pars['icarogw-sim-draw-dL'] == 'uniform-volume':
-                    dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
-                else:
-                    raise ValueError('Unknown option for drawing the luminosity distance using icarogw.simulation. Exiting...')
+        # Initialize the tqdm progress bar
+        with tqdm(total=pars['injections-number'], desc="Injections generation progress", unit="event", initial=initial_counter_value) as pbar:
 
-                # Get the redshift.
-                zs = icarosim.dl_to_z(dL)
-                # Convert the masses to detector frame
-                m1d = m1s * (1 + zs)
-                m2d = m2s * (1 + zs)
-                # Transform the prior from source to detector frame.
-                # Only need to account for the masses (m1s, m2s) --> (m1d, m2d), as we draw directly from dL (i.e. no ddL/dz contribution).
-                prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
+            while True:
+                # Clean up completed processes
+                processes = [p for p in processes if p.is_alive()]
 
-            # Compute the SNR to select the detected events.
-            SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-            try: clean_result_dict_from_compute_SNR(additional_parameters)
-            except: pass
-
-            samps_dict_astrophysical['m1s'] = np.concatenate((samps_dict_astrophysical['m1s'], m1s))
-            samps_dict_astrophysical['m2s'] = np.concatenate((samps_dict_astrophysical['m2s'], m2s))
-            samps_dict_astrophysical['z'  ] = np.concatenate((samps_dict_astrophysical['z'  ], zs ))
-            samps_dict_astrophysical['m1d'] = np.concatenate((samps_dict_astrophysical['m1d'], m1d))
-            samps_dict_astrophysical['m2d'] = np.concatenate((samps_dict_astrophysical['m2d'], m2d))
-            samps_dict_astrophysical['dL' ] = np.concatenate((samps_dict_astrophysical['dL' ], dL ))
-            samps_dict_astrophysical['snr'] = np.concatenate((samps_dict_astrophysical['snr'], SNR))
-            
-            samps_dict_observed['m1s'  ] = np.concatenate((samps_dict_observed['m1s'  ], m1s[  idx_detected]))
-            samps_dict_observed['m2s'  ] = np.concatenate((samps_dict_observed['m2s'  ], m2s[  idx_detected]))
-            samps_dict_observed['z'    ] = np.concatenate((samps_dict_observed['z'    ], zs[   idx_detected]))
-            samps_dict_observed['m1d'  ] = np.concatenate((samps_dict_observed['m1d'  ], m1d[  idx_detected]))
-            samps_dict_observed['m2d'  ] = np.concatenate((samps_dict_observed['m2d'  ], m2d[  idx_detected]))
-            samps_dict_observed['dL'   ] = np.concatenate((samps_dict_observed['dL'   ], dL[   idx_detected]))
-            samps_dict_observed['snr'  ] = np.concatenate((samps_dict_observed['snr'  ], SNR[  idx_detected]))
-            samps_dict_observed['prior'] = np.concatenate((samps_dict_observed['prior'], prior[idx_detected]))
-
-            # Collect additional event parameters
-            for key in additional_parameters:
-                if key in samps_dict_astrophysical: 
-                    samps_dict_astrophysical[key].append(additional_parameters[key])
-                    samps_dict_observed[     key].append(additional_parameters[key][idx_detected])
-                else: 
-                    samps_dict_astrophysical[key] = [additional_parameters[key], ]
-                    samps_dict_observed[     key] = [additional_parameters[key][idx_detected], ]
+                # Check the stopping condition
+                if inj_number.value >= pars['injections-number']: 
+                    break
 
 
-            number_detected_chunk = len(idx_detected)
-            inj_number_tmp += number_detected_chunk
-            c = c+1
-            if inj_number_tmp > pars['injections-number']: pbar.update(pars['injections-number'])
-            else:               pbar.update(number_detected_chunk)
+                # Launch new processes if we haven't reached the max_process limit
+                while len(processes) < pars['n-processes']:
+                    process = Process(
+                        target = worker_generate_injection_batch, 
+                        args   = (
+                            lock, 
+                            process_id, 
+                            inj_number, 
+                            n_batches,
+                            samps_dict_observed, 
+                            samps_dict_astrophysical, 
+                            pars,
+                        )
+                    )
+                    process.start()
+                    processes.append(process)
+                    process_id += 1  # Increment process ID
+                    # Update the progress bar with the completed tasks
+                    pbar.n = inj_number.value
+                    pbar.refresh()
 
-            # Save injections to checkpoint files.
-            with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'wb') as handle:
-                pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
-            with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'wb') as handle:
-                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+                # Throttle process creation to avoid overwhelming the system
+                time.sleep(0.5)
 
+                # Save checkpoint every k iterations
+                if process_id % pars['inverse-checkpoint-rate'] == 0:
+                    with lock: samps_dict_observed['run_time_so_far'] = time.time() - start_time
+                    # Save injections to checkpoint files.
+                    with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'), 'wb') as handle:
+                        pickle.dump(dict(samps_dict_observed), handle, protocol = pickle.HIGHEST_PROTOCOL)
+                    if pars['save-astrophysical']:
+                        with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle'), 'wb') as handle:
+                            pickle.dump(dict(samps_dict_astrophysical), handle, protocol = pickle.HIGHEST_PROTOCOL)
+
+            # Wait for remaining processes to finish
+            for process in processes:
+                process.join()
+
+            # Final update of the progress bar
+            pbar.n = pars['injections-number']
+            pbar.refresh()
+
+        # Combine the results of all processes in a single dict
+        samps_dict_observed_final, samps_dict_astrophysical_final = {}, {}
+        for key in samps_dict_observed[0]:
+
+            samps_dict_observed_final[key] = np.concatenate(tuple(
+                samps_dict_observed[_pid][key]
+                for _pid in samps_dict_observed
+                if isinstance(_pid, int)
+            ))
+
+            if key != 'prior' and pars['save-astrophysical']:
+                samps_dict_astrophysical_final[key] = np.concatenate(tuple(
+                    samps_dict_astrophysical[_pid][key]
+                    for _pid in samps_dict_astrophysical
+                    if isinstance(_pid, int)
+                ))
+
+    duration = time.time() - start_time
     # Save the number of detected events.
-    print('\n * Generated {} injections.'.format(pars['injections-number-bank'] * c))
+    print(f"\n * Generated {pars['injections-number-bank'] * n_batches.value:.0f} injections.")
     with open(os.path.join(pars['output'], 'injections_number.txt'), 'w') as f:
-        f.write('Generated: {}\n'.format(int(pars['injections-number-bank'] * c)))
-        f.write('Detected:  {}'.format(len(samps_dict_observed['m1d'])))
-    
-    # Remove the checkpoint files.
-    os.remove(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ))
-    os.remove(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'))
+        f.write(f"Generated: {pars['injections-number-bank'] * n_batches.value:.0f}\n")
+        f.write(f"Detected:  {inj_number.value:.0f}\n")
+        f.write(f"Duration:  {datetime.timedelta(seconds=duration)}")
 
-    return samps_dict_astrophysical, samps_dict_observed
+    # Remove the checkpoint files.
+    checkpoint_observed_path      = os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'     )
+    if os.path.exists(checkpoint_observed_path):      os.remove(checkpoint_observed_path)
+    checkpoint_astrophysical_path = os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle')
+    if os.path.exists(checkpoint_astrophysical_path): os.remove(checkpoint_astrophysical_path)
+
+    return samps_dict_astrophysical_final, samps_dict_observed_final
 
 
 
@@ -624,7 +632,7 @@ def get_distribution_samples(pars):
     # Convert from rate to probability distribution.
     tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
     zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
-    plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+    if pars['save-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
@@ -635,7 +643,7 @@ def get_distribution_samples(pars):
             tmp = pars['wrappers']['m1w'].pdf(m1_array, z)
             # For redshift evolving distributions, we use the redshift samples to draw the masses.
             m1s[i], pdf_m1[i] = rejection_sampling_1D(m1_array, tmp, 1)
-        plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
+        if pars['save-astrophysical']: plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
         m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, N_events)
@@ -666,7 +674,7 @@ def get_distribution_samples(pars):
                 pdf_m2 = pdf_q / m1s * qs**2 # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = q**2/m1s, with q=m1/m2.
 
             pdf_m1m2 = pdf_m1 * pdf_m2
-            plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
+            if pars['save-astrophysical']: plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
         else:
             if 'Redshift' in pars['model-primary']:
                 raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
@@ -928,10 +936,10 @@ def clean_result_dict_from_compute_SNR(result_dir):
         - luminosity_distance is the same as dL
         - matched_filter_SNR is the same as snr
     """
-    result_dir.pop('mass_1')
-    result_dir.pop('mass_2')
-    result_dir.pop('luminosity_distance')
-    result_dir.pop('matched_filter_SNR')
+    if 'mass_1'              in result_dir: result_dir.pop('mass_1')
+    if 'mass_2'              in result_dir: result_dir.pop('mass_2')
+    if 'luminosity_distance' in result_dir: result_dir.pop('luminosity_distance')
+    if 'matched_filter_SNR'  in result_dir: result_dir.pop('matched_filter_SNR')
 
 
 
@@ -949,14 +957,14 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     figname = os.path.join(pars['output'], 'plots', title)
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
     if not pars['log10-PDF']:
-        plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        if pars['save-astrophysical']: plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(samps_dict_observed[     'm1s'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     else:
-        plt.hist(np.log10(samps_dict_astrophysical['m1s']), density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        if pars['save-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1s']), density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(np.log10(samps_dict_observed[     'm1s']), density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     update_weights(pars['wrappers']['m1w'], pars['truths'])
     if 'Redshift' in pars['model-primary']:
-        plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array, np.median(samps_dict_astrophysical['z'])), c = '#153B60', label = 'Injected z-median')
+        if pars['save-astrophysical']: plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array, np.median(samps_dict_astrophysical['z'])), c = '#153B60', label = 'Injected z-median')
     else:
         plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array), c = '#153B60', label = 'Injected')
     plt.title(title)
@@ -971,10 +979,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     title = 'm1_detector_frame'
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
-        plt.hist(samps_dict_astrophysical['m1d'], bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        if pars['save-astrophysical']: plt.hist(samps_dict_astrophysical['m1d'], bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(samps_dict_observed[     'm1d'], bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     else:
-        plt.hist(np.log10(samps_dict_astrophysical['m1d']), bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        if pars['save-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1d']), bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(np.log10(samps_dict_observed[     'm1d']), bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     plt.title(title)
     plt.xlabel('m1')
@@ -985,10 +993,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     title = 'm1z_source_frame'
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
-        plt.scatter(samps_dict_astrophysical['m1s'], samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        if pars['save-astrophysical']: plt.scatter(samps_dict_astrophysical['m1s'], samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
         plt.scatter(samps_dict_observed[     'm1s'], samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     else:
-        plt.scatter(np.log10(samps_dict_astrophysical['m1s']), samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        if pars['save-astrophysical']: plt.scatter(np.log10(samps_dict_astrophysical['m1s']), samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
         plt.scatter(np.log10(samps_dict_observed[     'm1s']), samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
@@ -1000,10 +1008,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     title = 'm1dL_detector_frame'
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
-        plt.scatter(samps_dict_astrophysical['m1d'], samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        if pars['save-astrophysical']: plt.scatter(samps_dict_astrophysical['m1d'], samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
         plt.scatter(samps_dict_observed[     'm1d'], samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     else:
-        plt.scatter(np.log10(samps_dict_astrophysical['m1d']), samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        if pars['save-astrophysical']: plt.scatter(np.log10(samps_dict_astrophysical['m1d']), samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
         plt.scatter(np.log10(samps_dict_observed[     'm1d']), samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
@@ -1014,7 +1022,7 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
 
     title = 'z_distribution'
     figname = os.path.join(pars['output'], 'plots', title)
-    plt.hist(samps_dict_astrophysical['z'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+    if pars['save-astrophysical']: plt.hist(samps_dict_astrophysical['z'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
     plt.hist(samps_dict_observed[     'z'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     plt.xlabel('$z$')
     plt.ylabel('$p(z)$')
