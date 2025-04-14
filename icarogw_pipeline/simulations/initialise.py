@@ -30,6 +30,7 @@ def InitialiseOptions(Config):
 
         # SNR-options
         'snr-bilby-waveform'            : 'IMRPhenomXHM',
+        'snr-bilby-precessing-wf'       : False,
         'snr-bilby-reference-frequency' : 20.,
         'snr-bilby-sampling-frequency'  : 2048.,
 
@@ -108,7 +109,7 @@ def InitialiseOptions(Config):
         if (key == 'snr-pycbc-detectors'):
             try: input_pars[key] = ast.literal_eval(Config.get('input', key))
             except: pass
-        if (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession'):
+        if (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession') or (key == 'snr-bilby-precessing-wf'):
             try: input_pars[key] = Config.getboolean('snr-options', key)
             except: pass
 
