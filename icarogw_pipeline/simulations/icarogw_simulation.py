@@ -257,17 +257,20 @@ def generate_injections(pars):
                 with open(os.path.join(pars['output'], 'duration_checkpoint.pickle'), 'wb') as handle:
                     pickle.dump(time.time() - start_time, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
-    total_duration = time.time() - start_time
     # Save the number of detected events.
-    print('\n * Generated {} injections.'.format(pars['injections-number-bank'] * c))
+    total_duration = time.time() - start_time
+    print('\n * Generated {} injections (simulation duration : {}).'.format(pars['injections-number-bank'] * c, datetime.timedelta(seconds=total_duration)))
     with open(os.path.join(pars['output'], 'injections_number.txt'), 'w') as f:
         f.write('Generated: {}\n'.format(int(pars['injections-number-bank'] * c)))
-        f.write('Detected:  {}\n'.format(len(samps_dict_observed['m1d'])))
-        f.write(f"Duration:  {datetime.timedelta(seconds=total_duration)}")
+        f.write('Detected:  {}'.format(len(samps_dict_observed['m1d'])))
     
     # Remove the checkpoint files.
-    os.remove(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ))
-    os.remove(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'))
+    checkpoint_observed_path      = os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'     )
+    if os.path.exists(checkpoint_observed_path):      os.remove(checkpoint_observed_path)
+    checkpoint_astrophysical_path = os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle')
+    if os.path.exists(checkpoint_astrophysical_path): os.remove(checkpoint_astrophysical_path)
+    checkpoint_duration_path      = os.path.join(pars['output'], 'duration_checkpoint.pickle')
+    if os.path.exists(checkpoint_duration_path): os.remove(checkpoint_duration_path)
 
     return samps_dict_astrophysical, samps_dict_observed
 
@@ -309,7 +312,7 @@ def worker_generate_injection_batch(lock, pid, inj_number, n_batches, samps_dict
     clean_result_dict_from_compute_SNR(additional_parameters)
 
     # Build dictionaries for the current batch
-    samps_batch_dict_astrophysical = {
+    if pars['save-astrophysical']: samps_batch_dict_astrophysical = {
         'm1s': m1s, 
         'm2s': m2s, 
         'z':   zs, 
@@ -331,16 +334,14 @@ def worker_generate_injection_batch(lock, pid, inj_number, n_batches, samps_dict
 
     # Collect additional event parameters
     for key in additional_parameters:
-        # print(f"Additional parameters keys : {key}")
-        samps_batch_dict_astrophysical[key] = additional_parameters[key]
+        if pars['save-astrophysical']: samps_batch_dict_astrophysical[key] = additional_parameters[key]
         samps_batch_dict_observed[key]      = additional_parameters[key][idx_detected]
-        # print(samps_dict_observed[pid])
 
     with lock:
 
         if inj_number.value < pars['injections-number']: # Update the counter & the result dicts safely
 
-            samps_dict_astrophysical[pid] = samps_batch_dict_astrophysical
+            if pars['save-astrophysical']: samps_dict_astrophysical[pid] = samps_batch_dict_astrophysical
             samps_dict_observed[pid] = samps_batch_dict_observed
 
             n_det = len(idx_detected)
@@ -362,12 +363,16 @@ def load_parallel_checkpoint(pars):
     try:
         with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'rb') as handle:
             samps_dict_observed          = pickle.load(handle)
+        with open(os.path.join(pars['output'], 'duration_checkpoint.pickle'), 'rb') as handle:
+            duration_cp = pickle.load(handle)
         if pars['save-astrophysical']:
-            with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle:
+            with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle: 
                 samps_dict_astrophysical = pickle.load(handle)
+        else:
+            samps_dict_astrophysical = {}
         inj_number_cp = samps_dict_observed['n_det_so_far']
         n_batches_cp = samps_dict_observed['n_batches_so_far']
-        run_time_cp = samps_dict_observed['run_time_so_far']
+        run_time_cp = duration_cp
         print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(n_batches_cp * pars['injections-number-bank'], inj_number_cp))
     except:
         # Initialize the dictionaries.
@@ -376,10 +381,9 @@ def load_parallel_checkpoint(pars):
         inj_number_cp = 0
         n_batches_cp = 0
         run_time_cp = 0
-        print('\n * No existing checkpoint file. Starting from scratch.\n')
+        print('\n * No existing checkpoint file. Starting from zero simulated events.\n')
 
-    if pars['save-astrophysical']: return samps_dict_observed, samps_dict_astrophysical, inj_number_cp, n_batches_cp, run_time_cp
-    else:                          return samps_dict_observed,                           inj_number_cp, n_batches_cp, run_time_cp
+    return samps_dict_observed, samps_dict_astrophysical, inj_number_cp, n_batches_cp, run_time_cp
 
 
 def generate_injections_parallel(pars):
@@ -390,16 +394,14 @@ def generate_injections_parallel(pars):
         We convert the injections from source to detector frame, and include this transformation in the prior weight.
     '''
     # Read checkpoint files if they exist.
-    if pars['save-astrophysical']: samps_dict_observed, samps_dict_astrophysical, inj_number_cp, n_batches_cp, run_time_cp = load_parallel_checkpoint(pars)
-    else:                          samps_dict_observed,                           inj_number_cp, n_batches_cp, run_time_cp = load_parallel_checkpoint(pars)
+    samps_dict_observed, samps_dict_astrophysical, inj_number_cp, n_batches_cp, run_time_cp = load_parallel_checkpoint(pars)
     start_time = time.time() - run_time_cp
 
     with Manager() as manager:
         lock = Lock()  # Synchronization lock to avoid race conditions
 
         samps_dict_observed      = manager.dict(samps_dict_observed)
-        if pars['save-astrophysical']: samps_dict_astrophysical = manager.dict(samps_dict_astrophysical)
-        else:                          samps_dict_astrophysical = manager.dict()
+        samps_dict_astrophysical = manager.dict(samps_dict_astrophysical)
         inj_number = Value('i', inj_number_cp)
         n_batches  = Value('i', n_batches_cp)
         process_id = n_batches_cp
@@ -445,8 +447,8 @@ def generate_injections_parallel(pars):
 
                 # Save checkpoint every k iterations
                 if process_id % pars['inverse-checkpoint-rate'] == 0:
-                    with lock: samps_dict_observed['run_time_so_far'] = time.time() - start_time
-                    # Save injections to checkpoint files.
+                    with open(os.path.join(pars['output'], 'duration_checkpoint.pickle'), 'wb') as handle:
+                        pickle.dump(time.time() - start_time,  handle, protocol = pickle.HIGHEST_PROTOCOL)
                     with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'), 'wb') as handle:
                         pickle.dump(dict(samps_dict_observed), handle, protocol = pickle.HIGHEST_PROTOCOL)
                     if pars['save-astrophysical']:
@@ -463,7 +465,8 @@ def generate_injections_parallel(pars):
 
         # Combine the results of all processes in a single dict
         samps_dict_observed_final, samps_dict_astrophysical_final = {}, {}
-        for key in samps_dict_observed[0]:
+        available_pid = min([pid_ for pid_ in samps_dict_observed.keys() if isinstance(pid_, int)])
+        for key in samps_dict_observed[available_pid]:
 
             samps_dict_observed_final[key] = np.concatenate(tuple(
                 samps_dict_observed[_pid][key]
@@ -478,19 +481,20 @@ def generate_injections_parallel(pars):
                     if isinstance(_pid, int)
                 ))
 
-    duration = time.time() - start_time
     # Save the number of detected events.
-    print(f"\n * Generated {pars['injections-number-bank'] * n_batches.value:.0f} injections.")
+    total_duration = time.time() - start_time
+    print(f"\n * Generated {pars['injections-number-bank'] * n_batches.value:.0f} injections (simulation duration : {datetime.timedelta(seconds=total_duration)}).")
     with open(os.path.join(pars['output'], 'injections_number.txt'), 'w') as f:
         f.write(f"Generated: {pars['injections-number-bank'] * n_batches.value:.0f}\n")
-        f.write(f"Detected:  {inj_number.value:.0f}\n")
-        f.write(f"Duration:  {datetime.timedelta(seconds=duration)}")
+        f.write(f"Detected:  {inj_number.value:.0f}")
 
     # Remove the checkpoint files.
     checkpoint_observed_path      = os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'     )
     if os.path.exists(checkpoint_observed_path):      os.remove(checkpoint_observed_path)
     checkpoint_astrophysical_path = os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle')
     if os.path.exists(checkpoint_astrophysical_path): os.remove(checkpoint_astrophysical_path)
+    checkpoint_duration_path      = os.path.join(pars['output'], 'duration_checkpoint.pickle')
+    if os.path.exists(checkpoint_duration_path): os.remove(checkpoint_duration_path)
 
     return samps_dict_astrophysical_final, samps_dict_observed_final
 
