@@ -27,7 +27,8 @@ def main():
     # ------------------------------------------------ #
 
     parser = OptionParser(initialise.usage)
-    parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
+    parser.add_option(      '--config-file', type='string', metavar = 'config_file', default = None)
+    parser.add_option('-n', '--n-processes', type='int',    metavar = 'n_processes', default = -1)
     (opts, _) = parser.parse_args()
 
     config_file = opts.config_file
@@ -39,6 +40,7 @@ def main():
 
     # Initialise input parameters dictionary.
     input_pars = initialise.InitialiseOptions(Config)
+    if opts.n_processes >= 0: input_pars['n-processes'] = opts.n_processes
 
     # Set output directory.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
@@ -97,9 +99,8 @@ def main():
 
         with open(os.path.join(input_pars['output'], '{}_observed.pickle'     ).format(input_pars['run-type']), 'wb') as handle:
             pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
-        if input_pars['save-astrophysical']:
-            with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
-                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
+            pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
     # Plots section.
     plot_population(input_pars, samps_dict_astrophysical, samps_dict_observed)
@@ -126,8 +127,8 @@ def generate_population(pars):
     m1s, m2s, zs, m1d, m2d, dL, _ = get_distribution_samples(pars)
 
     # Compute the SNR to select the detected events.
-    SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-    clean_result_dict_from_compute_SNR(additional_parameters)
+    SNR, idx_detected, _, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+    clean_dict(additional_parameters, ['mass_1', 'mass_2', 'luminosity_distance', 'matched_filter_SNR'])
     
     # Save the number of detected events.
     print('\n * Number of detections: {}\n'.format(len(idx_detected)), flush = True)
@@ -165,7 +166,7 @@ def generate_injections(pars):
         with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'rb') as handle:
             samps_dict_astrophysical = pickle.load(handle)
         inj_number_tmp = len(samps_dict_observed['m1d'])
-        c = len(samps_dict_astrophysical['m1d']) // pars['injections-number-bank']
+        c = samps_dict_observed['n_batches_so_far']
         duration_cp = samps_dict_observed['run_time_so_far']
         print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(len(samps_dict_astrophysical['m1d']), inj_number_tmp))
     except:
@@ -211,16 +212,16 @@ def generate_injections(pars):
                 prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
 
             # Compute the SNR to select the detected events.
-            SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-            clean_result_dict_from_compute_SNR(additional_parameters)
+            SNR, idx_detected, idx_softcut, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+            clean_dict(additional_parameters, ['mass_1', 'mass_2', 'luminosity_distance', 'matched_filter_SNR'])
             
-            samps_dict_astrophysical['m1s'] = np.concatenate((samps_dict_astrophysical['m1s'], m1s))
-            samps_dict_astrophysical['m2s'] = np.concatenate((samps_dict_astrophysical['m2s'], m2s))
-            samps_dict_astrophysical['z'  ] = np.concatenate((samps_dict_astrophysical['z'  ], zs ))
-            samps_dict_astrophysical['m1d'] = np.concatenate((samps_dict_astrophysical['m1d'], m1d))
-            samps_dict_astrophysical['m2d'] = np.concatenate((samps_dict_astrophysical['m2d'], m2d))
-            samps_dict_astrophysical['dL' ] = np.concatenate((samps_dict_astrophysical['dL' ], dL ))
-            samps_dict_astrophysical['snr'] = np.concatenate((samps_dict_astrophysical['snr'], SNR))
+            samps_dict_astrophysical['m1s'] = np.concatenate((samps_dict_astrophysical['m1s'], m1s[idx_softcut]))
+            samps_dict_astrophysical['m2s'] = np.concatenate((samps_dict_astrophysical['m2s'], m2s[idx_softcut]))
+            samps_dict_astrophysical['z'  ] = np.concatenate((samps_dict_astrophysical['z'  ], zs[ idx_softcut]))
+            samps_dict_astrophysical['m1d'] = np.concatenate((samps_dict_astrophysical['m1d'], m1d[idx_softcut]))
+            samps_dict_astrophysical['m2d'] = np.concatenate((samps_dict_astrophysical['m2d'], m2d[idx_softcut]))
+            samps_dict_astrophysical['dL' ] = np.concatenate((samps_dict_astrophysical['dL' ], dL[ idx_softcut]))
+            samps_dict_astrophysical['snr'] = np.concatenate((samps_dict_astrophysical['snr'], SNR[idx_softcut]))
             
             samps_dict_observed['m1s'  ] = np.concatenate((samps_dict_observed['m1s'  ], m1s[  idx_detected]))
             samps_dict_observed['m2s'  ] = np.concatenate((samps_dict_observed['m2s'  ], m2s[  idx_detected]))
@@ -234,10 +235,10 @@ def generate_injections(pars):
             # Collect additional event parameters
             for key in additional_parameters:
                 if key in samps_dict_astrophysical: 
-                    samps_dict_astrophysical[key].append(additional_parameters[key])
+                    samps_dict_astrophysical[key].append(additional_parameters[key][idx_softcut])
                     samps_dict_observed[     key].append(additional_parameters[key][idx_detected])
                 else: 
-                    samps_dict_astrophysical[key] = [additional_parameters[key], ]
+                    samps_dict_astrophysical[key] = [additional_parameters[key][idx_softcut], ]
                     samps_dict_observed[     key] = [additional_parameters[key][idx_detected], ]
 
 
@@ -250,6 +251,7 @@ def generate_injections(pars):
             # Save injections to checkpoint files.
             if c % pars['inverse-checkpoint-rate'] == 0:
                 samps_dict_observed['run_time_so_far'] = time.time() - start_time
+                samps_dict_observed['n_batches_so_far'] = c
                 with open(os.path.join(pars['output'], 'injections_checkpoint_observed.pickle'     ), 'wb') as handle:
                     pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
                 with open(os.path.join(pars['output'], 'injections_checkpoint_astrophysical.pickle'), 'wb') as handle:
@@ -267,7 +269,8 @@ def generate_injections(pars):
     if os.path.exists(checkpoint_observed_path):      os.remove(checkpoint_observed_path)
     checkpoint_astrophysical_path = os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle')
     if os.path.exists(checkpoint_astrophysical_path): os.remove(checkpoint_astrophysical_path)
-    if 'run_time_so_far' in samps_dict_observed: samps_dict_observed.pop('run_time_so_far')
+    # Clean the result dict
+    clean_dict(samps_dict_observed, ['run_time_so_far', 'n_batches_so_far'])
 
     return samps_dict_astrophysical, samps_dict_observed
 
@@ -338,9 +341,8 @@ def generate_injections_parallel(pars):
                     with lock: samps_dict_observed['run_time_so_far'] = time.time() - start_time
                     with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'), 'wb') as handle:
                         pickle.dump(dict(samps_dict_observed), handle, protocol = pickle.HIGHEST_PROTOCOL)
-                    if pars['save-astrophysical']:
-                        with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle'), 'wb') as handle:
-                            pickle.dump(dict(samps_dict_astrophysical), handle, protocol = pickle.HIGHEST_PROTOCOL)
+                    with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle'), 'wb') as handle:
+                        pickle.dump(dict(samps_dict_astrophysical), handle, protocol = pickle.HIGHEST_PROTOCOL)
 
             # Wait for remaining processes to finish
             for process in processes:
@@ -361,7 +363,7 @@ def generate_injections_parallel(pars):
                 if isinstance(_pid, int)
             ))
 
-            if key != 'prior' and pars['save-astrophysical']:
+            if key != 'prior':
                 samps_dict_astrophysical_final[key] = np.concatenate(tuple(
                     samps_dict_astrophysical[_pid][key]
                     for _pid in samps_dict_astrophysical
@@ -419,18 +421,18 @@ def worker_generate_injection_parallel(lock, pid, inj_number, n_batches, samps_d
         prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
 
     # Compute the SNR to select the detected events.
-    SNR, idx_detected, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
-    clean_result_dict_from_compute_SNR(additional_parameters)
+    SNR, idx_detected, idx_softcut, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+    clean_dict(additional_parameters, ['mass_1', 'mass_2', 'luminosity_distance', 'matched_filter_SNR'])
 
     # Build dictionaries for the current batch
-    if pars['save-astrophysical']: samps_batch_dict_astrophysical = {
-        'm1s': m1s, 
-        'm2s': m2s, 
-        'z':   zs, 
-        'm1d': m1d, 
-        'm2d': m2d, 
-        'dL':  dL, 
-        'snr': SNR,
+    samps_batch_dict_astrophysical = {
+        'm1s': m1s[idx_softcut], 
+        'm2s': m2s[idx_softcut], 
+        'z':   zs[ idx_softcut], 
+        'm1d': m1d[idx_softcut], 
+        'm2d': m2d[idx_softcut], 
+        'dL':  dL[ idx_softcut], 
+        'snr': SNR[idx_softcut], 
     }
     samps_batch_dict_observed = {
         'm1s':   m1s[  idx_detected], 
@@ -445,14 +447,14 @@ def worker_generate_injection_parallel(lock, pid, inj_number, n_batches, samps_d
 
     # Collect additional event parameters
     for key in additional_parameters:
-        if pars['save-astrophysical']: samps_batch_dict_astrophysical[key] = additional_parameters[key]
+        samps_batch_dict_astrophysical[key] = additional_parameters[key][idx_softcut]
         samps_batch_dict_observed[key]      = additional_parameters[key][idx_detected]
 
     with lock:
 
         if inj_number.value < pars['injections-number']: # Update the counter & the result dicts safely
 
-            if pars['save-astrophysical']: samps_dict_astrophysical[pid] = samps_batch_dict_astrophysical
+            samps_dict_astrophysical[pid] = samps_batch_dict_astrophysical
             samps_dict_observed[pid] = samps_batch_dict_observed
 
             n_det = len(idx_detected)
@@ -474,19 +476,13 @@ def load_checkpoint_parallel(pars):
     try:
         with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'     ), 'rb') as handle:
             samps_dict_observed          = pickle.load(handle)
-        # with open(os.path.join(pars['output'], 'duration_checkpoint.pickle'), 'rb') as handle:
-        #     duration_cp = pickle.load(handle)
-        if pars['save-astrophysical']:
-            with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle'), 'rb') as handle: 
-                samps_dict_astrophysical = pickle.load(handle)
-        else:
-            samps_dict_astrophysical = {}
+        with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle'), 'rb') as handle: 
+            samps_dict_astrophysical = pickle.load(handle)
         inj_number_cp = samps_dict_observed['n_det_so_far']
         n_batches_cp = samps_dict_observed['n_batches_so_far']
         run_time_cp = samps_dict_observed['run_time_so_far']
         print('\n * Reading existing injections from checkpoint files. Re-starting with {} generated and {} detected injections.\n'.format(n_batches_cp * pars['injections-number-bank'], inj_number_cp))
-    except Exception as e:
-        print(type(e), e)
+    except:
         # Initialize the dictionaries.
         samps_dict_observed      = {}
         samps_dict_astrophysical = {}
@@ -635,7 +631,7 @@ def get_distribution_samples(pars):
     # Convert from rate to probability distribution.
     tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
     zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
-    if pars['save-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+    if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
@@ -646,7 +642,7 @@ def get_distribution_samples(pars):
             tmp = pars['wrappers']['m1w'].pdf(m1_array, z)
             # For redshift evolving distributions, we use the redshift samples to draw the masses.
             m1s[i], pdf_m1[i] = rejection_sampling_1D(m1_array, tmp, 1)
-        if pars['save-astrophysical']: plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
+        if pars['plot-astrophysical']: plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
         m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, N_events)
@@ -677,7 +673,7 @@ def get_distribution_samples(pars):
                 pdf_m2 = pdf_q / m1s * qs**2 # Compute the Jacobian: |J_(m1s,q)->(m1s,m2s)| = q**2/m1s, with q=m1/m2.
 
             pdf_m1m2 = pdf_m1 * pdf_m2
-            if pars['save-astrophysical']: plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
+            if pars['plot-astrophysical']: plot_injected_distribution(pars, q_array, pars['wrappers']['m2w'], 'q_source_frame', q_samps = qs)
         else:
             if 'Redshift' in pars['model-primary']:
                 raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
@@ -848,6 +844,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
         
         SNR = np.array(SNR)
         idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
+        idx_softcut  = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-soft-cut'])
         # additional_parameters is a list of single event dict, we convert it to a dict of arrays
         additional_parameters = pd.DataFrame(additional_parameters).to_dict(orient="list")
         for key in additional_parameters: additional_parameters[key] = np.array(additional_parameters[key])
@@ -887,6 +884,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
             )
 
         idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
+        idx_softcut  = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-soft-cut'])
         additional_parameters = {}
 
 
@@ -903,7 +901,8 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
             dL_s   = pars['snr-proxy-dL-reference' ],
             Md_s   = pars['snr-proxy-Mc-reference' ],
         )
-        idx_detected = icarosim.snr_and_freq_cut(m1s, m2s, zs, SNR, snrthr = pars['SNR-cut'], fgw_cut = pars['snr-proxy-fgw-cut'])
+        idx_detected = icarosim.snr_and_freq_cut(m1s, m2s, zs, SNR, snrthr = pars['SNR-cut'],      fgw_cut = pars['snr-proxy-fgw-cut'])
+        idx_softcut  = icarosim.snr_and_freq_cut(m1s, m2s, zs, SNR, snrthr = pars['SNR-soft-cut'], fgw_cut = pars['snr-proxy-fgw-cut'])
         additional_parameters = {}
 
 
@@ -913,6 +912,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
         print('\n * Computing the SNR with the flat PSD.')
         SNR          = icarosim.snr_samples_flat(zs)
         idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
+        idx_softcut  = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-soft-cut'])
         additional_parameters = {}
 
     # Use lisabeta to compute the SNR for LISA interferometer
@@ -923,6 +923,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
         try:
             SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
             idx_detected = snr_computation.cut_SNR(SNR)
+            idx_softcut  = snr_computation.cut_SNR(SNR, snr_thr=pars['SNR-soft-cut'])
             additional_parameters = {}
         except AttributeError:
             raise ImportError("Please make sure lisabeta is properly installed if you wish to use it for SNR computation. (See https://pypi.org/project/lisabeta/)")
@@ -930,20 +931,13 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     else:
         raise ValueError('Unknown method to compute the SNR. Exiting...')
 
-    return SNR, idx_detected, additional_parameters
+    return SNR, idx_detected, idx_softcut, additional_parameters
 
 
-def clean_result_dict_from_compute_SNR(result_dir):
-    """
-    Remove dictionary entries that are redundant
-    NB: - mass_1/mass_2 are the same as m1d/m2d
-        - luminosity_distance is the same as dL
-        - matched_filter_SNR is the same as snr
-    """
-    if 'mass_1'              in result_dir: result_dir.pop('mass_1')
-    if 'mass_2'              in result_dir: result_dir.pop('mass_2')
-    if 'luminosity_distance' in result_dir: result_dir.pop('luminosity_distance')
-    if 'matched_filter_SNR'  in result_dir: result_dir.pop('matched_filter_SNR')
+def clean_dict(d, keys):
+    """Remove dictionary entries"""
+    for key in keys:
+        if key in d: d.pop(key)
 
 
 
@@ -961,14 +955,14 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     figname = os.path.join(pars['output'], 'plots', title)
     m1_array = np.linspace(pars['bounds-m1'][0], pars['bounds-m1'][1], pars['N-points'])
     if not pars['log10-PDF']:
-        if pars['save-astrophysical']: plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        if pars['plot-astrophysical']: plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(samps_dict_observed[     'm1s'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     else:
-        if pars['save-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1s']), density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        if pars['plot-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1s']), density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(np.log10(samps_dict_observed[     'm1s']), density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     update_weights(pars['wrappers']['m1w'], pars['truths'])
     if 'Redshift' in pars['model-primary']:
-        if pars['save-astrophysical']: plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array, np.median(samps_dict_astrophysical['z'])), c = '#153B60', label = 'Injected z-median')
+        if pars['plot-astrophysical']: plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array, np.median(samps_dict_astrophysical['z'])), c = '#153B60', label = 'Injected z-median')
     else:
         plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array), c = '#153B60', label = 'Injected')
     plt.title(title)
@@ -983,10 +977,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     title = 'm1_detector_frame'
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
-        if pars['save-astrophysical']: plt.hist(samps_dict_astrophysical['m1d'], bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        if pars['plot-astrophysical']: plt.hist(samps_dict_astrophysical['m1d'], bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(samps_dict_observed[     'm1d'], bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     else:
-        if pars['save-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1d']), bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+        if pars['plot-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1d']), bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(np.log10(samps_dict_observed[     'm1d']), bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     plt.title(title)
     plt.xlabel('m1')
@@ -997,10 +991,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     title = 'm1z_source_frame'
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
-        if pars['save-astrophysical']: plt.scatter(samps_dict_astrophysical['m1s'], samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        if pars['plot-astrophysical']: plt.scatter(samps_dict_astrophysical['m1s'], samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
         plt.scatter(samps_dict_observed[     'm1s'], samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     else:
-        if pars['save-astrophysical']: plt.scatter(np.log10(samps_dict_astrophysical['m1s']), samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        if pars['plot-astrophysical']: plt.scatter(np.log10(samps_dict_astrophysical['m1s']), samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
         plt.scatter(np.log10(samps_dict_observed[     'm1s']), samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
@@ -1012,10 +1006,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     title = 'm1dL_detector_frame'
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
-        if pars['save-astrophysical']: plt.scatter(samps_dict_astrophysical['m1d'], samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        if pars['plot-astrophysical']: plt.scatter(samps_dict_astrophysical['m1d'], samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
         plt.scatter(samps_dict_observed[     'm1d'], samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     else:
-        if pars['save-astrophysical']: plt.scatter(np.log10(samps_dict_astrophysical['m1d']), samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
+        if pars['plot-astrophysical']: plt.scatter(np.log10(samps_dict_astrophysical['m1d']), samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
         plt.scatter(np.log10(samps_dict_observed[     'm1d']), samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
@@ -1026,7 +1020,7 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
 
     title = 'z_distribution'
     figname = os.path.join(pars['output'], 'plots', title)
-    if pars['save-astrophysical']: plt.hist(samps_dict_astrophysical['z'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
+    if pars['plot-astrophysical']: plt.hist(samps_dict_astrophysical['z'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
     plt.hist(samps_dict_observed[     'z'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     plt.xlabel('$z$')
     plt.ylabel('$p(z)$')

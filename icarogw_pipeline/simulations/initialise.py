@@ -15,11 +15,11 @@ def InitialiseOptions(Config):
         'injections-number'             : 1000,
         'injections-number-bank'        : 100,
         'inverse-checkpoint-rate'       : 1,
-        'save-astrophysical'            : True,
         'parallel'                      : False,
         'n-processes'                   : 10,
         'selection-effects-cut'         : 'snr',
         'SNR-cut'                       : 12.,
+        'SNR-soft-cut'                  : -1.,
         'estimate-events-number'        : False,
         'R0'                            : 25.,
         'observation-time'              : 1.,
@@ -77,6 +77,7 @@ def InitialiseOptions(Config):
         'bounds-q'                      : [0.1, 1],
         'bounds-dL'                     : [0, 10000],
         'bounds-z'                      : [1e-6, 3.0],
+        'plot-astrophysical'            : False,
     }
 
     # Read options from config file.
@@ -86,13 +87,13 @@ def InitialiseOptions(Config):
         if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if (key == 'SNR-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
+        if (key == 'SNR-cut') or (key == 'SNR-soft-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
         if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'inverse-checkpoint-rate') or (key == 'n-processes'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'estimate-events-number') or (key == 'save-astrophysical') or (key == 'parallel'):
+        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'estimate-events-number') or (key == 'parallel'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
 
@@ -127,6 +128,9 @@ def InitialiseOptions(Config):
         # Plots
         if (key == 'N-points'):
             try: input_pars[key] = Config.getint('plots', key)
+            except: pass
+        if (key == 'plot-astrophysical'):
+            try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
         if (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z'):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
@@ -287,7 +291,6 @@ usage = """
         run-type                      [str  ]  Type of simulation to run. Options: 'population', 'injections'. Default: 'population'.
         screen-output                 [bool ]  Flag to deviate the standard output to screen. Default: '0'.
         postprocessing                [bool ]  Flag to only postprocess an existing simulation. Default: '0'.
-        save-astrophysical            [bool ]  Flag to save the astrophysical generated population. If False, then only the detected events are saved. Default: True.
 
         events-number                 [int  ]  Number of generated events to draw from the astrophysical popoulation. Option used if the run-type is 'population'. Default: 1000.
         estimate-events-number        [bool ]  Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.
@@ -301,7 +304,8 @@ usage = """
         n-processes                   [int  ]  Maximum number of parallel processes to generate injections. Please make sure that this matches the number of available cores on your machine. Default: 10
 
         selection-effects-cut         [str  ]  Method to evaluate events detectability. Options: 'snr'. Default: 'snr'.
-        SNR-cut                       [float]  SNR threshold to consider an event detectable. Default: 12.
+        SNR-cut                       [float]  SNR threshold to label an event as detectable. Default: 12.
+        SNR-soft-cut                  [float]  SNR threshold to label an event as worth saving (should in principle be less than SNR-cut). Default: -1. (keeps everything)
         SNR-method                    [str  ]  Method to compute the SNR. Options: 'bilby', 'pycbc', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
         observing-run                 [str  ]  IGWN observing run. Further defines the detectors sensitivity for SNR computation (with PyCBC and Bilby) and PE (with Bilby), as well as observation-time (if a negative value is given). Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         PSD-path                      [str  ]  Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'pycbc'. Default: ''.
@@ -361,4 +365,5 @@ usage = """
         bounds-q                      [list ]  Bounds for the mass ratio plots. Default: [0.1, 1].
         bounds-dL                     [list ]  Bounds for the luminosity distance plots. Default: [0, 10000].
         bounds-z                      [list ]  Bounds for the redshift plots. Default: [1e-6, 3.0].
+        plot-astrophysical            [bool ]  Flag to plot the astrophysical generated population. If False, then only the detected events are shown in the plots. Default: False.
 """
