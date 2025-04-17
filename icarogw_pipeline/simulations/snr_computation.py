@@ -11,6 +11,11 @@ from astropy.time import Time
 # -------------------------------------------------------------------------- #
 
 # Utils
+def clean_dict(d, keys):
+    """Remove dictionary entries"""
+    for key in keys:
+        if key in d: d.pop(key)
+
 def chieff_from_wf_params(event_pars_dict):
     """
     Compute the effective spin parameter from the masses and spins
@@ -420,8 +425,7 @@ class BilbyDetectionPipeline():
             projected_event_dict = self.event_dict.copy()
             projected_event_dict['chi_1'] = self.event_dict['a_1'] * np.cos(self.event_dict['tilt_1'])
             projected_event_dict['chi_2'] = self.event_dict['a_2'] * np.cos(self.event_dict['tilt_2'])
-            projected_event_dict.pop('phi_12')
-            projected_event_dict.pop('phi_jl')
+            clean_dict(projected_event_dict, ['a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl'])
             self.ifos_list.inject_signal(
                 waveform_generator = self.waveform_generator,
                 parameters = projected_event_dict

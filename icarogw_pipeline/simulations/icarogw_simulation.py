@@ -833,10 +833,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
                 'mass_2':              _m2,
                 'luminosity_distance': _dL,
             })
-            try: bdp.set_ifos_and_inject_signal()
-            except RuntimeError as err: 
-                print(f"\n{bdp.event_dict}\n")
-                raise RuntimeError(err)
+            bdp.set_ifos_and_inject_signal()
             event_dict = bdp.compute_matched_filter_SNR()
 
             SNR.append(event_dict['matched_filter_SNR'])
