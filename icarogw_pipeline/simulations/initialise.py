@@ -305,7 +305,7 @@ usage = """
 
         selection-effects-cut         [str  ]  Method to evaluate events detectability. Options: 'snr'. Default: 'snr'.
         SNR-cut                       [float]  SNR threshold to label an event as detectable. Default: 12.
-        SNR-soft-cut                  [float]  SNR threshold to label an event as worth saving (should in principle be less than SNR-cut). Default: -1. (keeps everything)
+        SNR-soft-cut                  [float]  SNR threshold to label an event as worth saving (should in principle be less than SNR-cut). Option used for injections generation only (NB: all the events are kept in case of a population generation). Default: -1. (i.e. keeps everything)
         SNR-method                    [str  ]  Method to compute the SNR. Options: 'bilby', 'pycbc', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
         observing-run                 [str  ]  IGWN observing run. Further defines the detectors sensitivity for SNR computation (with PyCBC and Bilby) and PE (with Bilby), as well as observation-time (if a negative value is given). Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         PSD-path                      [str  ]  Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'pycbc'. Default: ''.
@@ -365,5 +365,5 @@ usage = """
         bounds-q                      [list ]  Bounds for the mass ratio plots. Default: [0.1, 1].
         bounds-dL                     [list ]  Bounds for the luminosity distance plots. Default: [0, 10000].
         bounds-z                      [list ]  Bounds for the redshift plots. Default: [1e-6, 3.0].
-        plot-astrophysical            [bool ]  Flag to plot the astrophysical generated population. If False, then only the detected events are shown in the plots. Default: False.
+        plot-astrophysical            [bool ]  Flag to plot the astrophysical generated population. If False, then only the detected events are shown in the plots (NB: this option is relevant for population generation, or injections when all the astrophysical events are saved). Default: False.
 """
