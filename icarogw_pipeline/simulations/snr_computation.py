@@ -157,22 +157,38 @@ def there_is_fully_parametrised_spins(event_dict):
         ('phi_jl' in event_dict) 
     )
 
-is_precessing = {
-    'IMRPhenomXHM' : False,
-    'IMRPhenomXPHM': True,
-}
 
 
 # Class to compute SNR & draw missing single event parameters
 class BilbyDetectionPipeline():
 
-    def __init__(self, psd_dir, observing_run, reference_frequency=20., sampling_frequency=2048., approximant='IMRPhenomXPHM'):
+    def __init__(self, psd_dir, observing_run, reference_frequency=20., sampling_frequency=2048., approximant='IMRPhenomXPHM', precessing_apx=True):
+        """
+        A class that initialises a simulated event with some single event parameters, 
+        drawing the missing ones, and injecting the signal 
+        generated from the desired approximant in some detector network.
+
+        Parameters
+        ----------
+        psd_dir: str
+            absolute path of the folder where the PSD files are stored.
+        observing_run: str
+            LVK observing run. Used to load the correct PSD for bilby detector objects. Choose from O3, O4, O5.
+        reference_frequency: float
+            lower bound of the frequency range used to compute signals inner products in frequency domain
+        sampling_frequency: float
+            twice the higher bound of the frequency range used to compute signals inner products in frequency domain 
+            (the latter often being the Nyquist frequency)
+        approximant: str
+            waveform approximant (default: IMRPhenomXPHM)
+        """
         self.psd_dir = psd_dir
         self.observing_run = observing_run
         self.load_psd_from_file()
         self.reference_frequency = reference_frequency
         self.sampling_frequency = sampling_frequency
         self.approximant = approximant
+        self.precessing_apx = precessing_apx
 
     def load_psd_from_file(self):
         self.all_ifos_available_psd_dict = {
@@ -233,34 +249,21 @@ class BilbyDetectionPipeline():
 
     def draw_spins(self):
         """
-        Draw spins, within the (a_1, tilt_1, a_2, tilt_2, phi_12, phi_jl) parametrisation.
-        Each reduced spin is drawn uniformly in a unit 2-ball
+        Draw spins, with the (a_1, tilt_1, a_2, tilt_2, phi_12, phi_jl) parametrisation.
+        Spin vectors distribution is uniform in magnitude and istropic in orientation (see https://zenodo.org/records/7890437)
         (see eg. http://corysimon.github.io/articles/uniformdistn-on-sphere/ for unit 2-sphere sampling)
 
-        * Kerr parameters a are drawn such that a^3 is uniform in [0, 1]
+        * Kerr parameters a are drawn such that a is uniform in [0, 1]
         * cos(tilt) is drawn uniformly from [-1, 1] 
           (So that spin orientation is sampled uniformly on the unit sphere), 
         * phi_12 and phi_jl are drawn uniformly from [0, 2*pi]
-
-        If self.approximant is a non precessing one, then only the z component is extracted.
         """
-        u_1, costilt_1 = np.random.uniform(0., 1./3.), np.random.uniform(-1., 1.)
-        u_2, costilt_2 = np.random.uniform(0., 1./3.), np.random.uniform(-1., 1.)
-        try:
-            if is_precessing[self.approximant]:
-                self.event_dict['a_1']    = np.power(3 * u_1, 1./3.)
-                self.event_dict['a_2']    = np.power(3 * u_2, 1./3.)
-                self.event_dict['tilt_1'] = np.arccos(costilt_1)
-                self.event_dict['tilt_2'] = np.arccos(costilt_2)
-            else:
-                self.event_dict['a_1']    = np.power(u_1, 1./3.) * abs(costilt_1)
-                self.event_dict['a_2']    = np.power(u_2, 1./3.) * abs(costilt_2)
-                self.event_dict['tilt_1'] = np.arccos(np.sign(costilt_1))
-                self.event_dict['tilt_2'] = np.arccos(np.sign(costilt_2))
-            self.event_dict['phi_12']     = np.random.uniform(0., 2*np.pi)
-            self.event_dict['phi_jl']     = np.random.uniform(0., 2*np.pi)
-        except KeyError as err:
-            raise KeyError(str(err) + " Unsupported approximant. Please consult the available waveform models.")
+        self.event_dict['a_1']    = np.random.uniform(0., 1.)
+        self.event_dict['a_2']    = np.random.uniform(0., 1.)
+        self.event_dict['tilt_1'] = np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['tilt_2'] = np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['phi_12'] = np.random.uniform(0., 2*np.pi)
+        self.event_dict['phi_jl'] = np.random.uniform(0., 2*np.pi)
 
     def draw_skyloc(self):
         """
@@ -298,8 +301,7 @@ class BilbyDetectionPipeline():
         Draw ifos_on based on detectors duty cycles.
         """
         self.event_dict['ifos_on']      = tell_me_ifos_on(run = self.observing_run)
-        # self.event_dict['ifos_on']      = tell_me_ifos_on('opt')
-    
+
     def check_all_parameters_present(self):
         """
         Checks that all the expected CBC parameters are present in self.event_dict
@@ -355,23 +357,16 @@ class BilbyDetectionPipeline():
     
     def set_ifos_and_inject_signal(self):
         """
-        Initialise bilby's Interferometers objects, 
-        compute strain data from psd, 
+        Initialise bilby's Interferometers objects, compute strain data from psd, 
         and inject signal for event with parameters contained in self.event_dict.
+
+        If self.approximant is a non precessing one, then self.precessing_apx should be set to False.
+        Additionally, spins in the parameters dict given to the waveform generator are projected along the z-axis, 
+        but non projected spins are still stored in self.event_dict
 
         Requirements
         ------------
-        self.event_dict initialised (with all ) 
-
-        Parameters
-        ----------
-        reference_frequency: float
-            lower bound of the frequency range used to compute signals inner products in frequency domain
-        sampling_frequency: float
-            twice the higher bound of the frequency range used to compute signals inner products in frequency domain 
-            (the latter often being the Nyquist frequency)
-        approximant: str
-            waveform approximant (default: IMRPhenomXPHM)
+        self.event_dict initialised (with all BH binary parameters) 
         """
         self.check_all_parameters_present()
 
@@ -414,10 +409,23 @@ class BilbyDetectionPipeline():
         self.set_frequency_mask()
 
         # Inject signals
-        self.ifos_list.inject_signal(
-            waveform_generator = self.waveform_generator,
-            parameters = self.event_dict
-        )
+        if self.precessing_apx:
+            # keep 3D spins fro precessing approximant.
+            self.ifos_list.inject_signal(
+                waveform_generator = self.waveform_generator,
+                parameters = self.event_dict
+            )
+        else:
+            # project spins along the z-axis in case of a non precessing waveform approximant
+            projected_event_dict = self.event_dict.copy()
+            projected_event_dict['chi_1'] = self.event_dict['a_1'] * np.cos(self.event_dict['tilt_1'])
+            projected_event_dict['chi_2'] = self.event_dict['a_2'] * np.cos(self.event_dict['tilt_2'])
+            projected_event_dict.pop('phi_12')
+            projected_event_dict.pop('phi_jl')
+            self.ifos_list.inject_signal(
+                waveform_generator = self.waveform_generator,
+                parameters = projected_event_dict
+            )
 
     def compute_matched_filter_SNR(self):
         """
