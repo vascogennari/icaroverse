@@ -28,7 +28,7 @@ def main():
 
     parser = OptionParser(initialise.usage)
     parser.add_option(      '--config-file', type='string', metavar = 'config_file', default = None)
-    parser.add_option('-n', '--n-processes', type='int',    metavar = 'n_processes', default = -1)
+    parser.add_option('-n', '--n-processes', type='int',    metavar = 'n_processes', default = -1, help="Set the number of processes for parallelized injections generation from command line, if this should match some external structure (e.g. number of CPUs allocated to the simulation on a computing cluster job.)")
     (opts, _) = parser.parse_args()
 
     config_file = opts.config_file
