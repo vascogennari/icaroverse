@@ -247,6 +247,11 @@ def default_priors():
         'zt'          : [0. , 1.  ],
         'delta_zt'    : [1. , 100.],
 
+        'a_johnson'    : [0. ,  3. ],
+        'b_johnson'    : [0.1,  5. ],
+        'loc_johnson'  : [3. ,  8. ],
+        'scale_johnson': [0.01, 10.],
+
         # Secondary mass distribution
         'beta'        : [-20., 20.],
         'mu_q'        : [0.1, 1.  ],
@@ -264,6 +269,11 @@ def default_priors():
         'mu_r'        : [-10000.,0.],
         'sigma_r'     : [1. , 100.],
         'amp_r'       : [1. , 200.],
+
+        'a'           : [1.0, 5.0],
+        'b'           : [1.0, 20.0],
+        'loc'         : [0.0, 10.0],
+        'scale'       : [1.0, 150.0],
     }
 
     return prior

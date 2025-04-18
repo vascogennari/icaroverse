@@ -338,7 +338,7 @@ class ReconstructDistributions:
         return curves_CI, plot_dict
 
 
-    def RateEvolutionFunction(df, w, p_dct, pars, prior = False):
+    def RateEvolutionFunction(df, w, cw, p_dct, pars, prior = False):
 
         if prior:
             tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
@@ -352,6 +352,8 @@ class ReconstructDistributions:
             samp_filt = {key: samp[key] for key in w.population_parameters}
             w.update(**samp_filt)        
             func = w.rate.log_evaluate(z_array)
+            if 'RedshiftProbability' in pars['model-rate']:
+                func -= cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Get the rate from p(z).
             curves[idx] = func
 
         curves_CI = get_curves_percentiles(curves, pars)
@@ -376,10 +378,9 @@ class ReconstructDistributions:
             # Comoving volume and redshift (1/(1+z)*dV/dz).
             samp_filt = {key: samp[key] for key in cw.population_parameters}
             cw.update(**samp_filt)
-            func = cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
-            curves[idx] *= func
-            curves[idx] = np.log(curves[idx])
-            curves[idx] -= 7
+            if not 'RedshiftProbability' in pars['model-rate']: curves[idx] *= cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Get p(z) from the rate.
+            #curves[idx] = np.log(curves[idx])
+            curves[idx] = curves[idx]
 
         curves_CI = get_curves_percentiles(curves, pars)
         plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', '$\propto ln[p(z)]$', pars['model-rate'])
@@ -701,13 +702,13 @@ class Plots:
 
         curves_prior = 0
         if self.pars['plot-prior']:
-            curves_prior, _ = self.distributions.RateEvolutionFunction(self.df, self.rw, self.priors, self.pars, prior = True)
-        curves, plot_dict   = self.distributions.RateEvolutionFunction(self.df, self.rw, self.priors, self.pars)
+            curves_prior, _ = self.distributions.RateEvolutionFunction(self.df, self.rw, self.cw, self.priors, self.pars, prior = True)
+        curves, plot_dict   = self.distributions.RateEvolutionFunction(self.df, self.rw, self.cw, self.priors, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
-            curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.priors, self.pars)
+            curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.cw, self.priors, self.pars)
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def RateEvolutionProbability(self):

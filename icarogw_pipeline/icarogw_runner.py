@@ -85,6 +85,7 @@ class Wrappers:
             elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw': w = get_wrapper('PowerLaw_PowerLaw_PowerLaw', smoothing = pars['low-smoothing'])
             elif pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian': w = get_wrapper('PowerLaw_PowerLaw_Gaussian', smoothing = pars['low-smoothing'])
             elif pars['model-primary'] == 'DoublePowerlaw':             w = get_wrapper('DoublePowerlaw')
+            elif pars['model-primary'] == 'Johnson':                    w = get_wrapper('Johnson')
             else:
                 raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
             if not ( (pars['single-mass'] and 'Mass2' in pars['model-secondary']) or (pars['model-primary'] == 'PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian') ):
@@ -135,6 +136,7 @@ class Wrappers:
         elif pars['model-rate'] == 'MadauDickinson-GammaDistribution': w = get_wrapper('rateevolution_Madau_gamma')
         elif pars['model-rate'] == 'PowerLaw':                         w = get_wrapper('rateevolution_PowerLaw')
         elif pars['model-rate'] == 'Gaussian':                         w = get_wrapper('rateevolution_Gaussian')
+        elif pars['model-rate'] == 'RedshiftProbability-Beta':         w = get_wrapper('rateevolution_beta_redshift_probability')
         else:
             raise ValueError('Unknown model for the rate evolution {}. Please consult the available models.'.format(pars['model-rate']))   
         return w
