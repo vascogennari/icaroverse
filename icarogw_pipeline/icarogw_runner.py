@@ -615,7 +615,7 @@ def main():
 
     print('\n * Running hierarchical analysis with this settings.\n')
     if   input_pars['sampler'] == 'dynesty' or input_pars['sampler'] == 'nessai':
-        print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'queue-size', 'print-method', 'sample']})
+        print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'print-method', 'sample', 'npool']})
     elif input_pars['sampler'] == 'ptemcee':
         print_dictionary({key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']})
     else:
