@@ -309,7 +309,6 @@ def generate_injections_parallel(pars):
                 if inj_number.value >= pars['injections-number']: 
                     break
 
-
                 # Launch new processes if we haven't reached the max_process limit
                 while len(processes) < pars['n-processes']:
                     process = Process(
@@ -336,13 +335,12 @@ def generate_injections_parallel(pars):
 
                 # Save checkpoint every k iterations
                 if process_id % pars['inverse-checkpoint-rate'] == 0:
-                    # with open(os.path.join(pars['output'], 'duration_checkpoint.pickle'), 'wb') as handle:
-                    #     pickle.dump(time.time() - start_time,  handle, protocol = pickle.HIGHEST_PROTOCOL)
-                    with lock: samps_dict_observed['run_time_so_far'] = time.time() - start_time
-                    with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'), 'wb') as handle:
-                        pickle.dump(dict(samps_dict_observed), handle, protocol = pickle.HIGHEST_PROTOCOL)
-                    with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle'), 'wb') as handle:
-                        pickle.dump(dict(samps_dict_astrophysical), handle, protocol = pickle.HIGHEST_PROTOCOL)
+                    with lock: 
+                        samps_dict_observed['run_time_so_far'] = time.time() - start_time
+                        with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_observed.pickle'), 'wb') as handle:
+                            pickle.dump(dict(samps_dict_observed), handle, protocol = pickle.HIGHEST_PROTOCOL)
+                        with open(os.path.join(pars['output'], 'injections_parallel_checkpoint_astrophysical.pickle'), 'wb') as handle:
+                            pickle.dump(dict(samps_dict_astrophysical), handle, protocol = pickle.HIGHEST_PROTOCOL)
 
             # Wait for remaining processes to finish
             for process in processes:
@@ -423,6 +421,7 @@ def worker_generate_injection_parallel(lock, pid, inj_number, n_batches, samps_d
     # Compute the SNR to select the detected events.
     SNR, idx_detected, idx_softcut, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
     clean_dict(additional_parameters, ['mass_1', 'mass_2', 'luminosity_distance', 'matched_filter_SNR'])
+    n_det = len(idx_detected)
 
     # Build dictionaries for the current batch
     samps_batch_dict_astrophysical = {
@@ -456,8 +455,6 @@ def worker_generate_injection_parallel(lock, pid, inj_number, n_batches, samps_d
 
             samps_dict_astrophysical[pid] = samps_batch_dict_astrophysical
             samps_dict_observed[pid] = samps_batch_dict_observed
-
-            n_det = len(idx_detected)
 
             inj_number.value += n_det
             n_batches.value  += 1
@@ -824,7 +821,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
             precessing_apx      = pars['snr-bilby-precessing-wf'      ],
         )
  
-        if   pars['run-type'] == 'population': iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby")
+        if   pars['run-type'] == 'population': iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby", miniters=int(pars['events-number'])//200)
         elif pars['run-type'] == 'injections': iterator = zip(m1d, m2d, dL)
 
         for _m1, _m2, _dL in iterator:

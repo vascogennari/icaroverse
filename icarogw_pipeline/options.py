@@ -55,6 +55,7 @@ def InitialiseOptions(Config):
         'ntemps'                      : 10,
         'threads'                     : 1,
         'nparallel'                   : 1,
+        'npool'                       : 10,
 
         # Plots
         'N-points'                    : 500,
@@ -113,7 +114,7 @@ def InitialiseOptions(Config):
         if (key == 'sampler') or (key == 'print-method'):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps') or (key == 'threads'):
+        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps') or (key == 'threads') or (key == 'npool'):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
         if (key == 'loglike-var'):
@@ -336,9 +337,10 @@ usage = """
         nlive                       [int  ]  Number of live points used by the nested sampler. Option only available for Nested Samplers. Default: 500.
         print-method                [str  ]  Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
         sample                      [str  ]  Methods to perform the MCMC evolution to find a new point with a nested sampler. Option only available for Nested Samplers. More information on the different methods can be found in the related Bilby documentation (https://bilby-dev.github.io/bilby/dynesty-guide.html). Options: 'act-walk', 'acceptance-walk', 'rwalk'. Default: 'acceptance-walk'.
-        naccept                     [int  ]  The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
+        npool                       [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). If running on a cluster, must match the number of . Default: 1.
+        # queue-size                  [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
 
-        queue-size                  [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
+        naccept                     [int  ]  The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
         nwalkers                    [int  ]  Number of parallel chains (walkers) running in the MCMC ensemble. Option only available for MCMC samplers. Default: 64.
         nsteps                      [int  ]  Number of steps taken by each walker in the MCMC samplers. Option only available for MCMC samplers. Default: 1000.
         ntemps                      [int  ]  Number of parallel-tempered chains of the MCMC sampler. Option only available for MCMC samplers. Default: 10.

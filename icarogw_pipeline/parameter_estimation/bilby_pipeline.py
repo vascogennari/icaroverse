@@ -10,35 +10,62 @@ sys.path.append('../')
 import icarogw_runner as icarorun
 
 
-def initialise_prior(dict_in, dict_out, trigtime = None):
+def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
 
-    for par in ['mass_1', 'luminosity_distance', 'a_1', 'a_2']:
+    for par in ['mass_1', 'luminosity_distance']:
         if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
         elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
-        else:
-            raise ValueError('Unknown type for prior on {}'.format(dict_in[par]))
-    
-    for par in 'phi_12', 'phi_jl', 'ra', 'psi', 'phase':
+        else:  raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+
+    for par in ['ra', 'psi', 'phase']:
         if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], boundary='periodic')
         elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
-        else:
-            raise ValueError('Unknown type for prior on {}'.format(dict_in[par]))
+        else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
 
-    for par in 'tilt_1', 'tilt_2':
-        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Sine(minimum = dict_in[par][0], maximum = dict_in[par][1])
-        elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
-        else:
-            raise ValueError('Unknown type for prior on {}'.format(dict_in[par]))
-        
-    for par in ['dec', 'theta_jn']:
+    for par in ['dec']:
         if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Cosine(minimum = dict_in[par][0], maximum = dict_in[par][1])
         elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
-        else:
-            raise ValueError('Unknown type for prior on {}'.format(dict_in[par]))
+        else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
         
+    for par in ['tilt_1', 'tilt_2', 'theta_jn']:
+        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Sine(minimum = dict_in[par][0], maximum = dict_in[par][1])
+        elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+        else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+
+    if precession:
+
+        for par in ['a_1', 'a_2']:
+            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
+            elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+            else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+        
+        for par in ['tilt_1', 'tilt_2']:
+            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Sine(minimum = dict_in[par][0], maximum = dict_in[par][1])
+            elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+            else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+        
+        for par in ['phi_12', 'phi_jl']:
+            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], boundary='periodic')
+            elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+            else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+    
+    else:
+        
+        for par in ['chi_1', 'chi_2']:
+            if   type(dict_in[par]) == list:  
+                dict_out[par] = bilby.gw.prior.AlignedSpin(
+                    a_prior = bilby.core.prior.Uniform(minimum = 0.,  maximum = max(map(abs, dict_in[par]))), 
+                    z_prior = bilby.core.prior.Uniform(minimum = -1., maximum = 1.),
+                    minimum = dict_in[par][0], maximum = dict_in[par][1]
+                )
+            elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+            else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+
     dict_out['mass_2'] = bilby.core.prior.ConditionalUniform(
         condition_func = bilby.gw.prior.secondary_mass_condition_function,
-        minimum = dict_in['mass_2'][0], maximum = dict_in['mass_2'][1])
+        minimum        = dict_in['mass_2'][0], 
+        maximum        = dict_in['mass_2'][1]
+    )
     
     dict_out['geocent_time'] = bilby.core.prior.Uniform(trigtime - 0.1, trigtime + 0.1)
 
@@ -115,9 +142,13 @@ def main():
     BilbyClass.set_ifos_and_inject_signal()
 
     # Initialise priors.
-    #priors = bilby.gw.prior.BBHPriorDict()
     priors = bilby.core.prior.PriorDict()
-    priors = initialise_prior(input_pars['priors'], priors, trigtime = injection_parameters['geocent_time'])
+    priors = initialise_prior(
+        input_pars['priors'], 
+        priors, 
+        trigtime = injection_parameters['geocent_time'], 
+        precession=input_pars['precession']
+    )
 
     # Initialise the likelihood.
     likelihood = bilby.gw.GravitationalWaveTransient(
@@ -133,8 +164,9 @@ def main():
         sampler              = input_pars['sampler'],
         nlive                = input_pars['nlive'],
         outdir               = input_pars['output'],
-        n_pool               = 1,
-        injection_parameters = injection_parameters,
+        npool                = input_pars['npool'],
+        queue_size           = input_pars['queue-size'],
+        injection_parameters = BilbyClass.projected_event_dict,
         conversion_function  = bilby.gw.conversion.generate_all_bbh_parameters,
         result_class         = bilby.gw.result.CBCResult,
     )

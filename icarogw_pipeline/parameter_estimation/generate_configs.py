@@ -23,6 +23,7 @@ event-parameters    = {event_parameters}
 priors              = {priors}
 observing-run       = {observing_run}
 waveform            = {waveform}
+precession          = {precession}
 reference-frequency = {reference_frequency}
 sampling-frequency  = {sampling_frequency}
 
@@ -44,10 +45,11 @@ def main():
     parser.add_option('-m', '--print-method', type='string', metavar = 'print_method', default = 'interval-60'    )
     # nested samplers options
     parser.add_option('-l', '--nlive',        type='int',    metavar = 'nlive',        default = 1000             )
+    parser.add_option(      '--npool',        type='int',    metavar = 'npool',        default = 10               )
+    parser.add_option('-q', '--queue-size',   type='int',    metavar = 'queue_size',   default = 1                )
     # MCMC samplers options
     parser.add_option(      '--sample',       type='string', metavar = 'sample',       default = 'acceptance-walk')
     parser.add_option('-a', '--naccept',      type='int',    metavar = 'naccept',      default = 60               )
-    parser.add_option('-q', '--queue-size',   type='int',    metavar = 'queue_size',   default = 1                )
     parser.add_option('-w', '--nwalkers',     type='int',    metavar = 'nwalkers',     default = 64               )
     parser.add_option(      '--nsteps',       type='int',    metavar = 'nsteps',       default = 1000             )
     parser.add_option('-t', '--ntemps',       type='int',    metavar = 'ntemps',       default = 10               )
@@ -81,6 +83,7 @@ def main():
         psd_dir             = population_generation_pars['PSD-path']
         observing_run       = population_generation_pars['observing-run']
         waveform            = population_generation_pars['snr-bilby-waveform']
+        precession          = population_generation_pars['snr-bilby-precessing-wf']
         reference_frequency = population_generation_pars['snr-bilby-reference-frequency']
         sampling_frequency  = population_generation_pars['snr-bilby-sampling-frequency']
     else:
@@ -104,6 +107,8 @@ def main():
         if   (opts.sampler in samplers_types) and (samplers_types[opts.sampler] == 'nested'):
             sampler_dependent_config = "\n".join([
                 f"{'nlive'     :<19} = {opts.nlive     }",
+                f"{'npool'     :<19} = {opts.npool     }",
+                f"{'queue-size':<19} = {opts.queue_size}",
             ])
         elif (opts.sampler in samplers_types) and (samplers_types[opts.sampler] == 'MCMC'):
             sampler_dependent_config = "\n".join([
@@ -127,6 +132,7 @@ def main():
             priors                   = opts.priors,
             observing_run            = observing_run,
             waveform                 = waveform,
+            precession               = precession,
             reference_frequency      = reference_frequency,
             sampling_frequency       = sampling_frequency,
             sampler                  = opts.sampler,

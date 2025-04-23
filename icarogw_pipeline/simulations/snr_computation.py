@@ -416,19 +416,20 @@ class BilbyDetectionPipeline():
         # Inject signals
         if self.precessing_apx:
             # keep 3D spins fro precessing approximant.
+            self.projected_event_dict = self.event_dict
             self.ifos_list.inject_signal(
                 waveform_generator = self.waveform_generator,
                 parameters = self.event_dict
             )
         else:
             # project spins along the z-axis in case of a non precessing waveform approximant
-            projected_event_dict = self.event_dict.copy()
-            projected_event_dict['chi_1'] = self.event_dict['a_1'] * np.cos(self.event_dict['tilt_1'])
-            projected_event_dict['chi_2'] = self.event_dict['a_2'] * np.cos(self.event_dict['tilt_2'])
-            clean_dict(projected_event_dict, ['a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl'])
+            self.projected_event_dict = self.event_dict.copy()
+            self.projected_event_dict['chi_1'] = self.event_dict['a_1'] * np.cos(self.event_dict['tilt_1'])
+            self.projected_event_dict['chi_2'] = self.event_dict['a_2'] * np.cos(self.event_dict['tilt_2'])
+            clean_dict(self.projected_event_dict, ['a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl'])
             self.ifos_list.inject_signal(
                 waveform_generator = self.waveform_generator,
-                parameters = projected_event_dict
+                parameters = self.projected_event_dict
             )
 
     def compute_matched_filter_SNR(self):

@@ -17,6 +17,7 @@ def InitialiseOptions(Config):
         'priors'               : {},
         'observing-run'        : 'O3',
         'waveform'             : 'IMRPhenomXHM',
+        'precession'           : False,
         'reference-frequency'  : 20.,
         'sampling-frequency'   : 2048.,
 
@@ -25,7 +26,7 @@ def InitialiseOptions(Config):
         'print-method'         : 'interval-60',
 
         'nlive'                : 500,
-
+        'npool'                : 10,
         'sample'               : 'acceptance-walk',
         'naccept'              : 60,
         'queue-size'           : 1,
@@ -55,6 +56,9 @@ def InitialiseOptions(Config):
         if (key == 'observing-run') or (key == 'waveform'): 
             try: input_pars[key] = Config.get('model', key)
             except: pass
+        if (key == 'precession'): 
+            try: input_pars[key] = Config.getboolean('model', key)
+            except: pass
         if (key == 'reference-frequency') or (key == 'sampling-frequency'):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
@@ -63,7 +67,7 @@ def InitialiseOptions(Config):
         if (key == 'sampler') or (key == 'print-method'):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if (key == 'nparallel') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps') or (key == 'threads'):
+        if (key == 'nparallel') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps') or (key == 'threads') or (key == 'npool'):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
 
@@ -121,8 +125,6 @@ def default_PE_priors(precession = False):
     dict = {
         'mass_1'             : [5., 300.],
         'mass_2'             : [5., 300.],
-        'a_1'                : [0., 0.99],
-        'a_2'                : [0., 0.99],
         'luminosity_distance': [0.,1.6e4],
         'theta_jn'           : [0., np.pi],
         'psi'                : [0., 2*np.pi],
@@ -132,15 +134,15 @@ def default_PE_priors(precession = False):
     }
 
     if precession:
+        dict['a_1']          = [0., 0.99],
+        dict['a_2']          = [0., 0.99],
         dict['tilt_1']       = [0., np.pi]
         dict['tilt_2']       = [0., np.pi]
         dict['phi_jl']       = [0., 2*np.pi]
         dict['phi_12']       = [0., 2*np.pi]
     else:
-        dict['tilt_1']       = 0.0
-        dict['tilt_2']       = 0.0
-        dict['phi_jl']       = 0.0
-        dict['phi_12']       = 0.0
+        dict['chi_1']        = [-0.99, 0.99]
+        dict['chi_2']        = [-0.99, 0.99]
 
     return dict
 
@@ -150,7 +152,7 @@ def set_precession(input_pars):
     approx_nonprecessing = [
         "IMRPhenomD", "IMRPhenomXAS", "IMRPhenomXHM", "SEOBNRv4", "SEOBNRv4HM", "TaylorF2", "EOBNRv2", "SEOBNRv2"]
     approx_precessing = [
-        "IMRPhenomPv2", "IMRPhenomPv3", "IMRPhenomPv3HM", "SEOBNRv4PHM", "IMRPhenomTPHM", "SEOBNRv3", "SEOBNRv4", "IMRPhenomPv2", ]
+        "IMRPhenomPv2", "IMRPhenomPv3", "IMRPhenomPv3HM", "SEOBNRv4PHM", "IMRPhenomTPHM", "SEOBNRv3", "SEOBNRv4", "IMRPhenomPv2", "IMRPhenomXPHM"]
 
     if   input_pars['waveform'] in approx_precessing   : input_pars['precession'] = True
     elif input_pars['waveform'] in approx_nonprecessing: input_pars['precession'] = False
@@ -181,6 +183,7 @@ usage = """
         priors                      Prior ranges to use for event parameters inference. Default: {}.
         observing-run               Detector sensitivity used to compute the SNR with Bilby. Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         waveform                    Waveform model used to compute the SNR with Bilby. Default: 'IMRPhenomXHM'.
+        precession                  Flag to turn on if the waveform model is a precessing one. Default: False.
         reference-frequency         Frequency at which the binary parameters are defined when Bilby generates the waveforms. Default: 20.
         sampling-frequency          Sampling rate used to generate the waveform with Bilby. Default: 2048.
 
@@ -194,7 +197,8 @@ usage = """
         print-method                Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
         sample                      Methods to perform the MCMC evolution to find a new point with a nested sampler. Option only available for Nested Samplers. More information on the different methods can be found in the related Bilby documentation (https://bilby-dev.github.io/bilby/dynesty-guide.html). Options: 'act-walk', 'acceptance-walk', 'rwalk'. Default: 'acceptance-walk'.
         naccept                     The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
-        queue-size                  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
+        queue-size                  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used or the size of the multiprocessing pool. Default: 1.
+        npool                       Number of available CPUs for sampling parallelization (see bilby documentation: https://lscsoft.docs.ligo.org/bilby/api/bilby.core.sampler.run_sampler.html#bilby.core.sampler.run_sampler). Default: 1.
 
         nwalkers                    Number of parallel chains (walkers) running in the MCMC ensemble. Option only available for MCMC samplers. Default: 64.
         nsteps                      Number of steps taken by each walker in the MCMC samplers. Option only available for MCMC samplers. Default: 1000.
