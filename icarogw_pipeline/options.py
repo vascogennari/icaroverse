@@ -55,6 +55,7 @@ def InitialiseOptions(Config):
         'ntemps'                      : 10,
         'threads'                     : 1,
         'nparallel'                   : 1,
+        'npool'                       : 10,
 
         # Plots
         'N-points'                    : 500,
@@ -91,7 +92,7 @@ def InitialiseOptions(Config):
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'inverse-mass-ratio'):
+        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
@@ -102,7 +103,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'priors'):
@@ -110,10 +111,10 @@ def InitialiseOptions(Config):
             except: pass
 
         # Sampler
-        if (key == 'sampler'):
+        if (key == 'sampler') or (key == 'print-method'):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps'):
+        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps') or (key == 'threads') or (key == 'npool'):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
         if (key == 'loglike-var'):
@@ -302,7 +303,6 @@ usage = """
         O3-cosmology                [bool ]  Option to process PE samples using O3 data from the LVK GWTC-3 cosmology paper (https://arxiv.org/abs/2111.03604). Default: 0.
         simulation                  [bool ]  Option to process PE samples using simulated events. Default: 1.
         remove-events               [list ]  List of events to be removed from the analysis. Example: ['GW190412_053044', 'GW190521_030229']. Default: [].
-        inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in comoving volume). Default: 'dL3'.
         PE-prior-masses             [str  ]  Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
         true-data                   [bool ]  Flag to only use the true values for the events in the analysis instead of full posteriors. This is equivalent to use one PE sample for each event. Default: 0.
@@ -323,6 +323,7 @@ usage = """
         priors                      [dict ]  Dictionary of the prior bounds for the population parameters. Default values are set in 'icarogw_pipeline.options.default_priors'.
         scale-free                  [bool ]  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
+        inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
 
     # ------- #
     # sampler #
@@ -336,9 +337,10 @@ usage = """
         nlive                       [int  ]  Number of live points used by the nested sampler. Option only available for Nested Samplers. Default: 500.
         print-method                [str  ]  Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
         sample                      [str  ]  Methods to perform the MCMC evolution to find a new point with a nested sampler. Option only available for Nested Samplers. More information on the different methods can be found in the related Bilby documentation (https://bilby-dev.github.io/bilby/dynesty-guide.html). Options: 'act-walk', 'acceptance-walk', 'rwalk'. Default: 'acceptance-walk'.
-        naccept                     [int  ]  The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
+        npool                       [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). If running on a cluster, must match the number of . Default: 1.
+        # queue-size                  [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
 
-        queue-size                  [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
+        naccept                     [int  ]  The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
         nwalkers                    [int  ]  Number of parallel chains (walkers) running in the MCMC ensemble. Option only available for MCMC samplers. Default: 64.
         nsteps                      [int  ]  Number of steps taken by each walker in the MCMC samplers. Option only available for MCMC samplers. Default: 1000.
         ntemps                      [int  ]  Number of parallel-tempered chains of the MCMC sampler. Option only available for MCMC samplers. Default: 10.
