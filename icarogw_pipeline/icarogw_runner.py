@@ -586,11 +586,14 @@ def main():
     # Start the sampler and run hierarchical analysis #
     # ----------------------------------------------- #
 
+    # Extracting the input parameters specific to each class of sampler 
     print('\n * Running hierarchical analysis with this settings.\n')
     if   input_pars['sampler'] == 'dynesty' or input_pars['sampler'] == 'nessai':
-        print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'print-method', 'sample', 'npool']})
+        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'print-method', 'sample', 'npool']}
+        print_dictionary(sampler_pars)
     elif input_pars['sampler'] == 'ptemcee':
-        print_dictionary({key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']})
+        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']}
+        print_dictionary(sampler_pars)
     else:
         raise ValueError('Sampler not available.')
 
@@ -598,18 +601,8 @@ def main():
     print('\n * Starting the sampler.\n')
     hierarchical = bilby.run_sampler(
             likelihood, prior,
-            sampler      = input_pars['sampler'],
-            nlive        = input_pars['nlive'],
-            naccept      = input_pars['naccept'],
-            npool        = input_pars['npool'],
-            queue_size   = input_pars['queue-size'],
-            nwalkers     = input_pars['nwalkers'],
-            nsteps       = input_pars['nsteps'],
-            ntemps       = input_pars['ntemps'],
-            print_method = input_pars['print-method'],
-            threads      = input_pars['threads'],
-            sample       = input_pars['sample'],
             outdir       = os.path.join(input_pars['output'], 'sampler'),
+            **sampler_pars,
     )
     if input_pars['true-values'] == {}: hierarchical.plot_corner()
     else:                               hierarchical.plot_corner(truth = {key: input_pars['true-values'][key] for key in hierarchical.search_parameter_keys})
