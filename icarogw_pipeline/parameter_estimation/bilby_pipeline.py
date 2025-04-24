@@ -163,7 +163,7 @@ def main():
         priors               = priors,
         sampler              = input_pars['sampler'],
         nlive                = input_pars['nlive'],
-        outdir               = input_pars['output'],
+        outdir               = os.path.join(input_pars['output'], "sampler"),
         npool                = input_pars['npool'],
         queue_size           = input_pars['queue-size'],
         injection_parameters = BilbyClass.projected_event_dict,
