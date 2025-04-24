@@ -524,7 +524,8 @@ def main():
     # ------------------------------------------------ #
 
     parser = OptionParser(options.usage)
-    parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
+    parser.add_option(      '--config-file', type='string', metavar = 'config_file', default = None)
+    parser.add_option('-n', '--n-processes', type='int',    metavar = 'n_processes', default = -1, help="Set the number of processes for parallelized injections generation from command line, if this should match some external structure (e.g. number of CPUs allocated to the simulation on a computing cluster job.)")
     (opts, _) = parser.parse_args()
 
     config_file = opts.config_file
@@ -543,6 +544,11 @@ def main():
 
     # Copy config file to output.
     shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+
+    # Set the number of parallel processes according to command line if provided to match hardware structure
+    if opts.n_processes > 0:
+        print(f"\n * Number of processes constrained by command-line option: n_processes = {opts.n_processes} \n")
+        input_pars['npool'] = opts.n_processes
 
     # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
