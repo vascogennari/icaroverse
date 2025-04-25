@@ -690,7 +690,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior,)
         else:
             curve_true, _ = self.distributions.SecondaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m2w, self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def RateEvolution(self):
 
@@ -703,7 +703,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def RateEvolutionProbability(self):
 
@@ -713,7 +713,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = 0)
         else:
             curve_true, _ = self.distributions.RateEvolutionFunctionProbability(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.cw, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = 0, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = 0, truth = curve_true[50])
     
     def RedshiftTransition(self):
 
@@ -726,7 +726,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RedshiftTransitionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def NoSelectionEffects(self):
 

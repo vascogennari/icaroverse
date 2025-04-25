@@ -545,7 +545,8 @@ def main():
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
     # Copy config file to output.
-    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    try:    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    except: pass # Config file already copied.
 
     # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
@@ -636,6 +637,8 @@ def main():
     maxL_index  = np.argmax(df['log_likelihood'])
     maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
     check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
+    print('\n * Maximum likelihood values.\n')
+    print_dictionary(maxL_values)
 
     # ----------------------------------- #
     # Plots production and postprocessing #

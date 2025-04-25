@@ -175,7 +175,10 @@ def main():
     result.plot_waveform_posterior(n_samples = 1000)
 
     # Make a corner plot.
-    result.plot_corner()
+    result.plot_corner(
+        priors = True,
+        truths = {key: BilbyClass.projected_event_dict[key] for key in result.search_parameter_keys}
+    )
 
 
 
