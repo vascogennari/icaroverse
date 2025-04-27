@@ -46,10 +46,10 @@ def main():
     # nested samplers options
     parser.add_option('-l', '--nlive',        type='int',    metavar = 'nlive',        default = 1000             )
     parser.add_option(      '--npool',        type='int',    metavar = 'npool',        default = 10               )
-    parser.add_option('-q', '--queue-size',   type='int',    metavar = 'queue_size',   default = 1                )
-    # MCMC samplers options
-    parser.add_option(      '--sample',       type='string', metavar = 'sample',       default = 'acceptance-walk')
     parser.add_option('-a', '--naccept',      type='int',    metavar = 'naccept',      default = 60               )
+    parser.add_option(      '--sample',       type='string', metavar = 'sample',       default = 'acceptance-walk')
+    # MCMC samplers options
+    parser.add_option('-q', '--queue-size',   type='int',    metavar = 'queue_size',   default = 1                )
     parser.add_option('-w', '--nwalkers',     type='int',    metavar = 'nwalkers',     default = 64               )
     parser.add_option(      '--nsteps',       type='int',    metavar = 'nsteps',       default = 1000             )
     parser.add_option('-t', '--ntemps',       type='int',    metavar = 'ntemps',       default = 10               )
@@ -57,7 +57,11 @@ def main():
     parser.add_option(      '--nparallel',    type='int',    metavar = 'nparallel',    default = 1                )
     (opts, _) = parser.parse_args()
 
-    samplers_types = {'dynesty': 'nested', 'nessai': 'nested', 'ptemcee':'MCMC'}
+    samplers_types = {
+        'dynesty': 'nested', 
+        'nessai':  'nested', 
+        'ptemcee': 'MCMC',
+    }
 
     # Retrieve population and transform it into a list of single event dict
     data_filepath = os.path.join(opts.pop_dir, "population_observed.pickle")
@@ -108,18 +112,19 @@ def main():
             sampler_dependent_config = "\n".join([
                 f"{'nlive'     :<19} = {opts.nlive     }",
                 f"{'npool'     :<19} = {opts.npool     }",
-                f"{'queue-size':<19} = {opts.queue_size}",
+                f"{'naccept'   :<19} = {opts.naccept   }",
+                f"{'sample'    :<19} = {opts.sample    }",
             ])
         elif (opts.sampler in samplers_types) and (samplers_types[opts.sampler] == 'MCMC'):
             sampler_dependent_config = "\n".join([
-                f"{'sample'    :<21} = {opts.sample    }",
-                f"{'naccept'   :<21} = {opts.naccept   }",
-                f"{'queue-size':<21} = {opts.queue_size}",
-                f"{'nwalkers'  :<21} = {opts.nwalkers  }",
-                f"{'nsteps'    :<21} = {opts.nsteps    }",
-                f"{'ntemps'    :<21} = {opts.ntemps    }",
-                f"{'threads'   :<21} = {opts.threads   }",
-                f"{'nparallel' :<21} = {opts.nparallel }",
+                f"{'sample'    :<19} = {opts.sample    }",
+                f"{'naccept'   :<19} = {opts.naccept   }",
+                f"{'queue-size':<19} = {opts.queue_size}",
+                f"{'nwalkers'  :<19} = {opts.nwalkers  }",
+                f"{'nsteps'    :<19} = {opts.nsteps    }",
+                f"{'ntemps'    :<19} = {opts.ntemps    }",
+                f"{'threads'   :<19} = {opts.threads   }",
+                f"{'nparallel' :<19} = {opts.nparallel }",
             ])
         else:
             raise ValueError("Unknown sampler. Please choose from the available samplers\n\t{}".format("\n\t".join(samplers_types.keys())))

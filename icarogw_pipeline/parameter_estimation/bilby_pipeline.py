@@ -9,43 +9,63 @@ import snr_computation as snr
 sys.path.append('../')
 import icarogw_runner as icarorun
 
+latex_labels = {
+    'mass_1': r"$m_1$", 
+    'mass_2': r"$m_2$", 
+    'luminosity_distance': r"$d_L$", 
+    'ra': r"$\alpha$", 
+    'psi': r"$\psi$", 
+    'phase': r"$\phi$", 
+    'dec': r"$\delta$", 
+    'theta_jn': r"$\theta_{JN}$", 
+    'a_1': r"$a_1$", 
+    'a_2': r"$a_2$", 
+    'tilt_1': r"$\theta_1$", 
+    'tilt_2': r"$\theta_2$", 
+    'phi_12': r"$\phi_{12}$", 
+    'phi_jl': r"$\phi_{JL}$", 
+    'chi_1': r"$\chi_1$", 
+    'chi_2': r"$\chi_2$", 
+    'geocent_time': r"$t_{geocent}$", 
+}
+
 
 def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
 
     for par in ['mass_1', 'luminosity_distance']:
-        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
+        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], latex_label=latex_labels[par])
         elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
         else:  raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
 
     for par in ['ra', 'psi', 'phase']:
-        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], boundary='periodic')
+        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], boundary='periodic', latex_label=latex_labels[par])
         elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
         else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
 
     for par in ['dec']:
-        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Cosine(minimum = dict_in[par][0], maximum = dict_in[par][1])
+        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Cosine(minimum = dict_in[par][0], maximum = dict_in[par][1], latex_label=latex_labels[par])
         elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
         else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
         
-    for par in ['tilt_1', 'tilt_2', 'theta_jn']:
-        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Sine(minimum = dict_in[par][0], maximum = dict_in[par][1])
+    for par in ['theta_jn']:
+        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Sine(minimum = dict_in[par][0], maximum = dict_in[par][1], latex_label=latex_labels[par])
         elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
         else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
 
     if precession:
 
         for par in ['a_1', 'a_2']:
-            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
+            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], latex_label=latex_labels[par])
             elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
             else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
         
         for par in ['tilt_1', 'tilt_2']:
-            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Sine(minimum = dict_in[par][0], maximum = dict_in[par][1])
+            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Sine(minimum = dict_in[par][0], maximum = dict_in[par][1], latex_label=latex_labels[par])
             elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
             else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
         
         for par in ['phi_12', 'phi_jl']:
-            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], boundary='periodic')
+            if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], boundary='periodic', latex_label=latex_labels[par])
             elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
             else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
     
@@ -56,7 +76,8 @@ def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
                 dict_out[par] = bilby.gw.prior.AlignedSpin(
                     a_prior = bilby.core.prior.Uniform(minimum = 0.,  maximum = max(map(abs, dict_in[par]))), 
                     z_prior = bilby.core.prior.Uniform(minimum = -1., maximum = 1.),
-                    minimum = dict_in[par][0], maximum = dict_in[par][1]
+                    minimum = dict_in[par][0], maximum = dict_in[par][1],
+                    latex_label=latex_labels[par],
                 )
             elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
             else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
@@ -64,10 +85,11 @@ def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
     dict_out['mass_2'] = bilby.core.prior.ConditionalUniform(
         condition_func = bilby.gw.prior.secondary_mass_condition_function,
         minimum        = dict_in['mass_2'][0], 
-        maximum        = dict_in['mass_2'][1]
+        maximum        = dict_in['mass_2'][1],
+        latex_label=latex_labels['mass_2'],
     )
     
-    dict_out['geocent_time'] = bilby.core.prior.Uniform(trigtime - 0.1, trigtime + 0.1)
+    dict_out['geocent_time'] = bilby.core.prior.Uniform(trigtime - 0.1, trigtime + 0.1, latex_label=latex_labels['geocent_time'])
 
     print('\n * Using the following priors.\n')
     for key in dict_out.keys():
@@ -134,7 +156,8 @@ def main():
         observing_run       = input_pars['observing-run'], 
         reference_frequency = input_pars['reference-frequency'], 
         sampling_frequency  = input_pars['sampling-frequency'], 
-        approximant         = input_pars['waveform']
+        approximant         = input_pars['waveform'],
+        precessing_apx      = input_pars['precession']
     )
     
     # Set the events and interferometers within Bilby.
@@ -152,20 +175,22 @@ def main():
 
     # Initialise the likelihood.
     likelihood = bilby.gw.GravitationalWaveTransient(
-        interferometers    = BilbyClass.ifos_list,
-        waveform_generator = BilbyClass.waveform_generator,
-        priors             = priors,
+        interferometers       = BilbyClass.ifos_list,
+        waveform_generator    = BilbyClass.waveform_generator,
+        priors                = priors,
+        phase_marginalization = True,
     )
 
     # Run the sampler.
     result = bilby.run_sampler(
         likelihood           = likelihood,
         priors               = priors,
+        outdir               = os.path.join(input_pars['output'], "sampler"),
         sampler              = input_pars['sampler'],
         nlive                = input_pars['nlive'],
-        outdir               = os.path.join(input_pars['output'], "sampler"),
         npool                = input_pars['npool'],
-        queue_size           = input_pars['queue-size'],
+        naccept              = input_pars['naccept'],
+        sample               = input_pars['sample'],
         injection_parameters = BilbyClass.projected_event_dict,
         conversion_function  = bilby.gw.conversion.generate_all_bbh_parameters,
         result_class         = bilby.gw.result.CBCResult,
