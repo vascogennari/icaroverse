@@ -7,7 +7,7 @@ import numpy as np
 # Read a population folder, and combine all the individual events PE into a single dict     #
 # ----------------------------------------------------------------------------------------- #
 
-rename = {
+pars_pipeline_names = {
     'luminosity_distance': 'dL',
     'mass_1': 'm1d',
     'mass_2': 'm2d',
@@ -15,6 +15,11 @@ rename = {
     'mass_1_source': 'm1s',
     'mass_2_source': 'm2s',
 }
+
+def rename(par):
+    if par in pars_pipeline_names: return pars_pipeline_names[par]
+    else:                          return par
+
 
 def main():
 
@@ -28,7 +33,7 @@ def main():
     event_dirname_list = os.listdir(pe_dirpath)
     N_events = len(event_dirname_list)
 
-    print(f"\n * Combining PE results of the {N_events} events from population directory {pop_dirname}")
+    print(f"\n * Combining PE results of the {N_events} events from population directory {pop_dirname}\n")
 
     combined_results = {}
     for i, event_dirname in tqdm(enumerate(sorted(event_dirname_list))):
@@ -39,14 +44,17 @@ def main():
 
         for par in event_posterior_samples_dict:
 
-            if rename[par] not in combined_results:
-                combined_results[rename[par]] = {i: np.array(event_posterior_samples_dict[par])}
+            if rename(par) not in combined_results:
+                combined_results[rename(par)] = {i: np.array(event_posterior_samples_dict[par])}
             else:
-                combined_results[rename[par]][i] = np.array(event_posterior_samples_dict[par])
+                combined_results[rename(par)][i] = np.array(event_posterior_samples_dict[par])
     
-    combined_filename = f"combined_posterior_{pop_dirname}"
-    with open(combined_filename, 'wb') as f:
+    combined_filename = f"combined_PE_samples_{pop_dirname}.pickle"
+    combined_filepath = os.path.join(opts.pop_dir, combined_filename)
+    with open(combined_filepath, 'wb') as f:
         pickle.dump(combined_results, f, protocol = pickle.HIGHEST_PROTOCOL)
+
+    print(f"\n * Finished ! \n")
 
 
 # Execute the main function.
