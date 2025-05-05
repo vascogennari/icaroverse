@@ -597,6 +597,10 @@ def main():
     tmp = LikelihoodPrior(input_pars, data, injections, wrapper)
     likelihood, prior = tmp.return_LikelihoodPrior()
 
+    # Plot weighted injections
+    try: icarogw_postprocessing.plot_weighted_injections(input_pars, injections=injections, rate=wrapper, data=data)
+    except: print("\n * Weighted injections plotting failed. Carry on...\n")
+
     # Control the effective number of injections on the injected model.
     check_effective_number_injections(input_pars, likelihood, data.n_ev)
 

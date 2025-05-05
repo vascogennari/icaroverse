@@ -68,6 +68,8 @@ def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
             if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], boundary='periodic', latex_label=latex_labels[par])
             elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
             else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+        
+        snr.clean_dict(dict_out, ['chi_1', 'chi_2'])
     
     else:
         
@@ -81,6 +83,8 @@ def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
                 )
             elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
             else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+        
+        snr.clean_dict(dict_out, ['a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl'])
 
     dict_out['mass_2'] = bilby.core.prior.ConditionalUniform(
         condition_func = bilby.gw.prior.secondary_mass_condition_function,
@@ -90,6 +94,8 @@ def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
     )
     
     dict_out['geocent_time'] = bilby.core.prior.Uniform(trigtime - 0.1, trigtime + 0.1, latex_label=latex_labels['geocent_time'])
+
+    snr.clean_dict(dict_out, ['chirp_mass', 'mass_ratio'])
 
     print('\n * Using the following priors.\n')
     for key in dict_out.keys():
@@ -165,7 +171,7 @@ def main():
     BilbyClass.set_ifos_and_inject_signal()
 
     # Initialise priors.
-    priors = bilby.core.prior.PriorDict()
+    priors = bilby.core.prior.BBHPriorDict()
     priors = initialise_prior(
         input_pars['priors'], 
         priors, 

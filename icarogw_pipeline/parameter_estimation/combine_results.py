@@ -36,7 +36,7 @@ def main():
     print(f"\n * Combining PE results of the {N_events} events from population directory {pop_dirname}\n")
 
     combined_results = {}
-    for i, event_dirname in tqdm(enumerate(sorted(event_dirname_list))):
+    for i, event_dirname in tqdm(enumerate(sorted(event_dirname_list)), desc="Looping over events", unit=" event", total=N_events):
 
         event_result_filepath = os.path.join(pe_dirpath, event_dirname, "sampler/label_result.json")
         with open(event_result_filepath, 'r') as f:
