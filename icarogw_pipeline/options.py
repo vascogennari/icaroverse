@@ -263,8 +263,10 @@ def default_priors():
 
         'a_johnson'     : [   0.  ,   3.  ],
         'b_johnson'     : [   0.1 ,   5.  ],
-        'loc_johnson'   : [   3.  ,   8.  ],
+        'loc_johnson'   : [   1.  ,  10.  ],
         'scale_johnson' : [   0.01,  10.  ],
+        'mmin_johnson'  : 3.,
+        'mmax_johnson'  : 9.,
 
         # Secondary mass distribution
         'beta'          : [ -20.  ,  20.  ],
