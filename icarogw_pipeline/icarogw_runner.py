@@ -148,7 +148,7 @@ class Wrappers:
 
     def ReferenceCosmology(self):
           
-        w = icarogw.cosmology.astropycosmology(10)
+        w = icarogw.cosmology.astropycosmology(20)
         w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = 67.7, Om0 = 0.308))
         return w
 

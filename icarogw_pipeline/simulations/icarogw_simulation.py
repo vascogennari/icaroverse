@@ -320,10 +320,14 @@ def get_distribution_samples(pars):
 
     # Rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
-    # Convert from rate to probability distribution.
-    tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) / (1+z_array)
-    zs, pdf_z = rejection_sampling_1D(z_array, tmp, pars['events-number'])
-    plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+    tmp = pars['wrappers']['rw'].rate.evaluate(z_array)
+    if not 'RedshiftProbability' in pars['model-rate']:
+        tmp *= pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) / (1+z_array) # Convert from rate to probability distribution.
+        zs, pdf_z = rejection_sampling_1D(z_array, tmp, pars['events-number'])
+        plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+    else:
+        zs, pdf_z = rejection_sampling_1D(z_array, tmp, pars['events-number'])
+        plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
@@ -579,7 +583,7 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
 
     return 0
 
-def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, rate_evolution = 0, q_samps = 0):
+def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, rate_evolution = 0, q_samps = 0, z_samps = 0):
 
     if redshift:
         N_z = 10
@@ -629,16 +633,27 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
 
         else:
             if not pars['use-icarogw-sim-inj']:
-                figname = os.path.join(pars['output'], 'plots', 'rate_evolution')
-                pdf = wrapper.rate.log_evaluate(x_array)
-                plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
-                plt.xlabel('$z$')
-                plt.ylabel('$R(z)/R0$')
-                plt.legend()
-                plt.tight_layout()
-                plt.savefig('{}.pdf'.format(figname), transparent = True)
-                plt.close()
-
+                if not 'RedshiftProbability' in pars['model-rate']:
+                    figname = os.path.join(pars['output'], 'plots', 'rate_evolution')
+                    pdf = wrapper.rate.log_evaluate(x_array)
+                    plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
+                    plt.xlabel('$z$')
+                    plt.ylabel('$R(z)/R0$')
+                    plt.legend()
+                    plt.tight_layout()
+                    plt.savefig('{}.pdf'.format(figname), transparent = True)
+                    plt.close()
+                else:
+                    figname = os.path.join(pars['output'], 'plots', 'redshift_distribution')
+                    pdf = wrapper.rate.evaluate(x_array)
+                    plt.hist(z_samps, density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+                    plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
+                    plt.xlabel('$z$')
+                    plt.ylabel('$p(z)$')
+                    plt.legend()
+                    plt.tight_layout()
+                    plt.savefig('{}.pdf'.format(figname), transparent = True)
+                    plt.close()
     return 0
 
 

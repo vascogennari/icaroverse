@@ -304,22 +304,22 @@ class DetectorNetwork():
             raise AssertionError(f"Unknown snr computation method: {snr_method}")
 
 
-def SNR_lisabeta(m1s, q, dL):
+def SNR_lisabeta(m1d, q, dL):
 
     SNR = []
     # Randomize the remaining parameters
     # FIXME: Check that these priors are consistent with the lisabeta PE
-    chi1   = np.random.uniform(-1., 1., len(m1s))
-    chi2   = np.random.uniform(-1., 1., len(m1s))
-    Deltat = np.random.uniform(2432.322951048043, 243232.29510480427, len(m1s))
-    inc    = np.random.uniform(-1., 1., len(m1s))
-    phi    = np.random.uniform(0., 2 * np.pi, len(m1s))
-    lambd  = np.random.uniform(0., 2 * np.pi, len(m1s))
-    beta   = np.random.uniform(0.,     np.pi, len(m1s))
-    psi    = np.random.uniform(0., 2 * np.pi, len(m1s))
+    chi1   = np.random.uniform(-1., 1., len(m1d))
+    chi2   = np.random.uniform(-1., 1., len(m1d))
+    Deltat = np.random.uniform(2432.322951048043, 243232.29510480427, len(m1d))
+    inc    = np.random.uniform(0.,     np.pi, len(m1d))
+    phi    = np.random.uniform(0., 2 * np.pi, len(m1d))
+    lambd  = np.random.uniform(0., 2 * np.pi, len(m1d))
+    beta   = np.random.uniform(0.,     np.pi, len(m1d))
+    psi    = np.random.uniform(0., 2 * np.pi, len(m1d))
 
     i = 0
-    for mi, qi, di in zip(m1s, q, dL):
+    for mi, qi, di in zip(m1d, q, dL):
         
         M = mi + mi / qi
 
