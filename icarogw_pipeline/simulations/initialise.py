@@ -1,107 +1,138 @@
 import ast
 
-
 def InitialiseOptions(Config):
 
     # Dictionary with the default options.
     input_pars = {
 
         # Input
-        'output'                      : 'icarogw_population',
-        'run-type'                    : 'population',
-        'screen-output'               : 0,
-        'postprocessing'              : 0,
+        'output'                        : 'icarogw_population',
+        'run-type'                      : 'population',
+        'screen-output'                 : False,
+        'postprocessing'                : False,
 
-        'events-number'               : 1000,
-        'injections-number'           : 1000,
-        'injections-number-bank'      : 100,
-        'selection-effects-cut'       : 'snr',
-        'SNR-cut'                     : 12.,
+        'events-number'                 : 1000,
+        'injections-number'             : 1000,
+        'injections-number-bank'        : 100,
+        'inverse-checkpoint-rate'       : 1,
+        'parallel'                      : False,
+        'n-processes'                   : 10,
+        'selection-effects-cut'         : 'snr',
+        'SNR-cut'                       : 12.,
+        'SNR-soft-cut'                  : -1.,
+        'estimate-events-number'        : False,
+        'R0'                            : 25.,
+        'observation-time'              : 1.,
 
-        'SNR-method'                  : 'full-waveform',
-        'frequency-cut'               : 15,
-        'flat-PSD'                    : 0,
+        'SNR-method'                    : 'bilby',
+        'observing-run'                 : 'O3',
+        'PSD-path'                      : '',
 
-        'snr-fw-detectors'            : ['H1', 'L1', 'V1'],
-        'snr-fw-observing-run'        : 'O3',
-        'snr-fw-sampling-rate'        : 1024.,
-        'snr-fw-delta-f'              : 1./128.,
-        'snr-fw-f-low'                : 16.,
-        'snr-fw-waveform'             : 'IMRPhenomXHM',
-        'snr-fw-method'               : 'mf_fast',
-        'snr-fw-precession'           : 0,
-        'snr-fw-PSD-path'             : '',
+        # SNR-options
+        'snr-bilby-waveform'            : 'IMRPhenomXHM',
+        'snr-bilby-precessing-wf'       : False,
+        'snr-bilby-reference-frequency' : 20.,
+        'snr-bilby-sampling-frequency'  : 2048.,
 
-        'snr-app-N-detectors'         : 2,
-        'snr-app-SNR-reference'       : 9.,
-        'snr-app-dL-reference'        : 1.5,
-        'snr-app-Mc-reference'        : 25.,
-        'snr-app-theta-path'          : 'Pw_three.dat',
+        'snr-pycbc-detectors'           : ['H1', 'L1', 'V1'],
+        'snr-pycbc-sampling-rate'       : 2048.,
+        'snr-pycbc-delta-f'             : 1./128.,
+        'snr-pycbc-f-low'               : 16.,
+        'snr-pycbc-waveform'            : 'IMRPhenomXHM',
+        'snr-pycbc-method'              : 'mf_fast',
+        'snr-pycbc-precession'          : False,
+
+        'snr-proxy-N-detectors'         : 2,
+        'snr-proxy-fgw-cut'             : 15.,
+        'snr-proxy-SNR-reference'       : 9.,
+        'snr-proxy-dL-reference'        : 1.5,
+        'snr-proxy-Mc-reference'        : 25.,
+        'snr-proxy-theta-path'          : 'Pw_three.dat',
         
-        'use-icarogw-sim-inj'         : 0,
-        'icarogw-sim-mass-model'      : 'PowerLawPeak',
-        'icarogw-sim-draw-dL'         : 'uniform-dL',
-        'icarogw-sim-z-max'           : 1.5,
-
-        'log10-PDF'                   : 0,
-        'inverse-mass-ratio'          : 1,
+        'use-icarogw-sim-inj'           : False,
+        'icarogw-sim-mass-model'        : 'PowerLawPeak',
+        'icarogw-sim-draw-dL'           : 'uniform-dL',
+        'icarogw-sim-z-max'             : 1.5,
 
         # Model
-        'model-primary'               : 'PowerLaw-Gaussian',                     
-        'model-secondary'             : 'MassRatio-Gaussian',
-        'model-rate'                  : 'PowerLaw',
+        'model-primary'                 : 'PowerLaw-Gaussian',                     
+        'model-secondary'               : 'MassRatio-Gaussian',
+        'model-rate'                    : 'PowerLaw',
+        'model-cosmology'               : 'FlatLambdaCDM',
+        'model-bkg-cosmo'               : 'FlatLambdaCDM',
 
-        'redshift-transition'         : 'linear',
-        'redshift-mixture'            : 1,
-        'low-smoothing'               : 0,
-        'single-mass'                 : 0,
-        'truths'                      : {},
+        'redshift-transition'           : 'linear',
+        'redshift-mixture'              : True,
+        'low-smoothing'                 : False,
+        'single-mass'                   : False,
+        'truths'                        : {},
+
+        'log10-PDF'                     : False,
+        'inverse-mass-ratio'            : False,
 
         # Plots
-        'N-points'                    : 100000,
-        'bounds-m1'                   : [0, 200],
-        'bounds-m2'                   : [0, 200],
-        'bounds-q'                    : [0.1, 1],
-        'bounds-dL'                   : [0, 10000],
-        'bounds-z'                    : [1e-6, 3.0],
+        'N-points'                      : 10000,
+        'bounds-m1'                     : [0, 200],
+        'bounds-m2'                     : [0, 200],
+        'bounds-q'                      : [0.1, 1],
+        'bounds-dL'                     : [0, 10000],
+        'bounds-z'                      : [1e-6, 3.0],
+        'plot-astrophysical'            : False,
     }
 
     # Read options from config file.
     for key in input_pars.keys():
 
         # Input
-        if ('output' in key) or ('run-type' in key) or ('selection-effects-cut' in key) or ('SNR-method' in key) or ('snr-fw-observing-run' in key) or ('snr-fw-waveform' in key) or ('snr-fw-method' in key) or ('snr-fw-PSD-path' in key) or ('snr-app-theta-path' in key) or ('icarogw-sim-mass-model' in key) or ('icarogw-sim-draw-dL' in key):
+        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if ('SNR-cut' in key) or ('frequency-cut' in key) or ('snr-fw-sampling-rate' in key) or ('snr-fw-delta-f' in key) or ('snr-fw-f-low' in key) or ('snr-app-SNR-reference' in key) or ('snr-app-dL-reference' in key) or ('snr-app-Mc-reference' in key) or ('icarogw-sim-z-max' in key):
+        if (key == 'SNR-cut') or (key == 'SNR-soft-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if ('events-number' in key) or ('injections-number' in key) or ('injections-number-bank' in key) or ('snr-app-N-detectors' in key):
+        if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'inverse-checkpoint-rate') or (key == 'n-processes'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if ('screen-output' in key) or ('postprocessing' in key) or ('flat-PSD' in key) or ('use-icarogw-sim-inj' in key) or ('snr-fw-precession' in key) or ('use-icarogw-sim-inj' in key) or ('log10-PDF' in key) or ('inverse-mass-ratio' in key):
+        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'estimate-events-number') or (key == 'parallel'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
-        if ('snr-fw-detectors' in key):
+
+        # SNR-options
+        if (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'): 
+            try: input_pars[key] = Config.get('snr-options', key)
+            except: pass
+        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'snr-proxy-fgw-cut') or (key == 'icarogw-sim-z-max'):
+            try: input_pars[key] = Config.getfloat('snr-options', key)
+            except: pass
+        if (key == 'snr-proxy-N-detectors'):
+            try: input_pars[key] = Config.getint('snr-options', key)
+            except: pass
+        if (key == 'snr-pycbc-detectors'):
             try: input_pars[key] = ast.literal_eval(Config.get('input', key))
+            except: pass
+        if (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession') or (key == 'snr-bilby-precessing-wf'):
+            try: input_pars[key] = Config.getboolean('snr-options', key)
             except: pass
 
         # Model
-        if ('model-primary' in key) or ('model-secondary' in key) or ('model-rate' in key) or ('redshift-transition' in key):
+        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if ('redshift-mixture' in key) or ('low-smoothing' in key) or ('single-mass' in key):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if ('truths' in key):
+        if (key == 'truths'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
         # Plots
-        if ('N-points' in key):
+        if (key == 'N-points'):
             try: input_pars[key] = Config.getint('plots', key)
             except: pass
-        if ('bounds-m1' in key) or ('bounds-m2' in key) or ('bounds-q' in key) or ('bounds-dL' in key) or ('bounds-z' in key):
+        if (key == 'plot-astrophysical'):
+            try: input_pars[key] = Config.getboolean('plots', key)
+            except: pass
+        if (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z'):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
     
@@ -119,8 +150,20 @@ def default_population():
 
     pop = {
         # Cosmology
-        'H0'            : 67.7,
-        'Om0'           : 0.308,
+        'H0'          : 67.7,
+        'Om0'         : 0.308,
+        'w0'          : -1.,
+        'wa'          : 0.,
+        'xi'          : 0.,
+        'eps0'        : 0.,
+        'Xi0'         : 1.,
+        'n'           : 1.,
+        'D'           : 4.,
+        'Rc'          : 1., # Mpc: same units as dL 
+        'cM'          : 0.,
+        'alphalog_1'  : 0.,
+        'alphalog_2'  : 0.,
+        'alphalog_3'  : 0.,
 
         # Primary mass distribution
         'delta_m'       : 5.,
@@ -236,36 +279,91 @@ def default_population():
     return pop
 
 
-# FIXME: Add the helper.
 usage = """
 
-\nWelcome to the ICAROGW runner helper!\n
+\nWelcome to the ICAROGW simulation pipeline helper!\n
 
     # ----- #
     # input #
     # ----- #
 
-        output                      Directory from which input samples are read. The path is relative to the 'samples' namib directory. Default: ''
-        
-        injections-number           Flag to read the evidence from the samples. Default: 0
-        snr-cut                     Flag to plot the prior. Option currently implemented only in corner plot and not fully implemented. Default: 0
-        selection-effects-cut       Flag to read the evidence from the samples. Default: 0
+        output                        [str  ]  Path where the output is saved. Default: 'icarogw_population'.
+        run-type                      [str  ]  Type of simulation to run. Options: 'population', 'injections'. Default: 'population'.
+        screen-output                 [bool ]  Flag to deviate the standard output to screen. Default: '0'.
+        postprocessing                [bool ]  Flag to only postprocess an existing simulation. Default: '0'.
 
-        O3-cosmology                List of modes for which the QNMs are computed. This option is used only when QNMs are computed from {Mf, af}. Default: [(2,2)]
-        simulation                  Flag to convert the damping time in [ms] and scale amplitudes as [1e-21]. The option is used to compare samples from Damped Sinusoids with other models. Default: 0
+        events-number                 [int  ]  Number of generated events to draw from the astrophysical popoulation. Option used if the run-type is 'population'. Default: 1000.
+        estimate-events-number        [bool ]  Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.
+        R0                            [float]  Astrophysical rate of events today [Gpc^(-3)yr^(-1)]. Used to compute the number of generated events if 'estimate-events-number' is active. Option used if the run-type is 'population'. Default: 25.
+        observation-time              [float]  Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Is overwritten by official IGWN observing-run duration if a negative value is given. Option used if the run-type is 'population'. Default: 1.
+
+        injections-number             [int  ]  Number of detected injections to draw from the popoulation. Option used if the run-type is 'injections'. Default: 1000.
+        injections-number-bank        [int  ]  Number of injections to draw from the popoulation until 'injections-number' is obtained. Option used if the run-type is 'injections'. Default: 100.
+        inverse-checkpoint-rate       [int  ]  Injections checkpoint save inverse rate. In units of number of injections batches (see 'injections-number-bank' for number of injections per batch). Option used if the run-type is 'injections'. Default: 1.
+        parallel                      [bool ]  Flag to parallelize the generation of injections, launching multiple batches in parallel processes (see 'n-processes' to set the maximum number of parallel processes). Default: '0'.
+        n-processes                   [int  ]  Maximum number of parallel processes to generate injections. Please make sure that this matches the number of available cores on your machine. Default: 10
+
+        selection-effects-cut         [str  ]  Method to evaluate events detectability. Options: 'snr'. Default: 'snr'.
+        SNR-cut                       [float]  SNR threshold to label an event as detectable. Default: 12.
+        SNR-soft-cut                  [float]  SNR threshold to label an event as worth saving (should in principle be less than SNR-cut). Option used for injections generation only (NB: all the events are kept in case of a population generation). Default: -1. (i.e. keeps everything)
+        SNR-method                    [str  ]  Method to compute the SNR. Options: 'bilby', 'pycbc', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
+        observing-run                 [str  ]  IGWN observing run. Further defines the detectors sensitivity for SNR computation (with PyCBC and Bilby) and PE (with Bilby), as well as observation-time (if a negative value is given). Options: 'O3', 'O4', 'O5'. Default: 'O3'.
+        PSD-path                      [str  ]  Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'pycbc'. Default: ''.
+
+    # ----------- #
+    # snr-options #
+    # ----------- #
+
+        snr-bilby-waveform            [str  ]  Waveform model used to compute the SNR with Bilby. Default: 'IMRPhenomXHM'.
+        snr-bilby-reference-frequency [float]  Reference frequency [Hz] used by Bilby to compute the duration of the signal injected in detectors (Bilby's time to merger is defined as the duration from the time the signal is at reference-frequency, to the time of the merger. See https://lscsoft.docs.ligo.org/bilby/api/bilby.gw.utils.calculate_time_to_merger.html#bilby.gw.utils.calculate_time_to_merger). Default: 20.
+        snr-bilby-sampling-frequency  [float]  Sampling rate [Hz] used to generate the waveform with Bilby. Default: 2048.
+
+        snr-pycbc-detectors           [list ]  List of detectors used to compute the SNR with PyCBC. Options: 'H1', 'L1', 'V1', 'K1'. Default: ['H1', 'L1', 'V1'].
+        snr-pycbc-sampling-rate       [float]  Sampling rate used to generate the waveform with PyCBC. Default: 2048.
+        snr-pycbc-delta-f             [float]  Frequency resolution used to generate the waveform with PyCBC. Default: 1/128.
+        snr-pycbc-f-low               [float]  Lower frequency cut-off used to generate the waveform with PyCBC. Default: 16.
+        snr-pycbc-waveform            [str  ]  Waveform model used to compute the SNR with PyCBC. Default: 'IMRPhenomXHM'.
+        snr-pycbc-method              [str  ]  Method used to compute the SNR with PyCBC. Options: 'opt' (optimal SNR), 'mf_fast' (matched-filter SNR with noise contribution estimated from a unit Gaussian). Default: 'mf_fast'.
+        snr-pycbc-precession          [bool ]  Flag to specify whether or not the waveform model includes precession (should match snr-pycbc-waveform). Default: 0.
+
+        snr-proxy-N-detectors         [int  ]  Number of detectors used to compute the SNR with the proxy method. Default: 2.
+        snr-proxy-fgw-cut             [float]  Condition on detection additional to the SNR cut. An event is detected if its estimated frequency at ISCO is higher than this value. Default: 15.
+        snr-proxy-SNR-reference       [float]  Reference SNR used to compute the approximate analytical SNR. Default: 9.
+        snr-proxy-dL-reference        [float]  Reference luminosity distance that should give an approximate SNR of 'snr-proxy-SNR-reference'. Default: 1.5.
+        snr-proxy-Mc-reference        [float]  Reference chirp mass that should give an approximate SNR of 'snr-proxy-SNR-reference'. Default: 25.
+        snr-proxy-theta-path          [str  ]  Path to the file with average on extrinsic parameters. Default: 'Pw_three.dat'.
+
+        use-icarogw-sim-inj           [bool ]  Flag to use the ICAROGW simulation script to generate the injections. Default: 0.
+        icarogw-sim-mass-model        [str  ]  Mass model used to generate the injections with the ICAROGW simulation script. The only mass models available with this method are: 'PowerLaw', 'PowerLawPeak', 'MultiPeak'. Default: 'PowerLawPeak'.
+        icarogw-sim-draw-dL           [str  ]  Method used to draw the luminosity distance samples. Options: 'uniform-dL' (uniform in luminosity distance), 'uniform-z' (uniform in redshift), 'uniform-volume' (uniform in comoving volume). Default: 'uniform-dL'.
+        icarogw-sim-z-max             [float]  Maximum redshift used to draw the samples. Default: 1.5.
 
     # ----- #
     # model #
     # ----- #
 
-        model-primary               Options: {'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear'}
-        model-secondary             Options: {'Mass2-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-PowerLaw'}
-        model-rate                  Options: {'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'PowerLaw'}
-        redshift-transition         Options: {'linear', 'sigmoid', 'sinusoid'}
+        model-primary                 [str  ]  Model distribution for the primary object. Options: 'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-Gaussian', 'DoublePowerlaw', 'PowerLaw-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftQuadratic', 'PowerLaw-GaussianRedshiftPowerLaw', 'PowerLaw-GaussianRedshiftSigmoid', 'PowerLawBroken-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear', 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear'. Default: 'PowerLaw-Gaussian'.
+        model-secondary               [str  ]  Model distribution for the secondary object. Options: 'Mass2-PowerLaw', 'MassRatio-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-Gamma'. Default: 'MassRatio-Gaussian'.
+        model-rate                    [str  ]  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
+        model-cosmology               [str  ]  Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
+        model-bkg-cosmo               [str  ]  Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
+        redshift-transition           [str  ]  Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
+        redshift-mixture              [bool ]  Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
+        low-smoothing                 [bool ]  Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
+        single-mass                   [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
+        truths                        [dict ]  Dictionary with the true values of the population parameters. Default: {}.
+        log10-PDF                     [bool ]  Flag to use distributions defined in log10 scale. Default: 0.
+        inverse-mass-ratio            [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
 
-        positive-peak               List of parameters bounds that are used in the plots. Default: []. Syntax: [[a, b], [c, d], ...]
-        low-smoothing               List of the selected parameters ordering. Default: []
-        priors                      List of the compared parameters ordering. Default: []
-        scale-free                  List of the compared parameters ordering. Default: []
+    # ----- #
+    # plots #
+    # ----- #
 
+        N-points                      [float]  Number of points used to generate the plots. Default: 10000.
+        bounds-m1                     [list ]  Bounds for the primary mass plots. Default: [0, 200].
+        bounds-m2                     [list ]  Bounds for the secondary mass plots. Default: [0, 200].
+        bounds-q                      [list ]  Bounds for the mass ratio plots. Default: [0.1, 1].
+        bounds-dL                     [list ]  Bounds for the luminosity distance plots. Default: [0, 10000].
+        bounds-z                      [list ]  Bounds for the redshift plots. Default: [1e-6, 3.0].
+        plot-astrophysical            [bool ]  Flag to plot the astrophysical generated population. If False, then only the detected events are shown in the plots (NB: this option is relevant for population generation, or injections when all the astrophysical events are saved). Default: False.
 """

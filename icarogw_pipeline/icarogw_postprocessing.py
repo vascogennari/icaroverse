@@ -1,7 +1,7 @@
 import icarogw, bilby
 import pandas as pd, numpy as np
 import matplotlib.pyplot as plt
-import tqdm, seaborn as sns, sklearn
+import tqdm, seaborn as sns, sklearn, os
 
 
 # from matplotlib import rcParams
@@ -332,8 +332,8 @@ class ReconstructDistributions:
 
         if not 'MassRatio-Gamma' in pars['model-secondary']: label = '$m_2\ [M_{\odot}]$'
         else:                                                label = '$log_{10}(q)$'
-        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', label, '$p(m_2)$', pars['model-secondary'])
         curves_CI = get_curves_percentiles(curves, pars)
+        plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', label, '$p(m_2)$', pars['model-secondary'])
 
         return curves_CI, plot_dict
 
@@ -640,6 +640,33 @@ class ReconstructDistributions:
 
         return curves, plot_dict
 
+def plot_weighted_injections(pars, injections, rate, data):
+    rate.update(**pars['true-values'])
+    injections.update_weights(rate)
+    inj_weights = np.exp(injections.log_weights)
+
+    plots_filepath = os.path.join(pars['output'], "plots_weighted_injections")
+    if not os.path.exists(plots_filepath): os.makedirs(plots_filepath)
+
+    for par in injections.injections_data.keys():
+        fig, ax = plt.subplots()
+        # print(injections.injections_data.keys())
+        min_val, max_val = min(injections.injections_data[par]), max(injections.injections_data[par])
+        min_bin, max_bin = min_val - 0.05*(max_val - min_val), max_val + 0.05*(max_val - min_val)
+        bins = np.linspace(min_bin, max_bin, 50)
+        ax.hist(injections.injections_data[par], bins=bins, weights=inj_weights, density=True, histtype='step', color='r', label='weighted injections')
+        if pars['true-data']:
+            pop_samps = np.concatenate([data.posterior_samples_dict[ev].posterior_data[par] for ev in data.posterior_samples_dict])
+            ax.hist(pop_samps, bins=bins,                      density=True, histtype='step', color='b', label='population')
+        else:
+            pop_samps = np.concatenate([np.random.choice(data.posterior_samples_dict[ev].posterior_data[par], pars['nparallel']) for ev in data.posterior_samples_dict])
+            pop_weights = np.full_like(pop_samps, 1/pars['nparallel'])
+            ax.hist(pop_samps, bins=bins, weights=pop_weights, density=True, histtype='step', color='b', label='population')
+        ax.set_yscale('log')
+        ax.set_xlabel(par)
+        ax.legend(loc='upper right')
+        fig.savefig(os.path.join(plots_filepath, f"{par}.pdf"))
+
 
 # ------------------------------- #
 # Class to generate all the plots #
@@ -665,7 +692,7 @@ class Plots:
 
         self.curves_dict = {}
 
-        # Downsample the df if required
+        # Downsample the df if required.
         if not pars['downsample-postprocessing'] == 1: self.df = downsampling(self.df, pars['downsample-postprocessing'])
 
     def PrimaryMass(self):

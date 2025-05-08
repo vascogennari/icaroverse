@@ -1,5 +1,6 @@
-import os, sys, configparser, shutil, time
+import os, sys, configparser, shutil, time, re
 from optparse import OptionParser
+from inspect import getmembers, isclass
 
 import pickle, h5py, pandas as pd, json
 import numpy as np
@@ -10,11 +11,18 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
-    if transition == None:
+    if cosmo_wrap:
+        # if bkg_cosmo_wrap_name is not None, it is assumed that wrap_name refers to a modified gravity cosmology wrapper
+        if bkg_cosmo_wrap_name is not None:
+            bkg_wrap = get_wrapper(bkg_cosmo_wrap_name, cosmo_wrap=True)
+            return wrap(bkg_wrap)
+        else:
+            return wrap(zmax=20)
+    elif transition == None:
         if order == None:
             if not input_wrapper == None:
                 return wrap(input_wrapper)
@@ -23,7 +31,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             else:
                 return wrap()
         else:
-            # GaussianRedshift-order-x model.
+            # GaussianRedshift-order-X model.
             return wrap(order = order)
     else:
         if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftQuadratic' or wrap_name == 'PowerLaw_GaussianRedshiftPowerLaw' or wrap_name == 'PowerLaw_GaussianRedshiftSigmoid' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear':
@@ -54,15 +62,24 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
         tmp_str  = 'maximum likelihood'
 
     if not tmp_dict == None:
+        # Set rate model parameters at true values 
         likelihood.parameters = {key: tmp_dict[key] for key in likelihood.rate_model.population_parameters}
+        # First likelihood evaluation at true values
         single_likelihood_eval()
         if not pars['loglike-var'] == 0:
+            # Check effective number of injections.
             N_eff_inj = likelihood.injections.effective_injections_number()
             stability = N_eff_inj / (4 * n_events)
-            N_eff_PE  = np.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
             print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, tmp_str))
-            print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
             if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
+            # Check effective numer of posterior samples.
+            try:
+                N_eff_PE  = np.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
+                print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
+            except AttributeError as err:
+                # The first likelihood evaluation at true population values gives 0 because the effective number of injections is below threshold.
+                # Consequently the initialisation of posterior samples weights is skipped.
+                raise AttributeError(err, "* The effective number of injections for the true population values is below threshold.")
         else:
              loglike_var = likelihood.injections.likelihood_variance_thr()
              print('\n\tThe variance on the log-likelihood for the {1} model is {0:.1f}.'.format(loglike_var, tmp_str))
@@ -77,73 +94,132 @@ class Wrappers:
 
     def PrimaryMass(self, pars):
 
-        # Non-evolving models.
-        if not 'Redshift' in pars['model-primary']:
-            if   pars['model-primary'] == 'PowerLaw':                   w = get_wrapper('massprior_PowerLaw')
-            elif pars['model-primary'] == 'PowerLaw-Gaussian':          w = get_wrapper('massprior_PowerLawPeak')
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw':          w = get_wrapper('PowerLaw_PowerLaw',          smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw': w = get_wrapper('PowerLaw_PowerLaw_PowerLaw', smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian': w = get_wrapper('PowerLaw_PowerLaw_Gaussian', smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'DoublePowerlaw':             w = get_wrapper('DoublePowerlaw')
-            elif pars['model-primary'] == 'Johnson':                    w = get_wrapper('Johnson')
-            else:
-                raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
-            if not ( (pars['single-mass'] and 'Mass2' in pars['model-secondary']) or (pars['model-primary'] == 'PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw') or (pars['model-primary'] == 'PowerLaw-PowerLaw-Gaussian') ):
-                if pars['low-smoothing']:                               w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
+        mp, ms = pars['model-primary'], pars['model-secondary']
+        single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
+        # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
+        models = {
+            'PowerLaw':                                                             {'wrap name': 'massprior_PowerLaw',                                                   'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-Gaussian':                                                    {'wrap name': 'massprior_PowerLawPeak',                                               'z evolution': False, 'smoothing': 'global'},
+            'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-PowerLaw':                                                    {'wrap name': 'PowerLaw_PowerLaw',                                                    'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-PowerLaw':                                           {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                           'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-Gaussian':                                           {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                           'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftLinear':                                      {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                      'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftQuadratic':                                   {'wrap name': 'PowerLaw_GaussianRedshiftQuadratic',                                   'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftPowerLaw':                                    {'wrap name': 'PowerLaw_GaussianRedshiftPowerLaw',                                    'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftSigmoid':                                     {'wrap name': 'PowerLaw_GaussianRedshiftSigmoid',                                     'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawBroken-GaussianRedshiftLinear':                                {'wrap name': 'PowerLawBroken_GaussianRedshiftLinear',                                'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               {'wrap name': 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               'z evolution': True,  'smoothing': 'component-wise'},
+            'GaussianRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
+            'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': True},
+            'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False},
+            'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False},                    
+        }
+        # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
+        available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
+        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
 
-        # Evolving models.
+        order = -1
+        search = re.search("GaussianRedshift-order-(?P<order>[0-9]+)", mp)
+        if search is not None: mp, order = 'GaussianRedshift-order-X', int(search.group('order'))
+
+        if mp in icarogw_models:
+            # Non-evolving models.
+            if   (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'global': 
+                w = get_wrapper(models[mp]['wrap name'])
+                if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
+            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
+                w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing)
+            # Evolving models.
+            elif (    models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
+                w = get_wrapper(models[mp]['wrap name'],                        order = order,                                                 )
+            elif (    models[mp]['z evolution']):
+                w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
+        # Unknown model
         else:
-            if   pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear':                                      w = get_wrapper('PowerLaw_GaussianRedshiftLinear',                                      transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftQuadratic':                                   w = get_wrapper('PowerLaw_GaussianRedshiftQuadratic',                                   transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftPowerLaw':                                    w = get_wrapper('PowerLaw_GaussianRedshiftPowerLaw',                                    transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftSigmoid':                                     w = get_wrapper('PowerLaw_GaussianRedshiftSigmoid',                                     transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLawBroken-GaussianRedshiftLinear':                                w = get_wrapper('PowerLawBroken_GaussianRedshiftLinear',                                transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLawRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('PowerLawRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               w = get_wrapper('PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear':                        w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear',                        transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'])
-            elif pars['model-primary'] == 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
-            elif pars['model-primary'] == 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': w = get_wrapper('PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', transition = pars['redshift-transition'], z_mixture = pars['redshift-mixture'], smoothing = pars['low-smoothing'])
+            raise ValueError("Unknown model for the Primary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(mp, "\n\t".join(icarogw_models)))
 
-            elif 'GaussianRedshift-order-' in pars['model-primary']:
-                order = int(pars['model-primary'].split('GaussianRedshift-order-')[-1])
-                w = get_wrapper('GaussianEvolving', order = order)
-            else:
-                raise ValueError('Unknown model for the primary mass {}. Please consult the available models.'.format(pars['model-primary']))
         return w
 
     def SecondaryMass(self, pars, m1w = None):
 
-        if not pars['single-mass']:
-            if   pars['model-secondary'] == 'Mass2-PowerLaw':          
-                if pars['low-smoothing']:                         w = get_wrapper('m1m2_conditioned_lowpass', input_wrapper = m1w)
-                else:                                             w = get_wrapper('m1m2_conditioned',         input_wrapper = m1w)
-            elif pars['model-secondary'] == 'MassRatio-Gaussian': w = get_wrapper('mass_ratio_prior_Gaussian')
-            elif pars['model-secondary'] == 'MassRatio-PowerLaw': w = get_wrapper('mass_ratio_prior_Powerlaw')
-            elif pars['model-secondary'] == 'MassRatio-Gamma':    w = get_wrapper('Gamma')
-            else:
-                raise ValueError('Unknown model for the secondary mass {}. Please consult the available models.'.format(pars['model-secondary']))
-        else:
+        ms = pars['model-secondary']
+        single_mass, smoothing = pars['single-mass'], pars['low-smoothing']
+        # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
+        models = {
+            'Mass2-PowerLaw':     {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
+            'MassRatio-Gaussian': {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
+            'MassRatio-PowerLaw': {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
+            'MassRatio-Gamma':    {'wrap name': 'Gamma',                     'var': 'q' }, 
+        }
+        # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
+        available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
+        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+
+        if single_mass:
             print('\t * Skipping secondary mass wrapper')
             w = None
+        elif ms in icarogw_models:
+            if   models[ms]['var'] == 'm2': w = get_wrapper(models[ms]['wrap name'] + '_lowpass'*smoothing, input_wrapper = m1w)
+            elif models[ms]['var'] == 'q':  w = get_wrapper(models[ms]['wrap name']                                            )
+        else:
+            raise ValueError("Unknown model for the Secondary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
         return w
 
     def RateEvolution(self, pars):
 
-        if   pars['model-rate'] == 'MadauDickinson':                   w = get_wrapper('rateevolution_Madau')
-        elif pars['model-rate'] == 'BetaDistribution':                 w = get_wrapper('rateevolution_beta')
-        elif pars['model-rate'] == 'BetaDistribution-Line':            w = get_wrapper('rateevolution_beta_line')
-        elif pars['model-rate'] == 'MadauDickinson-GammaDistribution': w = get_wrapper('rateevolution_Madau_gamma')
-        elif pars['model-rate'] == 'PowerLaw':                         w = get_wrapper('rateevolution_PowerLaw')
-        elif pars['model-rate'] == 'Gaussian':                         w = get_wrapper('rateevolution_Gaussian')
-        elif pars['model-rate'] == 'RedshiftProbability-Beta':         w = get_wrapper('rateevolution_beta_redshift_probability')
+        mr = pars['model-rate']
+        # This is subject to be completed in the future with the addition of other rate evolution models to icarogw
+        models = {
+            'MadauDickinson':                   {'wrap name': 'rateevolution_Madau'},
+            'BetaDistribution':                 {'wrap name': 'rateevolution_beta'},
+            'BetaDistribution-Line':            {'wrap name': 'rateevolution_beta_line'},
+            'MadauDickinson-GammaDistribution': {'wrap name': 'rateevolution_Madau_gamma'},
+            'PowerLaw':                         {'wrap name': 'rateevolution_PowerLaw'},
+            'Gaussian':                         {'wrap name': 'rateevolution_Gaussian'},
+            'RedshiftProbability-Beta':         {'wrap name': 'rateevolution_beta_redshift_probability'},
+        }
+        # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
+        available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
+        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+
+        if mr in icarogw_models:
+            w = get_wrapper(models[mr]['wrap name'])
         else:
-            raise ValueError('Unknown model for the rate evolution {}. Please consult the available models.'.format(pars['model-rate']))   
+            raise ValueError("Unknown model for the Rate Evolution: {}.\nPlease choose from the available models:\n\t{}".format(mr, "\n\t".join(icarogw_models)))
         return w
     
-    def Cosmology(self):
+    def Cosmology(self, pars):
 
-        w = icarogw.wrappers.FlatLambdaCDM_wrap(zmax = 20.)
+        mc, mb = pars['model-cosmology'], pars['model-bkg-cosmo']
+        # This is subject to be completed in the future with the addition of other cosmological models to icarogw
+        models = {
+            'FlatLambdaCDM': {'wrap name': 'FlatLambdaCDM_wrap', 'class': 'GR', }, 
+            'FlatwCDM':      {'wrap name': 'FlatwCDM_wrap',      'class': 'GR', }, 
+            'Flatw0waCDM':   {'wrap name': 'Flatw0waCDM_wrap',   'class': 'GR', }, 
+            'wIDS_linDE':    {'wrap name': 'wIDS_linDE_wrap',    'class': 'GR', }, 
+            'Xi0':           {'wrap name': 'Xi0_mod_wrap',       'class': 'MG', }, 
+            'eps0':          {'wrap name': 'eps0_mod_wrap',      'class': 'MG', }, 
+            'extraD':        {'wrap name': 'extraD_mod_wrap',    'class': 'MG', }, 
+            'cM':            {'wrap name': 'cM_mod_wrap',        'class': 'MG', }, 
+            'alphalog':      {'wrap name': 'alphalog_mod_wrap',  'class': 'MG', }, 
+        }
+        # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
+        available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
+        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+
+        if   (mc in icarogw_models and models[mc]['class'] == 'MG') and (mb in icarogw_models and models[mc]['class'] == 'GR'):
+            raise ValueError("Unknown GR model for the background cosmology: {}.\nPlease choose from the available models:\n\t{}".format(mb, "\n\t".join([m for m in icarogw_models if models[m]['class'] == 'GR'])))
+        elif (mc in icarogw_models and models[mc]['class'] == 'MG'):
+            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=models[mb]['wrap name'])
+        elif (mc in icarogw_models and models[mc]['class'] == 'GR'):
+            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=None)
+        else:
+            raise ValueError("Unknown model for the Cosmology: {}.\nPlease choose from the available models:\n\t{}".format(mc, "\n\t".join(icarogw_models)))
         return w
 
     def ReferenceCosmology(self):
@@ -157,7 +233,7 @@ class Wrappers:
         self.Wrapper_PrimaryMass   = self.PrimaryMass(self.pars)
         self.Wrapper_SecondaryMass = self.SecondaryMass(self.pars, self.Wrapper_PrimaryMass)
         self.Wrapper_RateEvolution = self.RateEvolution(self.pars)
-        self.Wrapper_Cosmology     = self.Cosmology()
+        self.Wrapper_Cosmology     = self.Cosmology(self.pars)
         self.Wrapper_RefCosmology  = self.ReferenceCosmology()
 
         return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
@@ -349,10 +425,17 @@ class Data:
 
             samps_dict = {}
             for i in range(len(data_evs['m1d'])):
-                pos_dict = {
-                    'mass_1':              np.array([data_evs['m1d'][i]]),
-                    'mass_2':              np.array([data_evs['m2d'][i]]),
-                    'luminosity_distance': np.array([data_evs['dL'][i]])}
+
+                if pars['true-data']:
+                    pos_dict = {
+                        'mass_1':              np.array([data_evs['m1d'][i]]),
+                        'mass_2':              np.array([data_evs['m2d'][i]]),
+                        'luminosity_distance': np.array([data_evs['dL' ][i]])}
+                else:
+                    pos_dict = {
+                        'mass_1':              np.array(data_evs['m1d'][i]),
+                        'mass_2':              np.array(data_evs['m2d'][i]),
+                        'luminosity_distance': np.array(data_evs['dL' ][i])}
 
                 # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
                 prior = np.full(len(pos_dict['mass_1']), 1.)
@@ -363,11 +446,13 @@ class Data:
 
                 # Account for PE prior.
                 if not pars['true-data']:
+
                     # Luminosity distance. If the prior is uniform in dL, we leave it flat.
-                    if pars['PE-prior-distance'] == 'dL3': prior *= data_evs['dL'][i]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
+                    if pars['PE-prior-distance'] == 'dL3': 
+                        prior *= data_evs['dL'][i]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
 
                     if not pars['single-mass']:
-                        chirp_mass = (pos_dict['mass_1']*pos_dict['mass_2'])**(3/5) / (pos_dict['mass_1']+pos_dict['mass_2'])**(1/5)
+                        chirp_mass = (pos_dict['mass_1'] * pos_dict['mass_2'])**(3./5.) / (pos_dict['mass_1'] + pos_dict['mass_2'])**(1./5.)
                         # Case of using component masses. If the prior is uniform in (m1,m2), we leave it flat.
                         if not 'MassRatio' in pars['model-secondary']:
                             if   pars['PE-prior-masses'] == 'Mc-q':
@@ -383,6 +468,8 @@ class Data:
                                 elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+
+            
         else:
             raise ValueError('Unknown option to process single events data.')
         
@@ -451,7 +538,8 @@ def main():
     # ------------------------------------------------ #
 
     parser = OptionParser(options.usage)
-    parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
+    parser.add_option(      '--config-file', type='string', metavar = 'config_file', default = None)
+    parser.add_option('-n', '--n-processes', type='int',    metavar = 'n_processes', default = -1, help="Set the number of processes for parallelized injections generation from command line, if this should match some external structure (e.g. number of CPUs allocated to the simulation on a computing cluster job.)")
     (opts, _) = parser.parse_args()
 
     config_file = opts.config_file
@@ -469,10 +557,17 @@ def main():
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
     # Copy config file to output.
-    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    try:    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    except: pass # Config file already copied.
+
+    # Set the number of parallel processes according to command line if provided to match hardware structure
+    if opts.n_processes > 0:
+        print(f"\n * Number of processes constrained by command-line option: n_processes = {opts.n_processes} \n")
+        input_pars['npool'] = opts.n_processes
 
     # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
+        print("\n * screen-output is False -> I will deviate stdout and stderr to the result folder.\n")
         sys.stdout = open(os.path.join(input_pars['output'], 'stdout_icarogw.txt'), 'w')
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
@@ -505,6 +600,10 @@ def main():
     tmp = LikelihoodPrior(input_pars, data, injections, wrapper)
     likelihood, prior = tmp.return_LikelihoodPrior()
 
+    # Plot weighted injections
+    try: icarogw_postprocessing.plot_weighted_injections(input_pars, injections=injections, rate=wrapper, data=data)
+    except: print("\n * Weighted injections plotting failed. Carry on...\n")
+
     # Control the effective number of injections on the injected model.
     check_effective_number_injections(input_pars, likelihood, data.n_ev)
 
@@ -512,11 +611,14 @@ def main():
     # Start the sampler and run hierarchical analysis #
     # ----------------------------------------------- #
 
+    # Extracting the input parameters specific to each class of sampler 
     print('\n * Running hierarchical analysis with this settings.\n')
     if   input_pars['sampler'] == 'dynesty' or input_pars['sampler'] == 'nessai':
-        print_dictionary({key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'queue-size', 'print-method', 'sample']})
+        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'print-method', 'sample', 'npool']}
+        print_dictionary(sampler_pars)
     elif input_pars['sampler'] == 'ptemcee':
-        print_dictionary({key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']})
+        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']}
+        print_dictionary(sampler_pars)
     else:
         raise ValueError('Sampler not available.')
 
@@ -524,17 +626,8 @@ def main():
     print('\n * Starting the sampler.\n')
     hierarchical = bilby.run_sampler(
             likelihood, prior,
-            sampler      = input_pars['sampler'],
-            nlive        = input_pars['nlive'],
-            naccept      = input_pars['naccept'],
-            queue_size   = input_pars['queue-size'],
-            nwalkers     = input_pars['nwalkers'],
-            nsteps       = input_pars['nsteps'],
-            ntemps       = input_pars['ntemps'],
-            print_method = input_pars['print-method'],
-            threads      = input_pars['threads'],
-            sample       = input_pars['sample'],
             outdir       = os.path.join(input_pars['output'], 'sampler'),
+            **sampler_pars,
     )
     if input_pars['true-values'] == {}: hierarchical.plot_corner()
     else:                               hierarchical.plot_corner(truth = {key: input_pars['true-values'][key] for key in hierarchical.search_parameter_keys})
@@ -558,6 +651,8 @@ def main():
     maxL_index  = np.argmax(df['log_likelihood'])
     maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
     check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
+    print('\n * Maximum likelihood values.\n')
+    print_dictionary(maxL_values)
 
     # ----------------------------------- #
     # Plots production and postprocessing #
