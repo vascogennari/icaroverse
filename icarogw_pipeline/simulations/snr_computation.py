@@ -454,7 +454,7 @@ class BilbyDetectionPipeline():
 try:
     import lisabeta.lisa.lisa as lisa
 
-    def SNR_lisabeta(m1s, q, dL):
+    def SNR_lisabeta(m1d, q, dL):
 
         SNR = []
         # Randomize the remaining parameters
@@ -469,7 +469,7 @@ try:
         psi    = np.random.uniform(0., 2 * np.pi, len(m1d))
 
         i = 0
-        for mi, qi, di in zip(m1s, q, dL):
+        for mi, qi, di in zip(m1d, q, dL):
             
             M = mi + mi / qi
 

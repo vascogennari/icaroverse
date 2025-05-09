@@ -116,8 +116,8 @@ class Wrappers:
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': True},
-            'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False},
-            'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False},                    
+            'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'included'},
+            'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False, 'smoothing': 'included'},                    
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -134,6 +134,8 @@ class Wrappers:
                 if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
             elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
                 w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing)
+            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
+                w = get_wrapper(models[mp]['wrap name'])
             # Evolving models.
             elif (    models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
                 w = get_wrapper(models[mp]['wrap name'],                        order = order,                                                 )

@@ -630,7 +630,7 @@ def get_distribution_samples(pars):
         zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
     else:
-        zs, pdf_z = rejection_sampling_1D(z_array, tmp, pars['events-number'])
+        zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
 
     # Primary mass.
