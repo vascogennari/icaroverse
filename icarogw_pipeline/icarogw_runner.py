@@ -559,7 +559,7 @@ def main():
 
     # Set the number of parallel processes according to command line if provided to match hardware structure
     if opts.n_processes > 0:
-        print(f"\n * Number of processes constrained by command-line option: n_processes = {opts.n_processes} \n")
+        print(f"\n * Number of processes set via command-line option: n_processes = {opts.n_processes} \n")
         input_pars['npool'] = opts.n_processes
 
     # Deviate stdout and stderr to file.

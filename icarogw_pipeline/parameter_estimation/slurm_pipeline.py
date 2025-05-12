@@ -21,7 +21,7 @@ template = """#!/bin/sh
 
 module load conda
 conda activate {conda_env}
-{executable} {script} --config-file {config}
+{executable} {script} --config-file {config} -n $SLURM_CPUS_PER_TASK
 """
 
 def activate_slurm_submit(pars):

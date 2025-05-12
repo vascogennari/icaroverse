@@ -116,7 +116,8 @@ def main():
     # ------------------------------------------------ #
 
     parser = OptionParser(initialise.usage)
-    parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
+    parser.add_option(      '--config-file', type='string', metavar = 'config_file', default = None)
+    parser.add_option('-n', '--n-processes', type='int',    metavar = 'n_processes', default = -1, help="Set the number of processes for parallelized injections generation from command line, if this should match some external structure (e.g. number of CPUs allocated to the simulation on a computing cluster job.)")
     (opts, _) = parser.parse_args()
 
     config_file = opts.config_file
@@ -131,11 +132,15 @@ def main():
 
     # Set output directory.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
-    if not os.path.exists(os.path.join(input_pars['output'], 'plots')): os.makedirs(os.path.join(input_pars['output'], 'plots'))
 
     # Copy config file to output.
     try:    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
     except: pass # Config file already copied.
+
+    # Set the number of parallel processes according to command line if provided to match hardware structure
+    if opts.n_processes > 0:
+        print(f"\n * Number of processes set via command-line option: n_processes = {opts.n_processes} \n")
+        input_pars['npool'] = opts.n_processes
 
     # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
@@ -171,7 +176,7 @@ def main():
     BilbyClass.set_ifos_and_inject_signal()
 
     # Initialise priors.
-    priors = bilby.core.prior.BBHPriorDict()
+    priors = bilby.gw.prior.BBHPriorDict()
     priors = initialise_prior(
         input_pars['priors'], 
         priors, 
@@ -188,6 +193,7 @@ def main():
     )
 
     # Run the sampler.
+    print("\n * Starting the sampler...")
     result = bilby.run_sampler(
         likelihood           = likelihood,
         priors               = priors,
@@ -201,15 +207,20 @@ def main():
         conversion_function  = bilby.gw.conversion.generate_all_bbh_parameters,
         result_class         = bilby.gw.result.CBCResult,
     )
+    print("\t...finished sampling !\n")
 
     # Plot the inferred waveform superposed on the actual data.
+    print("\n * Plotting the waveforms in each detector...")
     result.plot_waveform_posterior(n_samples = 1000)
+    print("\t...done !\n")
 
     # Make a corner plot.
+    print("\n * Producing the corner plot...")
     result.plot_corner(
-        priors = True,
-        truths = {key: BilbyClass.projected_event_dict[key] for key in result.search_parameter_keys}
+        # priors = True,
+        truths = {key: BilbyClass.projected_event_dict[key] for key in result.search_parameter_keys},
     )
+    print("\t...done !\n")
 
 
 

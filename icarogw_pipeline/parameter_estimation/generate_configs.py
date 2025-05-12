@@ -45,7 +45,7 @@ def main():
     parser.add_option('-m', '--print-method', type='string', metavar = 'print_method', default = 'interval-60'    )
     # nested samplers options
     parser.add_option('-l', '--nlive',        type='int',    metavar = 'nlive',        default = 1000             )
-    parser.add_option(      '--npool',        type='int',    metavar = 'npool',        default = 10               )
+    parser.add_option('-n', '--npool',        type='int',    metavar = 'npool',        default = 10               )
     parser.add_option('-a', '--naccept',      type='int',    metavar = 'naccept',      default = 60               )
     parser.add_option(      '--sample',       type='string', metavar = 'sample',       default = 'acceptance-walk')
     # MCMC samplers options
