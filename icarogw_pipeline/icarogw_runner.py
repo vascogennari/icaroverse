@@ -267,7 +267,10 @@ class Rate():
                 self.w = icarogw.rates.CBC_rate_m1_given_redshift_q( cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
         else:
-            self.w = icarogw.rates.CBC_rate_m_given_redshift(        cw, m1w,      rw, scale_free = pars['scale-free'])
+            if not 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.CBC_rate_m_given_redshift(    cw, m1w,      rw, scale_free = pars['scale-free'])
+            else:
+                self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
