@@ -184,6 +184,7 @@ class Wrappers:
             'PowerLaw':                         {'wrap name': 'rateevolution_PowerLaw'},
             'Gaussian':                         {'wrap name': 'rateevolution_Gaussian'},
             'RedshiftProbability-Beta':         {'wrap name': 'rateevolution_beta_redshift_probability'},
+            'RedshiftProbability-PowerLaw':     {'wrap name': 'rateevolution_PowerLaw'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
