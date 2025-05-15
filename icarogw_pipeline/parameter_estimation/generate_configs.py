@@ -14,22 +14,24 @@ import initialise
 # ----------------------------------------------------------------------------------------- #
 
 config_template = """[input]
-output              = {output}
-PSD-path            = {psd_dir}
-screen-output       = {screen_output}
+output                = {output}
+PSD-path              = {psd_dir}
+screen-output         = {screen_output}
 
 [model]
-event-parameters    = {event_parameters}
-priors              = {priors}
-observing-run       = {observing_run}
-waveform            = {waveform}
-precession          = {precession}
-reference-frequency = {reference_frequency}
-sampling-frequency  = {sampling_frequency}
+event-parameters      = {event_parameters}
+priors                = {priors}
+priors-dict           = {priors_dict}
+observing-run         = {observing_run}
+waveform              = {waveform}
+precession            = {precession}
+reference-frequency   = {reference_frequency}
+sampling-frequency    = {sampling_frequency}
+phase-marginalization = {phase_marginalization}
 
 [sampler]
-sampler             = {sampler}
-print-method        = {print_method}
+sampler               = {sampler}
+print-method          = {print_method}
 {sampler_dependent_config}
 """
 
@@ -38,23 +40,26 @@ def main():
 
     # parser = OptionParser(options.usage)
     parser = OptionParser(usage=initialise.usage)
-    parser.add_option('-d', '--pop-dir',      type='string', metavar = 'pop_dir',      default = None             )
-    parser.add_option('-p', '--priors',       type='string', metavar = 'priors',       default = {}               )
+    parser.add_option('-d', '--pop-dir',           type='string', metavar = 'pop_dir',      default = None             )
+    # model options
+    parser.add_option('-p', '--priors',            type='string', metavar = 'priors',       default = {}               )
+    parser.add_option(      '--priors-dict',       type='string', metavar = 'priors_dict',  default = 'bilby'          )
+    parser.add_option(      '--phase', action="store_true", dest='phase_marginalization',   default = False, help="Flag to turn on phase marginalization in the PE corresponding to the generated config files.")
     # sampler
-    parser.add_option('-s', '--sampler',      type='string', metavar = 'sampler',      default = 'dynesty'        )
-    parser.add_option('-m', '--print-method', type='string', metavar = 'print_method', default = 'interval-60'    )
+    parser.add_option('-s', '--sampler',           type='string', metavar = 'sampler',      default = 'dynesty'        )
+    parser.add_option('-m', '--print-method',      type='string', metavar = 'print_method', default = 'interval-60'    )
     # nested samplers options
-    parser.add_option('-l', '--nlive',        type='int',    metavar = 'nlive',        default = 1000             )
-    parser.add_option('-n', '--npool',        type='int',    metavar = 'npool',        default = 10               )
-    parser.add_option('-a', '--naccept',      type='int',    metavar = 'naccept',      default = 60               )
-    parser.add_option(      '--sample',       type='string', metavar = 'sample',       default = 'acceptance-walk')
+    parser.add_option('-l', '--nlive',             type='int',    metavar = 'nlive',        default = 1000             )
+    parser.add_option('-n', '--npool',             type='int',    metavar = 'npool',        default = 10               )
+    parser.add_option('-a', '--naccept',           type='int',    metavar = 'naccept',      default = 60               )
+    parser.add_option(      '--sample',            type='string', metavar = 'sample',       default = 'acceptance-walk')
     # MCMC samplers options
-    parser.add_option('-q', '--queue-size',   type='int',    metavar = 'queue_size',   default = 1                )
-    parser.add_option('-w', '--nwalkers',     type='int',    metavar = 'nwalkers',     default = 64               )
-    parser.add_option(      '--nsteps',       type='int',    metavar = 'nsteps',       default = 1000             )
-    parser.add_option('-t', '--ntemps',       type='int',    metavar = 'ntemps',       default = 10               )
-    parser.add_option('-r', '--threads',      type='int',    metavar = 'threads',      default = 1                )
-    parser.add_option(      '--nparallel',    type='int',    metavar = 'nparallel',    default = 1                )
+    parser.add_option('-q', '--queue-size',        type='int',    metavar = 'queue_size',   default = 1                )
+    parser.add_option('-w', '--nwalkers',          type='int',    metavar = 'nwalkers',     default = 64               )
+    parser.add_option(      '--nsteps',            type='int',    metavar = 'nsteps',       default = 1000             )
+    parser.add_option('-t', '--ntemps',            type='int',    metavar = 'ntemps',       default = 10               )
+    parser.add_option('-r', '--threads',           type='int',    metavar = 'threads',      default = 1                )
+    parser.add_option(      '--nparallel',         type='int',    metavar = 'nparallel',    default = 1                )
     (opts, _) = parser.parse_args()
 
     samplers_types = {
@@ -110,21 +115,21 @@ def main():
         
         if   (opts.sampler in samplers_types) and (samplers_types[opts.sampler] == 'nested'):
             sampler_dependent_config = "\n".join([
-                f"{'nlive'     :<19} = {opts.nlive     }",
-                f"{'npool'     :<19} = {opts.npool     }",
-                f"{'naccept'   :<19} = {opts.naccept   }",
-                f"{'sample'    :<19} = {opts.sample    }",
+                f"{'nlive'     :<21} = {opts.nlive     }",
+                f"{'npool'     :<21} = {opts.npool     }",
+                f"{'naccept'   :<21} = {opts.naccept   }",
+                f"{'sample'    :<21} = {opts.sample    }",
             ])
         elif (opts.sampler in samplers_types) and (samplers_types[opts.sampler] == 'MCMC'):
             sampler_dependent_config = "\n".join([
-                f"{'sample'    :<19} = {opts.sample    }",
-                f"{'naccept'   :<19} = {opts.naccept   }",
-                f"{'queue-size':<19} = {opts.queue_size}",
-                f"{'nwalkers'  :<19} = {opts.nwalkers  }",
-                f"{'nsteps'    :<19} = {opts.nsteps    }",
-                f"{'ntemps'    :<19} = {opts.ntemps    }",
-                f"{'threads'   :<19} = {opts.threads   }",
-                f"{'nparallel' :<19} = {opts.nparallel }",
+                f"{'sample'    :<21} = {opts.sample    }",
+                f"{'naccept'   :<21} = {opts.naccept   }",
+                f"{'queue-size':<21} = {opts.queue_size}",
+                f"{'nwalkers'  :<21} = {opts.nwalkers  }",
+                f"{'nsteps'    :<21} = {opts.nsteps    }",
+                f"{'ntemps'    :<21} = {opts.ntemps    }",
+                f"{'threads'   :<21} = {opts.threads   }",
+                f"{'nparallel' :<21} = {opts.nparallel }",
             ])
         else:
             raise ValueError("Unknown sampler. Please choose from the available samplers\n\t{}".format("\n\t".join(samplers_types.keys())))
@@ -135,11 +140,13 @@ def main():
             screen_output            = False,
             event_parameters         = event_parameters,
             priors                   = opts.priors,
+            priors_dict              = opts.priors_dict,
             observing_run            = observing_run,
             waveform                 = waveform,
             precession               = precession,
             reference_frequency      = reference_frequency,
             sampling_frequency       = sampling_frequency,
+            phase_marginalization    = opts.phase_marginalization,
             sampler                  = opts.sampler,
             print_method             = opts.print_method,
             sampler_dependent_config = sampler_dependent_config,

@@ -30,30 +30,52 @@ latex_labels = {
 }
 
 
-def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
+def set_mass_constraint(params):
+    converted_params = params.copy()
+    converted_params['mass_constraint'] = params['mass_1'] - params['mass_2']
+    return converted_params
 
-    for par in ['mass_1', 'luminosity_distance']:
-        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], latex_label=latex_labels[par])
-        elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
-        else:  raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
 
-    for par in ['ra', 'psi', 'phase']:
+def initialise_prior(dict_in, dict_out, input_pars, trigtime=None, precession=False):
+
+    # Masses 
+    if   type(dict_in['mass_1']) == list:  dict_out['mass_1'] = bilby.core.prior.Uniform(dict_in['mass_1'][0], dict_in['mass_1'][1], latex_label=latex_labels['mass_1'])
+    elif type(dict_in['mass_1']) == float: dict_out['mass_1'] = dict_in['mass_1']
+    else:  raise ValueError(f"Unknown type for prior on mass_1: {dict_in['mass_1']}. Please provide either a 2-list for prior bounds, or a float to fix mass_1.")
+
+    if   input_pars['priors-dict'] == 'bilby':
+        dict_out['mass_2'] = bilby.core.prior.ConditionalUniform(
+            condition_func = bilby.gw.prior.secondary_mass_condition_function,
+            minimum        = dict_in['mass_2'][0], 
+            maximum        = dict_in['mass_2'][1],
+            latex_label=latex_labels['mass_2'],
+        )
+    elif input_pars['priors-dict'] == 'custom':
+        dict_out['mass_2'] = bilby.core.prior.Uniform(dict_in['mass_2'][0], dict_in['mass_2'][1], latex_label=latex_labels['mass_2'])
+        dict_out['mass_constraint'] = bilby.core.prior.Constraint(minimum = 0., maximum = 2 * (dict_in['mass_1'][1] + dict_in['mass_2'][1]))
+
+    # Luminosity distance
+    if   type(dict_in['luminosity_distance']) == list:  dict_out['luminosity_distance'] = bilby.core.prior.Uniform(dict_in['luminosity_distance'][0], dict_in['luminosity_distance'][1], latex_label=latex_labels['luminosity_distance'])
+    elif type(dict_in['luminosity_distance']) == float: dict_out['luminosity_distance'] = dict_in['luminosity_distance']
+    else:  raise ValueError(f"Unknown type for prior on luminosity_distance: {dict_in['luminosity_distance']}. Please provide either a 2-list for prior bounds, or a float to fix luminosity_distance.")
+
+    # Inclination angle
+    if   type(dict_in['theta_jn']) == list:  dict_out['theta_jn'] = bilby.core.prior.analytical.Sine(minimum = dict_in['theta_jn'][0], maximum = dict_in['theta_jn'][1], latex_label=latex_labels['theta_jn'])
+    elif type(dict_in['theta_jn']) == float: dict_out['theta_jn'] = dict_in['theta_jn']
+    else: raise ValueError(f"Unknown type for prior on theta_jn: {dict_in['theta_jn']}. Please provide either a 2-list for prior bounds, or a float to fix theta_jn.")
+
+    # Sky localization & phase & polarization
+    for par in ['psi', 'phase', 'ra']:
         if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], boundary='periodic', latex_label=latex_labels[par])
         elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
         else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
 
-    for par in ['dec']:
-        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Cosine(minimum = dict_in[par][0], maximum = dict_in[par][1], latex_label=latex_labels[par])
-        elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
-        else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
-        
-    for par in ['theta_jn']:
-        if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.analytical.Sine(minimum = dict_in[par][0], maximum = dict_in[par][1], latex_label=latex_labels[par])
-        elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
-        else: raise ValueError(f"Unknown type for prior on {par}: {dict_in[par]}. Please provide either a 2-list for prior bounds, or a float to fix {par}.")
+    if   type(dict_in['dec']) == list:  dict_out['dec'] = bilby.core.prior.analytical.Cosine(minimum = dict_in['dec'][0], maximum = dict_in['dec'][1], latex_label=latex_labels['dec'])
+    elif type(dict_in['dec']) == float: dict_out['dec'] = dict_in['dec']
+    else: raise ValueError(f"Unknown type for prior on dec: {dict_in['dec']}. Please provide either a 2-list for prior bounds, or a float to fix dec.")
 
+    # Spins
     if precession:
-
         for par in ['a_1', 'a_2']:
             if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1], latex_label=latex_labels[par])
             elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
@@ -72,7 +94,6 @@ def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
         snr.clean_dict(dict_out, ['chi_1', 'chi_2'])
     
     else:
-        
         for par in ['chi_1', 'chi_2']:
             if   type(dict_in[par]) == list:  
                 dict_out[par] = bilby.gw.prior.AlignedSpin(
@@ -86,15 +107,10 @@ def initialise_prior(dict_in, dict_out, trigtime=None, precession=False):
         
         snr.clean_dict(dict_out, ['a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl'])
 
-    dict_out['mass_2'] = bilby.core.prior.ConditionalUniform(
-        condition_func = bilby.gw.prior.secondary_mass_condition_function,
-        minimum        = dict_in['mass_2'][0], 
-        maximum        = dict_in['mass_2'][1],
-        latex_label=latex_labels['mass_2'],
-    )
-    
+    # Geocentric time
     dict_out['geocent_time'] = bilby.core.prior.Uniform(trigtime - 0.1, trigtime + 0.1, latex_label=latex_labels['geocent_time'])
 
+    # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
     snr.clean_dict(dict_out, ['chirp_mass', 'mass_ratio'])
 
     print('\n * Using the following priors.\n')
@@ -176,20 +192,32 @@ def main():
     BilbyClass.set_ifos_and_inject_signal()
 
     # Initialise priors.
-    priors = bilby.gw.prior.BBHPriorDict()
-    priors = initialise_prior(
-        input_pars['priors'], 
-        priors, 
-        trigtime = injection_parameters['geocent_time'], 
-        precession=input_pars['precession']
-    )
+    if   input_pars['priors-dict'] == 'bilby':
+        priors = bilby.gw.prior.BBHPriorDict()
+        priors = initialise_prior(
+            input_pars['priors'], 
+            priors, 
+            input_pars,
+            trigtime   = injection_parameters['geocent_time'], 
+            precession = input_pars['precession']
+        )
+    elif input_pars['priors-dict'] == 'custom':
+        priors_tmp = {}
+        priors_tmp = initialise_prior(
+            input_pars['priors'], 
+            priors_tmp, 
+            input_pars,
+            trigtime   = injection_parameters['geocent_time'], 
+            precession = input_pars['precession']
+        )
+        priors = bilby.core.prior.PriorDict(priors_tmp, conversion_function=set_mass_constraint)
 
     # Initialise the likelihood.
     likelihood = bilby.gw.GravitationalWaveTransient(
         interferometers       = BilbyClass.ifos_list,
         waveform_generator    = BilbyClass.waveform_generator,
         priors                = priors,
-        phase_marginalization = True,
+        phase_marginalization = input_pars['phase-marginalization'],
     )
 
     # Run the sampler.

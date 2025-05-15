@@ -30,7 +30,7 @@ def main():
     pop_dirname = os.path.basename(opts.pop_dir)
 
     pe_dirpath = os.path.join(opts.pop_dir, "parameter_estimation")
-    event_dirname_list = os.listdir(pe_dirpath)
+    event_dirname_list = [event_dirname for event_dirname in os.listdir(pe_dirpath) if 'event' in event_dirname]
     N_events = len(event_dirname_list)
 
     print(f"\n * Combining PE results of the {N_events} events from population directory {pop_dirname}\n")
