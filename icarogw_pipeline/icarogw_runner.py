@@ -114,6 +114,7 @@ class Wrappers:
             'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': False, 'smoothing': 'component-wise'},
             'Uniform':                                                              {'wrap name': 'Uniform',                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'included'},
+            'DoublePowerlawRedshift':                                               {'wrap name': 'DoublePowerlawRedshift',                                               'z evolution': True,  'smoothing': 'included'},
             'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False, 'smoothing': 'included'},                    
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
