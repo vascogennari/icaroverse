@@ -111,7 +111,8 @@ class Wrappers:
             'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
-            'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': True},
+            'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': False, 'smoothing': 'component-wise'},
+            'Uniform':                                                              {'wrap name': 'Uniform',                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'included'},
             'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False, 'smoothing': 'included'},                    
         }
@@ -223,8 +224,8 @@ class Wrappers:
 
     def ReferenceCosmology(self):
           
-        w = icarogw.cosmology.astropycosmology(20)
-        w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = 67.7, Om0 = 0.308))
+        w = icarogw.cosmology.astropycosmology(self.pars['ref-cosmology']['z-max'])
+        w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = self.pars['ref-cosmology']['H0'], Om0 = self.pars['ref-cosmology']['Om0']))
         return w
 
     def return_Wrappers(self):

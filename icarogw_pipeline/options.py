@@ -38,6 +38,8 @@ def InitialiseOptions(Config):
         'scale-free'                  : False,
         'single-mass'                 : False,
 
+        'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308, 'z-max': 10.},
+
         # Sampler
         'sampler'                     : 'dynesty',
         'neffPE'                      : 10,
@@ -107,7 +109,7 @@ def InitialiseOptions(Config):
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if (key == 'priors'):
+        if (key == 'priors') or (key == 'ref-cosmology'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
