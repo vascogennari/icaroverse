@@ -69,6 +69,7 @@ def InitialiseOptions(Config):
 
         'log10-PDF'                     : False,
         'inverse-mass-ratio'            : False,
+        'ref-cosmology'                 : {'H0': 67.7, 'Om0': 0.308, 'z-max': 10.},
 
         # Plots
         'N-points'                      : 10000,
@@ -121,7 +122,7 @@ def InitialiseOptions(Config):
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if (key == 'truths'):
+        if (key == 'truths') or (key == 'ref-cosmology'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
