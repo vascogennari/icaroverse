@@ -269,6 +269,8 @@ def default_population():
         'kappa'         : 0.,
         'zp'            : 3.,
         'R0'            : 20.,
+        'z_min'         : 0.,
+        'z_max'         : 1.,
 
         # LISA only
         'm_b'           : 6.,

@@ -296,6 +296,9 @@ def default_priors():
         'b'             : [   1.  ,  30.  ],
         'loc'           : [   0.  ,   1.  ],
         'scale'         : [   1.  ,  50.  ],
+
+        'z_min'         : [   0.  ,   0.5 ],
+        'z_max'         : [   0.5 ,   1.  ],
     }
 
     return prior
