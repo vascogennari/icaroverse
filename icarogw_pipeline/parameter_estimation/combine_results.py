@@ -38,16 +38,20 @@ def main():
     combined_results = {}
     for i, event_dirname in tqdm(enumerate(sorted(event_dirname_list)), desc="Looping over events", unit=" event", total=N_events):
 
-        event_result_filepath = os.path.join(pe_dirpath, event_dirname, "sampler/label_result.json")
-        with open(event_result_filepath, 'r') as f:
-            event_posterior_samples_dict = json.load(f)['posterior']['content']
+        try:
+            event_result_filepath = os.path.join(pe_dirpath, event_dirname, "sampler/label_result.json")
+            with open(event_result_filepath, 'r') as f:
+                event_posterior_samples_dict = json.load(f)['posterior']['content']
 
-        for par in event_posterior_samples_dict:
+            for par in event_posterior_samples_dict:
 
-            if rename(par) not in combined_results:
-                combined_results[rename(par)] = {i: np.array(event_posterior_samples_dict[par])}
-            else:
-                combined_results[rename(par)][i] = np.array(event_posterior_samples_dict[par])
+                if rename(par) not in combined_results:
+                    combined_results[rename(par)] = {i: np.array(event_posterior_samples_dict[par])}
+                else:
+                    combined_results[rename(par)][i] = np.array(event_posterior_samples_dict[par])
+        except FileNotFoundError:
+            print(f"{event_dirname} has no available result.")
+            continue
     
     combined_filename = f"combined_PE_samples_{pop_dirname}.pickle"
     combined_filepath = os.path.join(opts.pop_dir, combined_filename)

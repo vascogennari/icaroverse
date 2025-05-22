@@ -422,6 +422,7 @@ class Data:
 
             samps_dict = {}
             for i in range(len(data_evs['m1d'])):
+                idx = i
 
                 if pars['true-data']:
                     pos_dict = {
@@ -429,10 +430,12 @@ class Data:
                         'mass_2':              np.array([data_evs['m2d'][i]]),
                         'luminosity_distance': np.array([data_evs['dL' ][i]])}
                 else:
+                    idx = list(data_evs['m1d'].keys())[i]
+                    if idx in pars['remove-events']: continue
                     pos_dict = {
-                        'mass_1':              np.array(data_evs['m1d'][i]),
-                        'mass_2':              np.array(data_evs['m2d'][i]),
-                        'luminosity_distance': np.array(data_evs['dL' ][i])}
+                        'mass_1':              np.array(data_evs['m1d'][idx]),
+                        'mass_2':              np.array(data_evs['m2d'][idx]),
+                        'luminosity_distance': np.array(data_evs['dL' ][idx])}
 
                 # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
                 prior = np.full(len(pos_dict['mass_1']), 1.)
@@ -446,7 +449,7 @@ class Data:
 
                     # Luminosity distance. If the prior is uniform in dL, we leave it flat.
                     if pars['PE-prior-distance'] == 'dL3': 
-                        prior *= data_evs['dL'][i]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
+                        prior *= data_evs['dL'][idx]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
 
                     if not pars['single-mass']:
                         chirp_mass = (pos_dict['mass_1'] * pos_dict['mass_2'])**(3./5.) / (pos_dict['mass_1'] + pos_dict['mass_2'])**(1./5.)

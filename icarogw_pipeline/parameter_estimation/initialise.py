@@ -81,19 +81,16 @@ def InitialiseOptions(Config):
     input_pars['event-parameters-default'] = default_event_parameters()
     if not input_pars['event-parameters'] == {}:
         for key in input_pars['event-parameters']: input_pars['event-parameters-default'][key] = input_pars['event-parameters'][key]
-        input_pars['event-parameters'] = input_pars['event-parameters-default']
-    else:
-        input_pars['event-parameters'] = input_pars['event-parameters-default']
+    input_pars['event-parameters'] = input_pars['event-parameters-default']
+
+    del input_pars['event-parameters-default']
 
     # Initialise the PE priors.
     input_pars['priors-default'] = default_PE_priors(precession = input_pars['precession'])
     if not input_pars['priors'] == {}:
         for key in input_pars['priors']: input_pars['priors-default'][key] = input_pars['priors'][key]
-        input_pars['priors'][key] = input_pars['priors-default']
-    else:
-        input_pars['priors'] = input_pars['priors-default']
+    input_pars['priors'] = input_pars['priors-default']
 
-    del input_pars['event-parameters-default']
     del input_pars['priors-default']
 
     return input_pars
@@ -125,8 +122,9 @@ def default_event_parameters():
 def default_PE_priors(precession = False):
 
     dict = {
-        'mass_1'             : [5., 300.],
-        'mass_2'             : [5., 300.],
+        'mass_1'             : [1., 300.],
+        'mass_2'             : [1., 300.],
+        'mass_ratio'         : [0.05, 1.0],
         'luminosity_distance': [0.,1.6e4],
         'theta_jn'           : [0., np.pi],
         'psi'                : [0., 2*np.pi],

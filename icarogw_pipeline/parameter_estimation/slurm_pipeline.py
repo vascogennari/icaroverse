@@ -16,25 +16,28 @@ template = """#!/bin/sh
 #SBATCH --time={time}
 #SBATCH --account=virgo
 #SBATCH --licenses=sps
-#SBATCH --mail-user={user_mail}
-#SBATCH --mail-type=ALL
+{email_option}
 
 module load conda
 conda activate {conda_env}
 {executable} {script} --config-file {config} -n $SLURM_CPUS_PER_TASK
 """
 
+email_option_template = """
+#SBATCH --mail-user={user_mail}
+#SBATCH --mail-type=ALL
+"""
+
 def activate_slurm_submit(pars):
 
     sys.stderr.write('generating {}\n'.format(pars['submission_filepath']))
 
-    if not os.path.exists(pars['slurm_files_dir_path']): os.makedirs(pars['slurm_files_dir_path'])
-
-    submission_filepath = os.path.join(pars['slurm_files_dir_path'], f"submit_{pars['job_name']}.sh")
-
     if not os.path.exists(os.path.dirname(pars['slurm_files_dir_path'])): os.makedirs(os.path.dirname(pars['slurm_files_dir_path']))
+    if not os.path.exists(pars['slurm_files_dir_path']):                  os.makedirs(pars['slurm_files_dir_path'])
 
     with open(pars['submission_filepath'], 'w') as f:
+        if pars['user_mail'] is not '': email_option = email_option_template.format(user_mail=pars['user_mail'])
+        else: email_option = ''
         submission_command = template.format(
             name                = pars['job_name'],
             slurm_files_dir_path = pars['slurm_files_dir_path'],
@@ -42,12 +45,13 @@ def activate_slurm_submit(pars):
             cpus                = pars['slurm_cpus'],
             memory              = pars['slurm_memory'],
             time                = '{}-{}:{}:00'.format(pars['slurm_time']['days'], pars['slurm_time']['hours'], pars['slurm_time']['minutes']),
-            user_mail           = pars['user_mail'],
+            email_option        = email_option,
             conda_env           = pars['conda_env'],
             executable          = pars['slurm_python_path'],
             script              = pars['slurm_executable_file'],
-            config              = pars['config_filepath'])
-                                             
+            config              = pars['config_filepath']
+        )
+
         f.write(submission_command)
     
     sys.stderr.write('submitting {}\n\n'.format(pars['submission_filepath']))

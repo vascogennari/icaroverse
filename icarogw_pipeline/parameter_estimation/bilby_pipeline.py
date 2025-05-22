@@ -32,7 +32,7 @@ latex_labels = {
 
 def set_mass_constraint(params):
     converted_params = params.copy()
-    converted_params['mass_constraint'] = params['mass_1'] - params['mass_2']
+    converted_params['mass_ratio'] = params['mass_2'] / params['mass_1']
     return converted_params
 
 
@@ -50,9 +50,14 @@ def initialise_prior(dict_in, dict_out, input_pars, trigtime=None, precession=Fa
             maximum        = dict_in['mass_2'][1],
             latex_label=latex_labels['mass_2'],
         )
+        # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
+        snr.clean_dict(dict_out, ['chirp_mass', 'mass_ratio'])
+        
     elif input_pars['priors-dict'] == 'custom':
         dict_out['mass_2'] = bilby.core.prior.Uniform(dict_in['mass_2'][0], dict_in['mass_2'][1], latex_label=latex_labels['mass_2'])
-        dict_out['mass_constraint'] = bilby.core.prior.Constraint(minimum = 0., maximum = 2 * (dict_in['mass_1'][1] + dict_in['mass_2'][1]))
+        dict_out['mass_ratio'] = bilby.core.prior.Constraint(minimum = dict_in['mass_ratio'][0], maximum = dict_in['mass_ratio'][1])
+        # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
+        snr.clean_dict(dict_out, ['chirp_mass'])
 
     # Luminosity distance
     if   type(dict_in['luminosity_distance']) == list:  dict_out['luminosity_distance'] = bilby.core.prior.Uniform(dict_in['luminosity_distance'][0], dict_in['luminosity_distance'][1], latex_label=latex_labels['luminosity_distance'])
@@ -110,13 +115,13 @@ def initialise_prior(dict_in, dict_out, input_pars, trigtime=None, precession=Fa
     # Geocentric time
     dict_out['geocent_time'] = bilby.core.prior.Uniform(trigtime - 0.1, trigtime + 0.1, latex_label=latex_labels['geocent_time'])
 
-    # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
-    snr.clean_dict(dict_out, ['chirp_mass', 'mass_ratio'])
-
     print('\n * Using the following priors.\n')
     for key in dict_out.keys():
         max_len = len(max(dict_out.keys(), key = len))
         print('\t{}  {}'.format(key.ljust(max_len), dict_out[key]))
+    
+    if input_pars['priors-dict'] == 'custom':
+        dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function=set_mass_constraint)
 
     return dict_out
 
@@ -202,15 +207,14 @@ def main():
             precession = input_pars['precession']
         )
     elif input_pars['priors-dict'] == 'custom':
-        priors_tmp = {}
-        priors_tmp = initialise_prior(
+        priors = {}
+        priors = initialise_prior(
             input_pars['priors'], 
-            priors_tmp, 
+            priors, 
             input_pars,
             trigtime   = injection_parameters['geocent_time'], 
             precession = input_pars['precession']
         )
-        priors = bilby.core.prior.PriorDict(priors_tmp, conversion_function=set_mass_constraint)
 
     # Initialise the likelihood.
     likelihood = bilby.gw.GravitationalWaveTransient(
