@@ -36,7 +36,7 @@ def activate_slurm_submit(pars):
     if not os.path.exists(pars['slurm_files_dir_path']):                  os.makedirs(pars['slurm_files_dir_path'])
 
     with open(pars['submission_filepath'], 'w') as f:
-        if pars['user_mail'] is not '': email_option = email_option_template.format(user_mail=pars['user_mail'])
+        if pars['user_mail'] != '': email_option = email_option_template.format(user_mail=pars['user_mail'])
         else: email_option = ''
         submission_command = template.format(
             name                = pars['job_name'],
@@ -75,7 +75,7 @@ def main():
         if not os.path.exists(pars['population_PE_dir_path']):
             raise FileNotFoundError("No `parameter_estimation` directory found in the population directory. Please make sure the `population_directory` path is correct and/or the corresponding population has been processed with `generate_configs.py`")
 
-        events_dir_list = os.listdir(pars['population_PE_dir_path'])
+        events_dir_list = sorted([ev_dir for ev_dir in os.listdir(pars['population_PE_dir_path']) if 'event' in ev_dir])
 
         print('')
         for event_dir_name in events_dir_list:
@@ -118,7 +118,7 @@ def main():
 
 pars = {
     'conda_env'    : 'in2_env',
-    'user_mail'    : 'tom.bertheas@l2it.in2p3.fr',
+    'user_mail'    : '',
     'slurm_nodes'  : 1,
     'slurm_cpus'   : 10,
     'slurm_memory' : 5,
