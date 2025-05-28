@@ -92,7 +92,7 @@ def main():
         save_settings_pretty_json(input_pars['output'], input_pars)
         
         # Generate either a synthetic population or a set of injections for selection effects.
-        if   input_pars['run-type'] == 'population':                            samps_dict_astrophysical, samps_dict_observed = generate_population(input_pars)
+        if   input_pars['run-type'] == 'population':                            samps_dict_astrophysical, samps_dict_observed, strain_records = generate_population(input_pars)
         elif input_pars['run-type'] == 'injections' and input_pars['parallel']: samps_dict_astrophysical, samps_dict_observed = generate_injections_parallel(input_pars)
         elif input_pars['run-type'] == 'injections':                            samps_dict_astrophysical, samps_dict_observed = generate_injections(input_pars)
         else: raise ValueError('Invalid type of run. Please either select "population" or "injections".')
@@ -101,6 +101,9 @@ def main():
             pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
         with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
             pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        if input_pars['run-type'] == 'population':
+            with open(os.path.join(input_pars['output'], 'strain_records.pickle').format(input_pars['run-type']), 'wb') as handle:
+                pickle.dump(strain_records, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
     # Plots section.
     plot_population(input_pars, samps_dict_astrophysical, samps_dict_observed)
@@ -127,7 +130,7 @@ def generate_population(pars):
     m1s, m2s, zs, m1d, m2d, dL, _ = get_distribution_samples(pars)
 
     # Compute the SNR to select the detected events.
-    SNR, idx_detected, _, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+    SNR, idx_detected, _, additional_parameters, strain_records = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=True)
     clean_dict(additional_parameters, ['mass_1', 'mass_2', 'luminosity_distance', 'matched_filter_SNR'])
     
     # Save the number of detected events.
@@ -142,13 +145,14 @@ def generate_population(pars):
     m2d_det = m2d[idx_detected]
     dL_det  = dL[ idx_detected]
     SNR_det = SNR[idx_detected]
+    strain_records_det = strain_records[idx_detected]
     additional_parameters_det = {key: val[idx_detected] for key, val in additional_parameters.items()}
     
     # Save the population.
     samps_dict_observed      = {'m1s': m1s_det, 'm2s': m2s_det, 'z' : zs_det, 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det, 'snr': SNR_det, **additional_parameters_det}
     samps_dict_astrophysical = {'m1s': m1s,     'm2s': m2s,     'z' : zs,     'm1d': m1d,     'm2d': m2d,     'dL': dL,     'snr': SNR    , **additional_parameters    }
     
-    return samps_dict_astrophysical, samps_dict_observed
+    return samps_dict_astrophysical, samps_dict_observed, strain_records_det
 
 
 def generate_injections(pars):
@@ -212,7 +216,7 @@ def generate_injections(pars):
                 prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
 
             # Compute the SNR to select the detected events.
-            SNR, idx_detected, idx_softcut, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+            SNR, idx_detected, idx_softcut, additional_parameters, _ = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False)
             clean_dict(additional_parameters, ['mass_1', 'mass_2', 'luminosity_distance', 'matched_filter_SNR'])
             
             samps_dict_astrophysical['m1s'] = np.concatenate((samps_dict_astrophysical['m1s'], m1s[idx_softcut]))
@@ -419,7 +423,7 @@ def worker_generate_injection_parallel(lock, pid, inj_number, n_batches, samps_d
         prior = (pdf_m * pdf_dL) / ((1 + zs)**2)
 
     # Compute the SNR to select the detected events.
-    SNR, idx_detected, idx_softcut, additional_parameters = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL)
+    SNR, idx_detected, idx_softcut, additional_parameters, _ = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False)
     clean_dict(additional_parameters, ['mass_1', 'mass_2', 'luminosity_distance', 'matched_filter_SNR'])
     n_det = len(idx_detected)
 
@@ -753,7 +757,7 @@ def rejection_sampling_1D(x, PDF, N):
 #      SNR utils      #
 #######################
 
-def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
+def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
     '''
     Compute the SNR with various methods for the input events
 
@@ -788,6 +792,8 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
         detector frame secondary mass (used for bilby, pycbc, lisabeta methods)
     dL:  (m,) shape array-like
         luminosity distance (for bilby, pycbc, lisabeta methods)
+    save_strain:  bool
+        Flag to save the strain (noise) data for each of the events.
 
     Returns
     -------
@@ -802,6 +808,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     if   pars['run-type'] == 'population': N_events = pars['events-number'         ]
     elif pars['run-type'] == 'injections': N_events = pars['injections-number-bank']
     else: raise ValueError("Unknown run-type. Please choose between 'population' and 'injections'.")
+    strain_records = None
 
     # Use the full waveform to compute the SNR.
     if   pars['SNR-method'] == 'bilby':
@@ -811,6 +818,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
 
         SNR = []
         additional_parameters = []
+        if save_strain: strain_records = []
 
         bdp = snr_computation.BilbyDetectionPipeline(
             psd_dir             = pars['PSD-path'                     ],
@@ -825,15 +833,30 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
         elif pars['run-type'] == 'injections': iterator = zip(m1d, m2d, dL)
 
         for _m1, _m2, _dL in iterator:
-            bdp.set_event_dict({
-                'mass_1':              _m1,
-                'mass_2':              _m2,
-                'luminosity_distance': _dL,
-            })
-            try: bdp.set_ifos_and_inject_signal()
+            bdp.set_event_dict(
+                {
+                    'mass_1':              _m1,
+                    'mass_2':              _m2,
+                    'luminosity_distance': _dL,
+                },
+                set_duration_and_start_time=True
+            )
+            try: 
+                bdp.set_ifos_list()
+                bdp.set_waveform_generator()
+                bdp.set_strain_data_from_psd()
+                if save_strain:
+                    strain_records.append({
+                        'duration': bdp.duration,
+                        'start_time': bdp.start_time,
+                        'strain': [ifo.frequency_domain_strain for ifo in bdp.ifos_list],
+                    })
+                bdp.inject_signal()
+
             except RuntimeError as err: 
                 print(f"\n{bdp.event_dict}\n")
                 raise RuntimeError(err)
+
             event_dict = bdp.compute_matched_filter_SNR()
 
             SNR.append(event_dict['matched_filter_SNR'])
@@ -845,6 +868,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
         # additional_parameters is a list of single event dict, we convert it to a dict of arrays
         additional_parameters = pd.DataFrame(additional_parameters).to_dict(orient="list")
         for key in additional_parameters: additional_parameters[key] = np.array(additional_parameters[key])
+        strain_records = np.array(strain_records)
 
     # Use the full waveform to compute the optimal SNR with bilby
     elif pars['SNR-method'] == 'pycbc':
@@ -928,7 +952,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL):
     else:
         raise ValueError('Unknown method to compute the SNR. Exiting...')
 
-    return SNR, idx_detected, idx_softcut, additional_parameters
+    return SNR, idx_detected, idx_softcut, additional_parameters, strain_records
 
 
 def clean_dict(d, keys):

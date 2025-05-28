@@ -1,4 +1,4 @@
-import os, sys, shutil, configparser
+import os, sys, shutil, configparser, pickle
 import bilby, numpy as np
 from optparse import OptionParser
 
@@ -181,6 +181,12 @@ def main():
         injection_parameters['mass_1'             ] = injection_parameters['m1d']
         injection_parameters['mass_2'             ] = injection_parameters['m2d']
         injection_parameters['luminosity_distance'] = injection_parameters['dL' ]
+    
+    strain_record = {}
+    if input_pars['strain-file'] != "":
+        with open(input_pars['strain-file'], 'rb') as f:
+            strain_record = pickle.load(f)
+        strain_data = strain_record.pop('strain')
 
     # Initialise the Bilby class.
     BilbyClass = snr.BilbyDetectionPipeline(
@@ -189,12 +195,24 @@ def main():
         reference_frequency = input_pars['reference-frequency'], 
         sampling_frequency  = input_pars['sampling-frequency'], 
         approximant         = input_pars['waveform'],
-        precessing_apx      = input_pars['precession']
+        precessing_apx      = input_pars['precession'],
+        **strain_record
     )
     
     # Set the events and interferometers within Bilby.
-    BilbyClass.set_event_dict(injection_parameters)
-    BilbyClass.set_ifos_and_inject_signal()
+    if input_pars['strain-file'] != "":
+        BilbyClass.set_event_dict(injection_parameters, set_duration_and_start_time=False)
+        BilbyClass.set_ifos_list()
+        BilbyClass.set_waveform_generator()
+        BilbyClass.set_strain_data_from_arrays(strain_data)
+    else:
+        BilbyClass.set_event_dict(injection_parameters, set_duration_and_start_time=True)
+        BilbyClass.set_ifos_list()
+        BilbyClass.set_waveform_generator()
+        BilbyClass.set_strain_data_from_psd()
+    
+    BilbyClass.inject_signal()
+
 
     # Initialise priors.
     if   input_pars['priors-dict'] == 'bilby':

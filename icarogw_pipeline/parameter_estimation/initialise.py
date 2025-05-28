@@ -14,6 +14,7 @@ def InitialiseOptions(Config):
 
         # model
         'event-parameters'      : {},
+        'strain-file'           : '',
         'priors'                : {},
         'priors-dict'           : 'bilby',
         'observing-run'         : 'O3',
@@ -55,7 +56,7 @@ def InitialiseOptions(Config):
         if (key == 'event-parameters') or (key == 'priors'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
-        if (key == 'observing-run') or (key == 'waveform') or (key == 'priors-dict'): 
+        if (key == 'observing-run') or (key == 'waveform') or (key == 'priors-dict') or (key == 'strain-file'): 
             try: input_pars[key] = Config.get('model', key)
             except: pass
         if (key == 'precession') or (key == 'phase-marginalization'): 

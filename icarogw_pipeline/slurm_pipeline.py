@@ -56,9 +56,9 @@ def activate_slurm_submit(config_name):
 conda_env    = 'in2_env'
 user_mail    = 'tom.bertheas@l2it.in2p3.fr'
 slurm_nodes  = 1
-slurm_cpus   = 10
-slurm_memory = 5
-slurm_time   = {'days': 1, 'hours': 0, 'minutes': 0}
+slurm_cpus   = 32
+slurm_memory = 16
+slurm_time   = {'days': 4, 'hours': 0, 'minutes': 0}
 slurm_executable_path = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
 slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
 

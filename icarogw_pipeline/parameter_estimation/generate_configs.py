@@ -39,6 +39,26 @@ def primary_mass_expected_std(mc, q, snr):
     """
     return (mc / snr) * np.power(q**3 * (1+q)**4, -1/5) * np.sqrt( 1e-4 * np.power(1+q, 2) + (1.21/25) * np.power(3 + 2*q, 2) * snr )
 
+def linear_tailored_prior_upper_bound(m1d):
+    """
+    Linear adaptive prior (upper bound)
+    Interpolates between:
+    prior = [1,  60] Msun for m1d = 10 Msun event
+        and
+    prior = [1, 300] Msun for m1d = 90 Msun event
+
+    Parameters
+    ----------
+    mc: float or array-like 
+        primary mass (detector frame)
+    
+    Return
+    ------
+    m1d_prior_upper_bound: float or array-like
+        prior upper bound
+    """
+    return 60. + 3. * (m1d - 10.)
+
 
 config_template = """[input]
 output                = {output}
@@ -47,6 +67,7 @@ screen-output         = {screen_output}
 
 [model]
 event-parameters      = {event_parameters}
+strain-file           = {strain_file}
 priors                = {priors}
 priors-dict           = {priors_dict}
 observing-run         = {observing_run}
@@ -70,7 +91,7 @@ def main():
     parser.add_option('-d', '--pop-dir',           type='string', metavar = 'pop_dir',      default = None             )
     # model options
     parser.add_option('-p', '--priors-dict',       type='string', metavar = 'priors_dict',  default = 'bilby',           help="Options: bilby, custom")
-    parser.add_option('-t', '--tailor_priors', action="store_true", dest='tailor_priors',   default = False,             help="Flag to choose the mass priors adapted to true values.")
+    parser.add_option('-t', '--tailor_priors',     type='string', metavar = 'tailor_priors',default = 'linear',          help="Options: linear, farr16")
     parser.add_option('-k', '--nsigma',            type='int',    metavar = 'nsigma',       default = 7,                 help="Width of the tailored prior ranges, in units of estimate of m1_std (prior: m1 +/- nsigma * m1_std).")
     parser.add_option(      '--phase', action="store_true", dest='phase_marginalization',   default = False,             help="Flag to turn on phase marginalization in the PE corresponding to the generated config files.")
     # sampler
@@ -104,6 +125,16 @@ def main():
         events_list = pd.DataFrame(data).to_dict('records')
     else:
         raise FileNotFoundError(f"Unknown file {data_filepath}. Please make sure the population directory you passed does contain a 'population_observed.pickle' file.")
+    
+    strain_records_filepath = os.path.join(opts.pop_dir, "strain_records.pickle")
+    if os.path.exists(strain_records_filepath):
+        with open(strain_records_filepath, 'rb') as f: 
+            strain_records = pickle.load(f)
+            there_is_strain = True
+    else:
+        strain_records = [None for _ in events_list]
+        there_is_strain = False
+        print(f"No strain data found. I Will generate config files for parameter estimation runs where strain data will be generated from scratch.")
 
     # Create 'parameter_estimation' subdirectory in opts.pop_dir
     parameter_estimation_subdir = os.path.join(opts.pop_dir, "parameter_estimation")
@@ -127,7 +158,7 @@ def main():
         raise ValueError("Please make sure the simulated population you are trying to work with has been processed with bilby within the present pipeline (for SNR computation)")
 
     print('\n * Generating config files.\n')
-    for i, event_parameters in tqdm(enumerate(events_list)):
+    for i, (event_parameters, strain_record) in tqdm(enumerate(zip(events_list, strain_records))):
 
         # Use bilby conventions for the event parameters.
         event_parameters['mass_1']              = event_parameters.pop('m1d')
@@ -138,7 +169,7 @@ def main():
         event_parameters['ifos_on'] = [ifo for ifo in event_parameters['ifos_on'] if ifo.strip()]
 
         priors = {}
-        if opts.tailor_priors:
+        if opts.tailor_priors == 'farr16':
             mc  = chirp_mass(event_parameters['mass_1'], event_parameters['mass_2'])
             q   = event_parameters['mass_2']/event_parameters['mass_1']
             snr = event_parameters['snr']
@@ -148,7 +179,13 @@ def main():
             elif observing_run == 'O5': m1_prior_abs_max = 400.
             m1_prior_min, m1_prior_max = max(1., event_parameters['mass_1'] - opts.nsigma * m1_std), min(m1_prior_abs_max, event_parameters['mass_1'] + opts.nsigma * m1_std)
             priors['mass_1'] = [m1_prior_min, m1_prior_max]
-            priors['mass_2'] = [m1_prior_min, m1_prior_max]
+            priors['mass_2'] = [1.0         , m1_prior_max]
+        elif opts.tailor_priors == 'linear':
+            m1d_prior_upper_bound = linear_tailored_prior_upper_bound(event_parameters['mass_1'])
+            priors['mass_1'] = [1.0 , m1d_prior_upper_bound]
+            priors['mass_2'] = [1.0 , m1d_prior_upper_bound] # This is actually redundant with q < 1 constraint, wa keep it for consistency
+
+
         if observing_run == 'O4':
             priors['luminosity_distance'] = [0., 1.6e4] # up to redshift ~2 with Planck15 cosmo
         if observing_run == 'O5':
@@ -158,6 +195,13 @@ def main():
         event_subdir = os.path.join(parameter_estimation_subdir, f"event_{i:04d}")
         if not os.path.exists(event_subdir): os.makedirs(event_subdir)
         
+        if there_is_strain:
+            strain_record_filepath = os.path.join(event_subdir, f"strain_record_{os.path.basename(opts.pop_dir)}_event_{i:04d}.pickle")
+            with open(os.path.join(event_subdir, f"strain_record_{os.path.basename(opts.pop_dir)}_event_{i:04d}.pickle"), 'wb') as f:
+                pickle.dump(strain_record, f, protocol = pickle.HIGHEST_PROTOCOL)
+        else:
+            strain_record_filepath = ""
+
         if   (opts.sampler in samplers_types) and (samplers_types[opts.sampler] == 'nested'):
             sampler_dependent_config = "\n".join([
                 f"{'nlive'     :<21} = {opts.nlive     }",
@@ -184,6 +228,7 @@ def main():
             psd_dir                  = psd_dir,
             screen_output            = False,
             event_parameters         = event_parameters,
+            strain_file              = strain_record_filepath,
             priors                   = priors,
             priors_dict              = opts.priors_dict,
             observing_run            = observing_run,
