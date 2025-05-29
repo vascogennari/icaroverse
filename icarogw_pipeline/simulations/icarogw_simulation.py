@@ -101,7 +101,7 @@ def main():
             pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
         with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
             pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
-        if input_pars['run-type'] == 'population':
+        if input_pars['run-type'] == 'population' and input_pars['save-strain']:
             with open(os.path.join(input_pars['output'], 'strain_records.pickle').format(input_pars['run-type']), 'wb') as handle:
                 pickle.dump(strain_records, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
@@ -130,7 +130,7 @@ def generate_population(pars):
     m1s, m2s, zs, m1d, m2d, dL, _ = get_distribution_samples(pars)
 
     # Compute the SNR to select the detected events.
-    SNR, idx_detected, _, additional_parameters, strain_records = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=True)
+    SNR, idx_detected, _, additional_parameters, strain_records = compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=pars['save-strain'])
     clean_dict(additional_parameters, ['mass_1', 'mass_2', 'luminosity_distance', 'matched_filter_SNR'])
     
     # Save the number of detected events.

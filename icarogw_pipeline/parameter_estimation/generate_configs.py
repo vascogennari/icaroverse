@@ -94,6 +94,7 @@ def main():
     parser.add_option('-t', '--tailor_priors',     type='string', metavar = 'tailor_priors',default = 'linear',          help="Options: linear, farr16")
     parser.add_option('-k', '--nsigma',            type='int',    metavar = 'nsigma',       default = 7,                 help="Width of the tailored prior ranges, in units of estimate of m1_std (prior: m1 +/- nsigma * m1_std).")
     parser.add_option(      '--phase', action="store_true", dest='phase_marginalization',   default = False,             help="Flag to turn on phase marginalization in the PE corresponding to the generated config files.")
+    parser.add_option('-r', '--use-recorded-strain', action="store_true", dest='use_recorded_strain', default = False,   help="Flag to use saved strain data from detection pipeline, if there is any.")
     # sampler
     parser.add_option('-s', '--sampler',           type='string', metavar = 'sampler',      default = 'dynesty'        )
     parser.add_option('-m', '--print-method',      type='string', metavar = 'print_method', default = 'interval-60'    )
@@ -107,7 +108,7 @@ def main():
     parser.add_option('-w', '--nwalkers',          type='int',    metavar = 'nwalkers',     default = 64               )
     parser.add_option(      '--nsteps',            type='int',    metavar = 'nsteps',       default = 1000             )
     parser.add_option(      '--ntemps',            type='int',    metavar = 'ntemps',       default = 10               )
-    parser.add_option('-r', '--threads',           type='int',    metavar = 'threads',      default = 1                )
+    parser.add_option(      '--threads',           type='int',    metavar = 'threads',      default = 1                )
     parser.add_option(      '--nparallel',         type='int',    metavar = 'nparallel',    default = 1                )
     (opts, _) = parser.parse_args()
 
@@ -195,10 +196,13 @@ def main():
         event_subdir = os.path.join(parameter_estimation_subdir, f"event_{i:04d}")
         if not os.path.exists(event_subdir): os.makedirs(event_subdir)
         
-        if there_is_strain:
+        if opts.use_recorded_strain and there_is_strain:
             strain_record_filepath = os.path.join(event_subdir, f"strain_record_{os.path.basename(opts.pop_dir)}_event_{i:04d}.pickle")
             with open(os.path.join(event_subdir, f"strain_record_{os.path.basename(opts.pop_dir)}_event_{i:04d}.pickle"), 'wb') as f:
                 pickle.dump(strain_record, f, protocol = pickle.HIGHEST_PROTOCOL)
+        elif opts.use_recorded_strain:
+            print('\n * No strain data found. Carrying on without.\n')
+            strain_record_filepath = ""
         else:
             strain_record_filepath = ""
 
