@@ -213,7 +213,6 @@ def main():
     
     BilbyClass.inject_signal()
 
-
     # Initialise priors.
     if   input_pars['priors-dict'] == 'bilby':
         priors = bilby.gw.prior.BBHPriorDict()

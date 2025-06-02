@@ -159,7 +159,7 @@ def main():
         raise ValueError("Please make sure the simulated population you are trying to work with has been processed with bilby within the present pipeline (for SNR computation)")
 
     print('\n * Generating config files.\n')
-    for i, (event_parameters, strain_record) in tqdm(enumerate(zip(events_list, strain_records))):
+    for i, (event_parameters, strain_record) in tqdm(enumerate(zip(events_list, strain_records)), total=len(events_list)):
 
         # Use bilby conventions for the event parameters.
         event_parameters['mass_1']              = event_parameters.pop('m1d')
