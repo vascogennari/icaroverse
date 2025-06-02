@@ -12,21 +12,23 @@ def InitialiseOptions(Config):
         'postprocessing'                : False,
 
         'events-number'                 : 1000,
+        'estimate-events-number'        : False,
+        'R0'                            : 25.,
+        'observation-time'              : 1.,
+        'save-strain'                   : False,
+
         'injections-number'             : 1000,
         'injections-number-bank'        : 100,
         'inverse-checkpoint-rate'       : 1,
         'parallel'                      : False,
         'n-processes'                   : 10,
-        'selection-effects-cut'         : 'snr',
-        'SNR-cut'                       : 12.,
-        'SNR-soft-cut'                  : -1.,
-        'estimate-events-number'        : False,
-        'R0'                            : 25.,
-        'observation-time'              : 1.,
 
+        'selection-effects-cut'         : 'snr',
         'SNR-method'                    : 'bilby',
         'observing-run'                 : 'O3',
         'PSD-path'                      : '',
+        'SNR-cut'                       : 12.,
+        'SNR-soft-cut'                  : -1.,
 
         # SNR-options
         'snr-bilby-waveform'            : 'IMRPhenomXHM',
@@ -93,7 +95,7 @@ def InitialiseOptions(Config):
         if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'inverse-checkpoint-rate') or (key == 'n-processes'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'estimate-events-number') or (key == 'parallel'):
+        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'estimate-events-number') or (key == 'parallel') or (key == 'save-strain'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
 
@@ -296,6 +298,7 @@ usage = """
         estimate-events-number        [bool ]  Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.
         R0                            [float]  Astrophysical rate of events today [Gpc^(-3)yr^(-1)]. Used to compute the number of generated events if 'estimate-events-number' is active. Option used if the run-type is 'population'. Default: 25.
         observation-time              [float]  Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Is overwritten by official IGWN observing-run duration if a negative value is given. Option used if the run-type is 'population'. Default: 1.
+        save-strain                   [bool ]  Flag to save strain data when generating a population. Default: False
 
         injections-number             [int  ]  Number of detected injections to draw from the popoulation. Option used if the run-type is 'injections'. Default: 1000.
         injections-number-bank        [int  ]  Number of injections to draw from the popoulation until 'injections-number' is obtained. Option used if the run-type is 'injections'. Default: 100.

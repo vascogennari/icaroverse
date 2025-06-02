@@ -1,7 +1,7 @@
 import icarogw, bilby
 import pandas as pd, numpy as np
 import matplotlib.pyplot as plt
-import tqdm, seaborn as sns, sklearn
+import tqdm, seaborn as sns, sklearn, os
 
 
 # from matplotlib import rcParams
@@ -634,6 +634,33 @@ class ReconstructDistributions:
 
         return curves, plot_dict
 
+def plot_weighted_injections(pars, injections, rate, data):
+    rate.update(**pars['true-values'])
+    injections.update_weights(rate)
+    inj_weights = np.exp(injections.log_weights)
+
+    plots_filepath = os.path.join(pars['output'], "plots_weighted_injections")
+    if not os.path.exists(plots_filepath): os.makedirs(plots_filepath)
+
+    for par in injections.injections_data.keys():
+        fig, ax = plt.subplots()
+        # print(injections.injections_data.keys())
+        min_val, max_val = min(injections.injections_data[par]), max(injections.injections_data[par])
+        min_bin, max_bin = min_val - 0.05*(max_val - min_val), max_val + 0.05*(max_val - min_val)
+        bins = np.linspace(min_bin, max_bin, 50)
+        ax.hist(injections.injections_data[par], bins=bins, weights=inj_weights, density=True, histtype='step', color='r', label='weighted injections')
+        if pars['true-data']:
+            pop_samps = np.concatenate([data.posterior_samples_dict[ev].posterior_data[par] for ev in data.posterior_samples_dict])
+            ax.hist(pop_samps, bins=bins,                      density=True, histtype='step', color='b', label='population')
+        else:
+            pop_samps = np.concatenate([np.random.choice(data.posterior_samples_dict[ev].posterior_data[par], pars['nparallel']) for ev in data.posterior_samples_dict])
+            pop_weights = np.full_like(pop_samps, 1/pars['nparallel'])
+            ax.hist(pop_samps, bins=bins, weights=pop_weights, density=True, histtype='step', color='b', label='population')
+        ax.set_yscale('log')
+        ax.set_xlabel(par)
+        ax.legend(loc='upper right')
+        fig.savefig(os.path.join(plots_filepath, f"{par}.pdf"))
+
 
 # ------------------------------- #
 # Class to generate all the plots #
@@ -690,7 +717,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior,)
         else:
             curve_true, _ = self.distributions.SecondaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m2w, self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def RateEvolution(self):
 
@@ -703,7 +730,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def RateEvolutionProbability(self):
 
@@ -713,7 +740,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = 0)
         else:
             curve_true, _ = self.distributions.RateEvolutionFunctionProbability(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.cw, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = 0, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = 0, truth = curve_true[50])
     
     def RedshiftTransition(self):
 
@@ -726,7 +753,7 @@ class Plots:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
             curve_true, _ = self.distributions.RedshiftTransitionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.priors, self.pars)
-            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[0])
+            self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def NoSelectionEffects(self):
 

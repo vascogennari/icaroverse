@@ -422,10 +422,20 @@ class Data:
 
             samps_dict = {}
             for i in range(len(data_evs['m1d'])):
-                pos_dict = {
-                    'mass_1':              np.array([data_evs['m1d'][i]]),
-                    'mass_2':              np.array([data_evs['m2d'][i]]),
-                    'luminosity_distance': np.array([data_evs['dL'][i]])}
+                idx = i
+
+                if pars['true-data']:
+                    pos_dict = {
+                        'mass_1':              np.array([data_evs['m1d'][i]]),
+                        'mass_2':              np.array([data_evs['m2d'][i]]),
+                        'luminosity_distance': np.array([data_evs['dL' ][i]])}
+                else:
+                    idx = list(data_evs['m1d'].keys())[i]
+                    if idx in pars['remove-events']: continue
+                    pos_dict = {
+                        'mass_1':              np.array(data_evs['m1d'][idx]),
+                        'mass_2':              np.array(data_evs['m2d'][idx]),
+                        'luminosity_distance': np.array(data_evs['dL' ][idx])}
 
                 # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
                 prior = np.full(len(pos_dict['mass_1']), 1.)
@@ -436,11 +446,13 @@ class Data:
 
                 # Account for PE prior.
                 if not pars['true-data']:
+
                     # Luminosity distance. If the prior is uniform in dL, we leave it flat.
-                    if pars['PE-prior-distance'] == 'dL3': prior *= data_evs['dL'][i]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
+                    if pars['PE-prior-distance'] == 'dL3': 
+                        prior *= data_evs['dL'][idx]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
 
                     if not pars['single-mass']:
-                        chirp_mass = (pos_dict['mass_1']*pos_dict['mass_2'])**(3/5) / (pos_dict['mass_1']+pos_dict['mass_2'])**(1/5)
+                        chirp_mass = (pos_dict['mass_1'] * pos_dict['mass_2'])**(3./5.) / (pos_dict['mass_1'] + pos_dict['mass_2'])**(1./5.)
                         # Case of using component masses. If the prior is uniform in (m1,m2), we leave it flat.
                         if not 'MassRatio' in pars['model-secondary']:
                             if   pars['PE-prior-masses'] == 'Mc-q':
@@ -456,6 +468,8 @@ class Data:
                                 elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+
+            
         else:
             raise ValueError('Unknown option to process single events data.')
         
@@ -543,11 +557,12 @@ def main():
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
     # Copy config file to output.
-    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    try:    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    except: pass # Config file already copied.
 
     # Set the number of parallel processes according to command line if provided to match hardware structure
     if opts.n_processes > 0:
-        print(f"\n * Number of processes constrained by command-line option: n_processes = {opts.n_processes} \n")
+        print(f"\n * Number of processes set via command-line option: n_processes = {opts.n_processes} \n")
         input_pars['npool'] = opts.n_processes
 
     # Deviate stdout and stderr to file.
@@ -584,6 +599,10 @@ def main():
     # Initialise hierarchical likelihood and set the priors.
     tmp = LikelihoodPrior(input_pars, data, injections, wrapper)
     likelihood, prior = tmp.return_LikelihoodPrior()
+
+    # Plot weighted injections
+    try: icarogw_postprocessing.plot_weighted_injections(input_pars, injections=injections, rate=wrapper, data=data)
+    except: print("\n * Weighted injections plotting failed. Carry on...\n")
 
     # Control the effective number of injections on the injected model.
     check_effective_number_injections(input_pars, likelihood, data.n_ev)
@@ -632,6 +651,8 @@ def main():
     maxL_index  = np.argmax(df['log_likelihood'])
     maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
     check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
+    print('\n * Maximum likelihood values.\n')
+    print_dictionary(maxL_values)
 
     # ----------------------------------- #
     # Plots production and postprocessing #
