@@ -186,7 +186,6 @@ class Wrappers:
             'PowerLaw':                         {'wrap name': 'rateevolution_PowerLaw'},
             'Gaussian':                         {'wrap name': 'rateevolution_Gaussian'},
             'RedshiftProbability-Beta':         {'wrap name': 'rateevolution_beta_redshift_probability'},
-            'RedshiftProbability-PowerLaw':     {'wrap name': 'rateevolution_PowerLaw'},
             'RedshiftProbability-Uniform':      {'wrap name': 'rateevolution_uniform_redshift_probability'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
@@ -511,12 +510,18 @@ class LikelihoodPrior:
 
         if self.pars['loglike-var'] == 0: self.pars['loglike-var'] = None
         
-        res = icarogw.likelihood.hierarchical_likelihood(
-                        data, injections, wrapper,
-                        nparallel               = self.pars['nparallel'],
-                        neffPE                  = self.pars['neffPE'],
-                        neffINJ                 = self.pars['neffINJ'],
-                        likelihood_variance_thr = self.pars['loglike-var'])
+        if not self.pars['ignore-selection-effects']:
+            res = icarogw.likelihood.hierarchical_likelihood(
+                            data, injections, wrapper,
+                            nparallel               = self.pars['nparallel'],
+                            neffPE                  = self.pars['neffPE'],
+                            neffINJ                 = self.pars['neffINJ'],
+                            likelihood_variance_thr = self.pars['loglike-var'])
+        else: # Use the likeliood without selection effects.
+            res = icarogw.likelihood.hierarchical_likelihood_no_selection_effects(
+                            data, wrapper,
+                            nparallel               = self.pars['nparallel'],
+                            neffPE                  = self.pars['neffPE'])
         return res
 
     def Prior(self, pars, w):
@@ -606,8 +611,11 @@ def main():
     wrapper = tmp.return_Rate()
 
     # Read injections for selection effects.
-    tmp = SelectionEffects(input_pars, ref_cosmo)
-    injections = tmp.return_SelectionEffects()
+    if not input_pars['ignore-selection-effects']:
+        tmp = SelectionEffects(input_pars, ref_cosmo)
+        injections = tmp.return_SelectionEffects()
+    else:
+        injections = None
 
     # Read events data.
     tmp = Data(input_pars, ref_cosmo)
@@ -621,8 +629,9 @@ def main():
     try: icarogw_postprocessing.plot_weighted_injections(input_pars, injections=injections, rate=wrapper, data=data)
     except: print("\n * Weighted injections plotting failed. Carry on...\n")
 
-    # Control the effective number of injections on the injected model.
-    check_effective_number_injections(input_pars, likelihood, data.n_ev)
+    if not input_pars['ignore-selection-effects']:
+        # Control the effective number of injections on the injected model.
+        check_effective_number_injections(input_pars, likelihood, data.n_ev)
 
     # ----------------------------------------------- #
     # Start the sampler and run hierarchical analysis #
@@ -663,11 +672,12 @@ def main():
         if np.isnan(tmp['log_evidence_err']): log_evidence_err = 0.1
         f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), log_evidence_err, round(max(df['log_likelihood']), 2)))
 
-    # Control the effective number of injections on the maximum likelihood model.
-    print('\n * Computing effective number of injections.')
     maxL_index  = np.argmax(df['log_likelihood'])
     maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
-    check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
+    if not input_pars['ignore-selection-effects']:
+        # Control the effective number of injections on the maximum likelihood model.
+        print('\n * Computing effective number of injections.')
+        check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
     print('\n * Maximum likelihood values.\n')
     print_dictionary(maxL_values)
 

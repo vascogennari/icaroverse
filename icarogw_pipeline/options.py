@@ -23,6 +23,7 @@ def InitialiseOptions(Config):
         'PE-prior-distance'           : 'dL3',
         'PE-prior-masses'             : 'm1-m2',
         'true-data'                   : False,
+        'ignore-selection-effects'    : False,
 
         # Model
         'model-primary'               : 'PowerLaw-Gaussian',                     
@@ -95,7 +96,7 @@ def InitialiseOptions(Config):
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
+        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'ignore-selection-effects'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
@@ -328,6 +329,7 @@ usage = """
         PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in comoving volume). Default: 'dL3'.
         PE-prior-masses             [str  ]  Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
         true-data                   [bool ]  Flag to only use the true values for the events in the analysis instead of full posteriors. This is equivalent to use one PE sample for each event. Default: 0.
+        ignore-selection-effects    [bool ]  Flag to select a hierarchical likelihood without selection effects included. Default: 0.
     
     # ----- #
     # model #

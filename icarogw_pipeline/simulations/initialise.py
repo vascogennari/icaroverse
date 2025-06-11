@@ -23,6 +23,7 @@ def InitialiseOptions(Config):
         'estimate-events-number'        : False,
         'R0'                            : 25.,
         'observation-time'              : 1.,
+        'drawing-method'                : 'rejection-sampling',
 
         'SNR-method'                    : 'bilby',
         'observing-run'                 : 'O3',
@@ -85,7 +86,7 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path'):
+        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path') or (key == 'drawing-method'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if (key == 'SNR-cut') or (key == 'SNR-soft-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
@@ -299,6 +300,7 @@ usage = """
         estimate-events-number        [bool ]  Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.
         R0                            [float]  Astrophysical rate of events today [Gpc^(-3)yr^(-1)]. Used to compute the number of generated events if 'estimate-events-number' is active. Option used if the run-type is 'population'. Default: 25.
         observation-time              [float]  Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Is overwritten by official IGWN observing-run duration if a negative value is given. Option used if the run-type is 'population'. Default: 1.
+        drawing-method                [str  ]  Method used to draw samples from the target population distribution. Options: 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'. Default: 'rejection-sampling'.
 
         injections-number             [int  ]  Number of detected injections to draw from the popoulation. Option used if the run-type is 'injections'. Default: 1000.
         injections-number-bank        [int  ]  Number of injections to draw from the popoulation until 'injections-number' is obtained. Option used if the run-type is 'injections'. Default: 100.
