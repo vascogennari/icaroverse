@@ -120,9 +120,9 @@ pars = {
     'conda_env'    : 'in2_env',
     'user_mail'    : '',
     'slurm_nodes'  : 1,
-    'slurm_cpus'   : 16,
-    'slurm_memory' : 10,
-    'slurm_time'   : {'days': 3, 'hours': 0, 'minutes': 0},
+    'slurm_cpus'   : 12,
+    'slurm_memory' : 8,
+    'slurm_time'   : {'days': 4, 'hours': 0, 'minutes': 0},
 }
 pars['slurm_python_path']     = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=pars['conda_env'])
 pars['slurm_executable_file'] = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/parameter_estimation/bilby_pipeline.py'

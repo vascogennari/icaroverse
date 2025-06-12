@@ -343,13 +343,18 @@ class SelectionEffects:
         else:
             raise ValueError('Unknown option to compute selection effects.')
 
+
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
-        if   pars['selection-effects-cut'] == 'snr' : self.injections.update_cut(data_inj['snr'] >= pars['snr-cut' ])
-        elif pars['selection-effects-cut'] == 'ifar': self.injections.update_cut(ifarmax         >= pars['ifar-cut'])
+        if   pars['selection-effects-cut'] == 'snr' : 
+            print(f"\n\tApplying selection cut based on SNR, at a value of {pars['snr-cut']}.")
+            self.injections.update_cut(data_inj['snr'] >= pars['snr-cut' ])
+        elif pars['selection-effects-cut'] == 'ifar': 
+            print(f"\n\tApplying selection cut based on IFAR, at a value of {pars['ifar-cut']}.")
+            self.injections.update_cut(ifarmax         >= pars['ifar-cut'])
         else:
             raise ValueError('Unknown option to compute the selection effects cut.')
 
-        print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data_original['mass_1']), len(inj_dict['mass_1'])))
+        print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data['mass_1']), len(self.injections.injections_data_original['mass_1'])))
 
     def return_SelectionEffects(self):
         return self.injections

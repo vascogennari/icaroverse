@@ -105,7 +105,7 @@ def main():
     parser = OptionParser(usage=initialise.usage)
     parser.add_option('-d', '--pop-dir',           type='string', metavar = 'pop_dir',      default = None             )
     # model options
-    parser.add_option('-p', '--priors-dict',       type='string', metavar = 'priors_dict',  default = 'bilby',           help="Options: bilby, custom")
+    parser.add_option('-p', '--priors-dict',       type='string', metavar = 'priors_dict',  default = 'bilby',           help="Options: m1-m2_bilby, m1-m2_custom, Mc-q")
     parser.add_option('-m', '--pe-prior-masses',   type='string', metavar = 'pe_prior_masses', default = 'm1-m2',        help="Options: m1-m2, Mc-q")
     parser.add_option('-t', '--tailor_priors',     type='string', metavar = 'tailor_priors',default = 'linear',          help="Options: linear, farr16, chirp")
     parser.add_option('-k', '--nsigma',            type='int',    metavar = 'nsigma',       default = 7,                 help="Width of the tailored prior ranges, in units of estimate of m1_std (prior: m1 +/- nsigma * m1_std).")
@@ -190,7 +190,7 @@ def main():
         elif observing_run == 'O5': m1_prior_abs_max, mc_prior_abs_max = 400., 400.
 
         priors = {}
-        if opts.pe_prior_masses == 'Mc-q' and opts.tailor_priors == 'chirp':
+        if (opts.pe_prior_masses == 'Mc-q' or opts.priors_dict == 'Mc-q') and opts.tailor_priors == 'chirp':
             mc  = chirp_mass(event_parameters['mass_1'], event_parameters['mass_2'])
             snr = event_parameters['snr']
             mc_prior_width = chirp_mass_prior_width(mc, snr)

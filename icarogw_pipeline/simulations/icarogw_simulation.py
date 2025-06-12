@@ -631,7 +631,8 @@ def get_distribution_samples(pars):
     
     # Convert from rate to probability distribution.
     tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
-    zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
+    if pars['sampling-method'] == 'rejection': zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
+    elif pars['sampling-method'] == 'cumulative': zs, pdf_z = draw_samples_CDF_1D(z_array, tmp, N_events)
     if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
 
     # Primary mass.
@@ -642,11 +643,13 @@ def get_distribution_samples(pars):
         for i,z in tqdm(enumerate(zs),  total = len(zs)):
             tmp = pars['wrappers']['m1w'].pdf(m1_array, z)
             # For redshift evolving distributions, we use the redshift samples to draw the masses.
-            m1s[i], pdf_m1[i] = rejection_sampling_1D(m1_array, tmp, 1)
+            if pars['sampling-method'] == 'rejection': m1s[i], pdf_m1[i] = rejection_sampling_1D(m1_array, tmp, 1)
+            elif pars['sampling-method'] == 'cumulative': m1s[i], pdf_m1[i] = draw_samples_CDF_1D(m1_array, tmp, 1)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
-        m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, N_events)
+        if pars['sampling-method'] == 'rejection': m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, N_events)
+        elif pars['sampling-method'] == 'cumulative': m1s, pdf_m1 = draw_samples_CDF_1D(m1_array, tmp, N_events)
 
     # If required, remove the log10 contribution.
     if pars['log10-PDF']:
@@ -658,7 +661,8 @@ def get_distribution_samples(pars):
         if 'MassRatio' in pars['model-secondary']:
             update_weights(pars['wrappers']['m2w'], pars['truths'])
             tmp = pars['wrappers']['m2w'].pdf(q_array)
-            qs, pdf_q = rejection_sampling_1D(q_array, tmp, N_events)
+            if pars['sampling-method'] == 'rejection': qs, pdf_q = rejection_sampling_1D(q_array, tmp, N_events)
+            elif pars['sampling-method'] == 'cumulative': qs, pdf_q = draw_samples_CDF_1D(q_array, tmp, N_events)
 
             # If required, remove the log10 contribution.
             if pars['log10-PDF']:
