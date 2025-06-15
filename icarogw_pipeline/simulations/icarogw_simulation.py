@@ -638,6 +638,7 @@ def get_distribution_samples(pars):
     else:
         zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
+    pdf_z_array = tmp
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
@@ -655,6 +656,7 @@ def get_distribution_samples(pars):
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
         m1s, pdf_m1 = _sampler(m1_array, tmp, N_events, 2)
+    pdf_m1_array = tmp
 
     # If required, remove the log10 contribution.
     if pars['log10-PDF']:
@@ -667,6 +669,7 @@ def get_distribution_samples(pars):
             update_weights(pars['wrappers']['m2w'], pars['truths'])
             tmp = pars['wrappers']['m2w'].pdf(q_array)
             qs, pdf_q = _sampler(q_array, tmp, N_events, 3)
+            pdf_q_array = tmp
 
             # If required, remove the log10 contribution.
             if pars['log10-PDF']:
@@ -704,6 +707,10 @@ def get_distribution_samples(pars):
     else:
         # Transform the prior from source to detector frame: |J_(m1s,z)->(m1d,dL)| = 1/ [(1+z) * ddL/dz].
         prior = (pdf_m1   * pdf_z) / ((1 + zs)    * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+
+    # Save injected population.
+    data = np.column_stack((m1_array, q_array, z_array, pdf_m1_array, pdf_q_array, pdf_z_array))
+    np.savetxt(os.path.join(pars['output'], 'true_population.txt'), data, delimiter="\t", header="m1s\tq\tz\tpdf_m1s\tpdf_q\tpdf_z")
 
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
