@@ -174,7 +174,7 @@ class PlotDistributions:
         plt.xlim(  pl_dct['x_min'], pl_dct['x_max'])
         plt.xlabel(pl_dct['x_label'])
         plt.ylabel(pl_dct['y_label'])
-        if pl_dct['figname'] == 'RateEvolutionDistribution_Probability': plt.ylim(-5, 7)
+        #if pl_dct['figname'] == 'RateEvolutionDistribution_Probability': plt.ylim(-5, 7)
 
         plt.grid(linestyle='dotted')
         plt.legend()

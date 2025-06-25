@@ -11,7 +11,7 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -21,7 +21,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             bkg_wrap = get_wrapper(bkg_cosmo_wrap_name, cosmo_wrap=True)
             return wrap(bkg_wrap)
         else:
-            return wrap(zmax=20)
+            return wrap(zmax=zmax)
     elif transition == None:
         if order == None:
             if not input_wrapper == None:
@@ -117,7 +117,7 @@ class Wrappers:
             'Uniform':                                                              {'wrap name': 'Uniform',                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlawRedshift':                                               {'wrap name': 'DoublePowerlawRedshift',                                               'z evolution': True,  'smoothing': 'included'},
-            'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False, 'smoothing': 'included'},                    
+            'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False, 'smoothing': 'included'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -221,9 +221,9 @@ class Wrappers:
         if   (mc in icarogw_models and models[mc]['class'] == 'MG') and (mb in icarogw_models and models[mc]['class'] == 'GR'):
             raise ValueError("Unknown GR model for the background cosmology: {}.\nPlease choose from the available models:\n\t{}".format(mb, "\n\t".join([m for m in icarogw_models if models[m]['class'] == 'GR'])))
         elif (mc in icarogw_models and models[mc]['class'] == 'MG'):
-            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=models[mb]['wrap name'])
+            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=models[mb]['wrap name'], zmax = pars['ref-cosmology']['z-max'])
         elif (mc in icarogw_models and models[mc]['class'] == 'GR'):
-            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=None)
+            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=None, zmax = pars['ref-cosmology']['z-max'])
         else:
             raise ValueError("Unknown model for the Cosmology: {}.\nPlease choose from the available models:\n\t{}".format(mc, "\n\t".join(icarogw_models)))
         return w
@@ -257,7 +257,7 @@ class Rate():
             elif not 'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
                 self.w = icarogw.rates.MBH_rate(                          cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('MBH_rate'))
-            elif not 'Redshift' and 'Probability' in pars['model-rate']:
+            elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
                 self.w = icarogw.rates.MBH_redshift_rate(                 cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('MBH_redshift_rate'))
             elif 'Probability' in pars['model-rate']:
@@ -645,6 +645,9 @@ def main():
         print_dictionary(sampler_pars)
     elif input_pars['sampler'] == 'ptemcee':
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']}
+        print_dictionary(sampler_pars)
+    elif input_pars['sampler'] == 'emcee':
+        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'nsteps', 'npool']}
         print_dictionary(sampler_pars)
     else:
         raise ValueError('Sampler not available.')
