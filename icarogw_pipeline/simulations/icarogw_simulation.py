@@ -649,9 +649,9 @@ def get_distribution_samples(pars):
             tmp = pars['wrappers']['m1w'].pdf(m1_array, z)
             if not pars['drawing-method'] == 'deterministic-inverse-transform':
                 # For redshift evolving distributions, we use the redshift samples to draw the masses.
-                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp, 1, 2)
+                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp,        1, seed = pars['seed'])
             else:
-                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp, N_events, 2, quantile_index = i)
+                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp, N_events, seed = pars['seed'], quantile_index = i)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
@@ -663,6 +663,7 @@ def get_distribution_samples(pars):
         m1s = np.power(10., m1s)
         pdf_m1 *= np.log10(np.e) / m1s   # Compute the Jacobian: |J_(log10(m1s))->(m1s)| = log10(e) / m1s.
 
+    pdf_q_array = np.zeros(pars['N-points'])
     # Secondary mass.
     if not pars['single-mass']:
         if 'MassRatio' in pars['model-secondary']:
@@ -715,7 +716,7 @@ def get_distribution_samples(pars):
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
 
-def rejection_sampling_1D(x, PDF, N, _, quantile_index = None):
+def rejection_sampling_1D(x, PDF, N, seed = None, quantile_index = None):
     '''
         Draw N samples from a distribution that follows the array PDF,
         using a rejection sampling algorithm.
@@ -743,7 +744,7 @@ def rejection_sampling_1D(x, PDF, N, _, quantile_index = None):
     return samples, pdf_samples
 
 
-def draw_samples_CDF_1D(x, PDF, N, _, quantile_index = None):
+def draw_samples_CDF_1D(x, PDF, N, seed = None, quantile_index = None):
     '''
         Draw N samples from a distribution that follows the array PDF.
 
@@ -767,7 +768,7 @@ def draw_samples_CDF_1D(x, PDF, N, _, quantile_index = None):
     return samps, pdf_s
 
 
-def draw_stratified_samples_CDF_1D(x, PDF, N, seed, quantile_index = None):
+def draw_stratified_samples_CDF_1D(x, PDF, N, seed = 1, quantile_index = None):
     '''
     Generate N deterministic samples from a given 1D discrete PDF using stratified quantiles.
     
