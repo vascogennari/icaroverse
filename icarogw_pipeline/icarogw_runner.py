@@ -624,6 +624,9 @@ def main():
     elif input_pars['sampler'] == 'ptemcee':
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']}
         print_dictionary(sampler_pars)
+    elif input_pars['sampler'] == 'emcee': 
+        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'nsteps', 'npool']}
+        print_dictionary(sampler_pars)
     else:
         raise ValueError('Sampler not available.')
 

@@ -660,6 +660,7 @@ def plot_weighted_injections(pars, injections, rate, data):
         ax.set_xlabel(par)
         ax.legend(loc='upper right')
         fig.savefig(os.path.join(plots_filepath, f"{par}.pdf"))
+        fig.clf()
 
 
 # ------------------------------- #
