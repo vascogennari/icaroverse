@@ -116,6 +116,7 @@ class Wrappers:
             'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': False, 'smoothing': 'component-wise'},
             'Uniform':                                                              {'wrap name': 'Uniform',                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'included'},
+            'DoublePowerlaw-Gaussian':                                              {'wrap name': 'DoublePowerlaw_Gaussian',                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlawRedshift':                                               {'wrap name': 'DoublePowerlawRedshift',                                               'z evolution': True,  'smoothing': 'included'},
             'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False, 'smoothing': 'included'},
         }
