@@ -1,4 +1,5 @@
 import os, sys
+from argparse import ArgumentParser
 
 #SBATCH --tasks-per-node=1
 
@@ -10,7 +11,7 @@ template = """#!/bin/sh
 #SBATCH --nodes={nodes}
 #SBATCH --cpus-per-task={cpus}
 #SBATCH --mem={memory}G
-#SBATCH --partition=htc
+#SBATCH --partition={partition}
 #SBATCH --time={time}
 #SBATCH --account=virgo
 #SBATCH --licenses=sps
@@ -32,13 +33,14 @@ def activate_slurm_submit(config_name):
     sys.stderr.write('generating {}\n'.format(subfile))
 
     with open(subfile,'w') as f:
-        if user_mail is not '': email_option = email_option_template.format(user_mail=user_mail)
+        if user_mail != '': email_option = email_option_template.format(user_mail=user_mail)
         submission_command = template.format(
             name         = config_name.split('/')[-1].split('.ini')[0].split('config_')[-1],
             slurm_path   = slurm_path,
             nodes        = slurm_nodes,
             cpus         = slurm_cpus,
             memory       = slurm_memory,
+            partition    = slurm_partition,
             time         = '{}-{}:{}:00'.format(slurm_time['days'], slurm_time['hours'], slurm_time['minutes']),
             email_option = email_option,
             conda_env    = conda_env,
@@ -52,19 +54,25 @@ def activate_slurm_submit(config_name):
     sys.stderr.write('submitting {}\n\n'.format(subfile))
     os.system('sbatch {}'.format(subfile))
 
+parser = ArgumentParser()
+parser.add_argument('-g', '--gpu', action='store_true', default=False)
+args = parser.parse_args()
+
 # ---------------------------------------------------------------------- #
-conda_env    = 'in2_env'
+conda_env    = 'inc_env'
 user_mail    = 'tom.bertheas@l2it.in2p3.fr'
 slurm_nodes  = 1
-slurm_cpus   = 32
-slurm_memory = 16
-slurm_time   = {'days': 4, 'hours': 0, 'minutes': 0}
+slurm_cpus   = 4
+slurm_memory = 8
+slurm_time   = {'days': 5, 'hours': 0, 'minutes': 0}
 slurm_executable_path = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
 slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
+if args.gpu: slurm_partition    = 'gpu\n#SBATCH --gres=gpu:v100:1'
+else:        slurm_partition    = 'htc'
 
 # Set the specific directory for the runs
 directory    = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/config_files'
-subdirectory = 'temp'
+subdirectory = 'EXP_H0-prospects_GPU'
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')
