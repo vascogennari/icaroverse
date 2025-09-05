@@ -403,14 +403,14 @@ class Data:
                 data_evs = tmp[BBHs_O3_IFAR_4[ev]['PE_waveform']]['posterior_samples']
 
                 pos_dict  = {
-                    'mass_1'             : data_evs['mass_1'][()],
-                    'mass_2'             : data_evs['mass_2'][()],
-                    'luminosity_distance': data_evs['luminosity_distance'][()]}
+                    'mass_1'             : xp.array(data_evs['mass_1'][()]),
+                    'mass_2'             : xp.array(data_evs['mass_2'][()]),
+                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()])}
 
                 # Account for PE priors. For O3 data, PE priors are uniform in component masses.
                 # Luminosity distance.
-                if   pars['PE-prior-distance'] == 'dL' : prior = xp.ones(len(data_evs['luminosity_distance'][()]))    # Set the prior to one.
-                elif pars['PE-prior-distance'] == 'dL3': prior = xp.power(   data_evs['luminosity_distance'][()], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+                if   pars['PE-prior-distance'] == 'dL' : prior = xp.ones(len(pos_dict['luminosity_distance']))    # Set the prior to one.
+                elif pars['PE-prior-distance'] == 'dL3': prior = xp.power(   pos_dict['luminosity_distance'], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
 
                 # Case of using mass ratio instead of the secondary mass.
                 if 'MassRatio' in pars['model-secondary']:
