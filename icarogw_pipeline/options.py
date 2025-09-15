@@ -14,9 +14,11 @@ def InitialiseOptions(Config):
         'selection-effects-cut'       : 'snr',
         'snr-cut'                     : 12.,
         'ifar-cut'                    : 4.,
+        'snr-cut-analytic'            : 10.,
 
         'data-path'                   : '',
-        'O3-cosmology'                : False,
+        'O3'                          : False,
+        'GWTC-4p0'                    : False,
         'simulation'                  : True,
         'remove-events'               : [],
         'inverse-mass-ratio'          : False,
@@ -92,7 +94,7 @@ def InitialiseOptions(Config):
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
+        if (key == 'O3') or (key == 'GWTC-4p0') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):

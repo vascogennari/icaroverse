@@ -276,7 +276,7 @@ class SelectionEffects:
         # Load file with the injections used to compute selection effects.
         print('\n * Loading injections for selection effects.\n\n\t{}'.format(pars['injections-path']))
         try:
-            if   '.hdf5'   in pars['injections-path']:
+            if   '.hdf5'   in pars['injections-path'] or '.hdf' in pars['injections-path']:
                 data_inj = h5py.File(pars['injections-path'])
             elif '.pickle' in pars['injections-path']:
                 with open(pars['injections-path'], 'rb') as f: data_inj = pickle.load(f)
@@ -286,7 +286,7 @@ class SelectionEffects:
             raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
 
         # O3 Cosmology paper injections
-        if   pars['O3-cosmology']:
+        if   pars['O3']:
 
             obs_time = (28519200 / 86400) / 365
             pars['injections-number'] = data_inj.attrs['total_generated']
@@ -309,6 +309,39 @@ class SelectionEffects:
             if 'MassRatio' in pars['model-secondary']:
                 inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1][()]
                 prior *= data_inj[mass_1][()] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+
+        elif pars['GWTC-4p0']:
+
+            obs_time = data_inj.attrs['total_analysis_time'] / 31557600.0
+            pars['injections-number'] = data_inj.attrs['total_generated']
+            events = data_inj['events'][:]
+            ifarmax = 1 / np.min([events[search + '_far'] for search in data_inj.attrs['searches']], axis = 0)
+            if   pars['selection-effects-cut'] == 'snr' : real_noise_condition = ifarmax >= pars['snr-cut']
+            elif pars['selection-effects-cut'] == 'ifar': real_noise_condition = ifarmax >= pars['ifar-cut']
+            else:
+                raise ValueError('Unknown option to compute the selection effects cut.')
+            detected_filt = (real_noise_condition) | (events['semianalytic_observed_phase_maximized_snr_net'] >= pars['snr-cut-analytic'])
+
+            # Exclude events in the ER15 gap. (FIXME)
+            not_ER15 = (events['time_geocenter'][:] <= 1366933504)  | (events['time_geocenter'][:] >= 1368975618)
+            selected_filt = detected_filt & not_ER15
+
+            lnprior = events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle']
+            lnprior -= np.log(np.sin(events['spin2_polar_angle'])*np.sin(events['spin1_polar_angle'])) # Accounts from implied Jacobian from t->cost.
+            lnprior += np.log(4*np.pi*np.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
+            lnprior -= np.log(events['weights']) # Weights for multipop analysis.
+            lnprior -= np.log(events['dluminosity_distance_dredshift']*np.power(1+events['redshift'],2.))
+            prior = np.exp(lnprior)
+
+            inj_dict = {
+                'mass_1':              events['mass1_source'] * (1 + events['redshift']),
+                'mass_2':              events['mass2_source'] * (1 + events['redshift']),
+                'luminosity_distance': events['luminosity_distance']}
+
+            # If using the mass ratio, correct the prior with the Jacobian m2->q.
+            if 'MassRatio' in pars['model-secondary']:
+                inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / inj_dict['mass_1']
+                prior *= inj_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
 
         # Internal simulations
         elif pars['simulation']:
@@ -344,10 +377,13 @@ class SelectionEffects:
             raise ValueError('Unknown option to compute selection effects.')
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
-        if   pars['selection-effects-cut'] == 'snr' : self.injections.update_cut(data_inj['snr'] >= pars['snr-cut' ])
-        elif pars['selection-effects-cut'] == 'ifar': self.injections.update_cut(ifarmax         >= pars['ifar-cut'])
+        if not pars['GWTC-4p0']:
+            if   pars['selection-effects-cut'] == 'snr' : self.injections.update_cut(data_inj['snr'] >= pars['snr-cut' ])
+            elif pars['selection-effects-cut'] == 'ifar': self.injections.update_cut(ifarmax         >= pars['ifar-cut'])
+            else:
+                raise ValueError('Unknown option to compute the selection effects cut.')
         else:
-            raise ValueError('Unknown option to compute the selection effects cut.')
+            self.injections.update_cut(selected_filt)
 
         print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data_original['mass_1']), len(inj_dict['mass_1'])))
 
@@ -379,21 +415,22 @@ class Data:
         else: print('\n\tUsing just the primary mass.')
         
         # O3 Cosmology paper injections
-        if   pars['O3-cosmology']:
+        if   pars['O3']:
 
             sys.path.append(pars['data-path'])
-            from analyses_dictionaries import BBHs_O3_IFAR_4
+            from analyses_dictionaries import O1_O3_BBHs_far_1
 
             print('')
             samps_dict = {}
-            for ev in list(BBHs_O3_IFAR_4.keys()):
+            for ev in list(O1_O3_BBHs_far_1.keys()):
                 
                 # Skip the events to be removed.
-                if ev in pars['remove-events']: continue
-                else:                           print('\t{}'.format(ev))
+                if ev in pars['remove-events']:    continue
+                elif 'GW15' in ev or 'GW17' in ev: continue # Skip O1-O2 events.
+                else:                              print('\t{}'.format(ev))
 
-                tmp = h5py.File(BBHs_O3_IFAR_4[ev]['PE'])
-                data_evs = tmp[BBHs_O3_IFAR_4[ev]['PE_waveform']]['posterior_samples']
+                tmp = h5py.File(O1_O3_BBHs_far_1[ev]['PE'])
+                data_evs = tmp[O1_O3_BBHs_far_1[ev]['PE_waveform']]['posterior_samples']
 
                 pos_dict  = {
                     'mass_1'             : data_evs['mass_1'][()],
@@ -411,6 +448,42 @@ class Data:
                     prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+        
+        elif pars['GWTC-4p0']:
+
+            sys.path.append(pars['data-path'])
+            from analyses_dictionaries import O1_O3_BBHs_far_1, O4a_BBHs_far_1
+
+            # Merge the two dictionaries.
+            GWTC4p0_far_1 = O1_O3_BBHs_far_1 | O4a_BBHs_far_1
+
+            print('')
+            samps_dict = {}
+            for ev in list(GWTC4p0_far_1.keys()):
+                
+                # Skip the events to be removed.
+                if ev in pars['remove-events']: continue
+                else:                           print('\t{}'.format(ev))
+
+                tmp = h5py.File(GWTC4p0_far_1[ev]['PE'])
+                data_evs = tmp[GWTC4p0_far_1[ev]['PE_waveform']]['posterior_samples']
+
+                pos_dict  = {
+                    'mass_1'             : data_evs['mass_1'][()],
+                    'mass_2'             : data_evs['mass_2'][()],
+                    'luminosity_distance': data_evs['luminosity_distance'][()]}
+
+                # Account for PE priors. For O3 data, PE priors are uniform in component masses.
+                # Luminosity distance.
+                if   pars['PE-prior-distance'] == 'dL' : prior = np.ones(len(data_evs['luminosity_distance'][()]))    # Set the prior to one.
+                elif pars['PE-prior-distance'] == 'dL3': prior = np.power(   data_evs['luminosity_distance'][()], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+
+                # Case of using mass ratio instead of the secondary mass.
+                if 'MassRatio' in pars['model-secondary']:
+                    pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / pos_dict['mass_1']
+                    prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+                
+                samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)  
 
         # Internal simulations
         elif pars['simulation']:
@@ -553,7 +626,7 @@ def main():
     input_pars = options.InitialiseOptions(Config)
 
     # Set output directory.
-    # FIXME: Add option to control that only one of the two between 'O3-cosmology' and 'simulation' is active.
+    # FIXME: Add option to control that only one of the two between 'O3' and 'simulation' is active.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
     # Copy config file to output.
