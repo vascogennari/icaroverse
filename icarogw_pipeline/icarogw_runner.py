@@ -285,65 +285,71 @@ class SelectionEffects:
         except:
             raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
 
-        # O3 Cosmology paper injections
-        if   pars['O3']:
-
-            obs_time = (28519200 / 86400) / 365
-            pars['injections-number'] = data_inj.attrs['total_generated']
-            prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
-            # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m1s,m2s,z)->(m1d,m2d,dL).
-            prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
-
-            tmp = np.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
-            ifarmax = np.max(tmp, axis = 0)
-            mass_1 = 'injections/mass1'
-            mass_2 = 'injections/mass2'
-            dist   = 'injections/distance'
-
-            inj_dict = {
-                'mass_1':              data_inj[mass_1][()],
-                'mass_2':              data_inj[mass_2][()],
-                'luminosity_distance': data_inj[dist][()]}
-            
-            # If using the mass ratio, correct the prior with the Jacobian m2->q.
-            if 'MassRatio' in pars['model-secondary']:
-                inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1][()]
-                prior *= data_inj[mass_1][()] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
-
-        elif pars['GWTC-4p0']:
-
-            obs_time = data_inj.attrs['total_analysis_time'] / 31557600.0
-            pars['injections-number'] = data_inj.attrs['total_generated']
-            events = data_inj['events'][:]
-            ifarmax = 1 / np.min([events[search + '_far'] for search in data_inj.attrs['searches']], axis = 0)
-            if   pars['selection-effects-cut'] == 'snr' : real_noise_condition = ifarmax >= pars['snr-cut']
-            elif pars['selection-effects-cut'] == 'ifar': real_noise_condition = ifarmax >= pars['ifar-cut']
+        # Use IGWN real-noise injections from IGWN.
+        if pars['real-noise-injections']:
+        
+            # FIXME: Add control to make sure that the injections used correspond to the correct catalog.
+            if   pars['catalog'] == 'GWTC-3':   obs_time = None # FIXME: Where can this value be found?
+            elif pars['catalog'] == 'GWTC-4.0': obs_time = data_inj.attrs['total_analysis_time'] / 31557600.0
+            elif pars['catalog'] == 'O3':       obs_time = (28519200 / 86400) / 365 # FIXME: Where is this read from and why is it hardcoded?
+            elif pars['catalog'] == 'O4a':      obs_time = None # FIXME: Where can this value be found?
             else:
-                raise ValueError('Unknown option to compute the selection effects cut.')
-            detected_filt = (real_noise_condition) | (events['semianalytic_observed_phase_maximized_snr_net'] >= pars['snr-cut-analytic'])
+                raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, O3 or O4a.')
 
-            # Exclude events in the ER15 gap. (FIXME)
-            not_ER15 = (events['time_geocenter'][:] <= 1366933504)  | (events['time_geocenter'][:] >= 1368975618)
-            selected_filt = detected_filt & not_ER15
+            pars['injections-number'] = data_inj.attrs['total_generated']
 
-            lnprior = events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle']
-            lnprior -= np.log(np.sin(events['spin2_polar_angle'])*np.sin(events['spin1_polar_angle'])) # Accounts from implied Jacobian from t->cost.
-            lnprior += np.log(4*np.pi*np.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
-            lnprior -= np.log(events['weights']) # Weights for multipop analysis.
-            lnprior -= np.log(events['dluminosity_distance_dredshift']*np.power(1+events['redshift'],2.))
-            prior = np.exp(lnprior)
+            if   pars['O3']:
 
-            inj_dict = {
-                'mass_1':              events['mass1_source'] * (1 + events['redshift']),
-                'mass_2':              events['mass2_source'] * (1 + events['redshift']),
-                'luminosity_distance': events['luminosity_distance']}
+                prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
+                # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m1s,m2s,z)->(m1d,m2d,dL).
+                prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
+
+                tmp = np.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
+                ifarmax = np.max(tmp, axis = 0)
+
+                inj_dict = {
+                    'mass_1':              data_inj['injections/mass1'][()],
+                    'mass_2':              data_inj['injections/mass2'][()],
+                    'luminosity_distance': data_inj['injections/distance'][()]}
+                
+                # If using the mass ratio, correct the prior with the Jacobian m2->q.
+                if 'MassRatio' in pars['model-secondary']:
+                    inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj['injections/mass1'][()]
+                    prior *= data_inj['injections/mass1'][()] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+
+            elif pars['GWTC-4p0']:
+
+                pars['injections-number'] = data_inj.attrs['total_generated']
+                events = data_inj['events'][:]
+                ifarmax = 1 / np.min([events[search + '_far'] for search in data_inj.attrs['searches']], axis = 0)
+                if   pars['selection-effects-cut'] == 'snr' : real_noise_condition = ifarmax >= pars['snr-cut']
+                elif pars['selection-effects-cut'] == 'ifar': real_noise_condition = ifarmax >= pars['ifar-cut']
+                else:
+                    raise ValueError('Unknown option to compute the selection effects cut.')
+                detected_filt = (real_noise_condition) | (events['semianalytic_observed_phase_maximized_snr_net'] >= pars['snr-cut-analytic'])
+
+                # Exclude events in the ER15 gap. (FIXME: What is this?)
+                not_ER15 = (events['time_geocenter'][:] <= 1366933504) | (events['time_geocenter'][:] >= 1368975618)
+                selected_filt = detected_filt & not_ER15
+
+                lnprior = events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle']
+                lnprior -= np.log(np.sin(events['spin2_polar_angle'])*np.sin(events['spin1_polar_angle'])) # Accounts from implied Jacobian from t->cost.
+                lnprior += np.log(4*np.pi*np.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
+                lnprior -= np.log(events['weights']) # Weights for multipop analysis.
+                lnprior -= np.log(events['dluminosity_distance_dredshift']*np.power(1+events['redshift'],2.))
+                prior = np.exp(lnprior)
+
+                inj_dict = {
+                    'mass_1':              events['mass1_source'] * (1 + events['redshift']),
+                    'mass_2':              events['mass2_source'] * (1 + events['redshift']),
+                    'luminosity_distance': events['luminosity_distance']}
 
             # If using the mass ratio, correct the prior with the Jacobian m2->q.
             if 'MassRatio' in pars['model-secondary']:
                 inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / inj_dict['mass_1']
                 prior *= inj_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
 
-        # Internal simulations
+        # Use simulated injections.
         elif pars['simulation']:
 
             # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
