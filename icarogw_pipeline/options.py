@@ -17,9 +17,9 @@ def InitialiseOptions(Config):
         'snr-cut-analytic'            : 10.,
 
         'data-path'                   : '',
-        'O3'                          : False,
-        'GWTC-4p0'                    : False,
+        'real-data'                   : False,
         'simulation'                  : True,
+        'catalog'                     : 'GWTC-4p0',
         'remove-events'               : [],
         'inverse-mass-ratio'          : False,
         'PE-prior-distance'           : 'dL3',
@@ -88,13 +88,13 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if (key == 'output') or (key == 'injections-path') or (key == 'selection-effects-cut') or (key == 'data-path') or (key == 'PE-prior-distance') or (key == 'PE-prior-masses'):
+        if (key == 'output') or (key == 'injections-path') or (key == 'selection-effects-cut') or (key == 'data-path') or (key == 'catalog') or (key == 'PE-prior-distance') or (key == 'PE-prior-masses'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'O3') or (key == 'GWTC-4p0') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
+        if (key == 'real-data') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):

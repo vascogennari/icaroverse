@@ -394,9 +394,13 @@ class SelectionEffects:
 
 class Data:
        
-    def __init__(self, pars, ref_cosmo):
+    def __init__(self, pars):
         
         print('\n * Loading data.\n\n\t{}'.format(pars['data-path']))
+
+        # Either use real data or simulations.
+        if pars['real-data'] and pars['simulation']: raise ValueError('Please choose either real GW data or simulated data, not both.')
+    
         if not pars['true-data']:
             if   pars['PE-prior-distance'] == 'dL'   :     print('\n\tUsing a prior for PE samples uniform in luminosity distance.'               )
             elif pars['PE-prior-distance'] == 'dL3'  :     print('\n\tUsing a prior for PE samples uniform in comoving volume.'                   )
@@ -414,23 +418,36 @@ class Data:
                 else:                              print('\n\tUsing the mass ratio for the secondary, defined as q=m1/m2.')
         else: print('\n\tUsing just the primary mass.')
         
-        # O3 Cosmology paper injections
-        if   pars['O3']:
+        # Real GW data.
+        if pars['real-data']:
 
-            sys.path.append(pars['data-path'])
-            from analyses_dictionaries import O1_O3_BBHs_far_1
+            # FIXME: Implement option to select events based on FAR and/or SNR.
+            # Need to add a new FAR/SNR key in the IGNW_events files.
+
+            # The PE samples are publicly available here:
+            # https://zenodo.org/records/6513631PE for O1, O2 and O3a events.
+            # https://zenodo.org/records/8177023 for O3b events.
+            # https://zenodo.org/records/17014085 for O4a events.
+
+            from IGNW_events import O1_O2_BBHs_FAR_1, O3_BBHs_FAR_1, O4a_BBHs_FAR_1
+
+            if   pars['catalog'] == 'GWTC-3':   catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1
+            elif pars['catalog'] == 'GWTC-4.0': catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1 | O4a_BBHs_FAR_1
+            elif pars['catalog'] == 'O3':       catalog = O3_BBHs_FAR_1
+            elif pars['catalog'] == 'O4a':      catalog = O4a_BBHs_FAR_1
+            else:
+                raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, O3 or O4a.')
 
             print('')
             samps_dict = {}
-            for ev in list(O1_O3_BBHs_far_1.keys()):
+            for ev in list(catalog.keys()):
                 
                 # Skip the events to be removed.
-                if ev in pars['remove-events']:    continue
-                elif 'GW15' in ev or 'GW17' in ev: continue # Skip O1-O2 events.
-                else:                              print('\t{}'.format(ev))
+                if ev in pars['remove-events']: continue
+                else:                           print('\t{}'.format(ev))
 
-                tmp = h5py.File(O1_O3_BBHs_far_1[ev]['PE'])
-                data_evs = tmp[O1_O3_BBHs_far_1[ev]['PE_waveform']]['posterior_samples']
+                tmp = h5py.File(catalog[ev]['PE'].replace("~IGNW_data_path", pars['data-path']))
+                data_evs = tmp[catalog[ev]['PE_waveform']]['posterior_samples']
 
                 pos_dict  = {
                     'mass_1'             : data_evs['mass_1'][()],
@@ -448,44 +465,8 @@ class Data:
                     prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
-        
-        elif pars['GWTC-4p0']:
 
-            sys.path.append(pars['data-path'])
-            from analyses_dictionaries import O1_O3_BBHs_far_1, O4a_BBHs_far_1
-
-            # Merge the two dictionaries.
-            GWTC4p0_far_1 = O1_O3_BBHs_far_1 | O4a_BBHs_far_1
-
-            print('')
-            samps_dict = {}
-            for ev in list(GWTC4p0_far_1.keys()):
-                
-                # Skip the events to be removed.
-                if ev in pars['remove-events']: continue
-                else:                           print('\t{}'.format(ev))
-
-                tmp = h5py.File(GWTC4p0_far_1[ev]['PE'])
-                data_evs = tmp[GWTC4p0_far_1[ev]['PE_waveform']]['posterior_samples']
-
-                pos_dict  = {
-                    'mass_1'             : data_evs['mass_1'][()],
-                    'mass_2'             : data_evs['mass_2'][()],
-                    'luminosity_distance': data_evs['luminosity_distance'][()]}
-
-                # Account for PE priors. For O3 data, PE priors are uniform in component masses.
-                # Luminosity distance.
-                if   pars['PE-prior-distance'] == 'dL' : prior = np.ones(len(data_evs['luminosity_distance'][()]))    # Set the prior to one.
-                elif pars['PE-prior-distance'] == 'dL3': prior = np.power(   data_evs['luminosity_distance'][()], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
-
-                # Case of using mass ratio instead of the secondary mass.
-                if 'MassRatio' in pars['model-secondary']:
-                    pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / pos_dict['mass_1']
-                    prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
-                
-                samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)  
-
-        # Internal simulations
+        # Internal simulations.
         elif pars['simulation']:
 
             if '.pickle' in pars['data-path']:
@@ -626,7 +607,6 @@ def main():
     input_pars = options.InitialiseOptions(Config)
 
     # Set output directory.
-    # FIXME: Add option to control that only one of the two between 'O3' and 'simulation' is active.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
     # Copy config file to output.
@@ -666,7 +646,7 @@ def main():
     injections = tmp.return_SelectionEffects()
 
     # Read events data.
-    tmp = Data(input_pars, ref_cosmo)
+    tmp = Data(input_pars)
     data = tmp.return_Data()
 
     # Initialise hierarchical likelihood and set the priors.
