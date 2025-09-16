@@ -32,7 +32,7 @@ def activate_slurm_submit(config_name):
     sys.stderr.write('generating {}\n'.format(subfile))
 
     with open(subfile,'w') as f:
-        if user_mail is not '': email_option = email_option_template.format(user_mail=user_mail)
+        if not user_mail == '': email_option = email_option_template.format(user_mail=user_mail)
         submission_command = template.format(
             name         = config_name.split('/')[-1].split('.ini')[0].split('config_')[-1],
             slurm_path   = slurm_path,
@@ -56,15 +56,15 @@ def activate_slurm_submit(config_name):
 conda_env    = 'icarogw_env'
 user_mail    = 'vasco.gennari@l2it.in2p3.fr'
 slurm_nodes  = 1
-slurm_cpus   = 30
-slurm_memory = 16
-slurm_time   = {'days': 2, 'hours': 0, 'minutes': 0}
+slurm_cpus   = 20
+slurm_memory = 5
+slurm_time   = {'days': 3, 'hours': 0, 'minutes': 0}
 slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
 slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
 
 # Set the specific directory for the runs
 directory    = '/sps/virgo/USERS/vgennari/icarogw_pipeline/config_files/GWTC-4.0'
-subdirectory = 'PL-G-G'
+subdirectory = 'additional'
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')
