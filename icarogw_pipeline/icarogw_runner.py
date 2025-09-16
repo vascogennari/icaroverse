@@ -317,27 +317,28 @@ class SelectionEffects:
 
                 pars['injections-number'] = data_inj.attrs['total_generated']
                 events = data_inj['events'][:]
-                ifarmax = 1 / xp.min([events[search + '_far'] for search in data_inj.attrs['searches']], axis = 0)
+                ifarmax = 1 / xp.min(xp.array([events[search + '_far'] for search in data_inj.attrs['searches']]), axis = 0)
                 if   pars['selection-effects-cut'] == 'snr' : real_noise_condition = ifarmax >= pars['snr-cut']
                 elif pars['selection-effects-cut'] == 'ifar': real_noise_condition = ifarmax >= pars['ifar-cut']
                 else:
                     raise ValueError('Unknown option to compute the selection effects cut.')
-                detected_filt = (real_noise_condition) | (events['semianalytic_observed_phase_maximized_snr_net'] >= pars['snr-cut-analytic'])
+                detected_filt = (real_noise_condition) | (xp.array(events['semianalytic_observed_phase_maximized_snr_net']) >= pars['snr-cut-analytic'])
 
                 # Exclude events in the ER15 gap. (FIXME: What is this?)
-                not_ER15 = (events['time_geocenter'][:] <= 1366933504) | (events['time_geocenter'][:] >= 1368975618)
+                time_geocenter = xp.array(events['time_geocenter'])
+                not_ER15 = (time_geocenter <= 1366933504) | (time_geocenter >= 1368975618)
                 selected_filt = detected_filt & not_ER15
 
-                lnprior = events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle']
-                lnprior -= xp.log(xp.sin(events['spin2_polar_angle'])*xp.sin(events['spin1_polar_angle'])) # Accounts from implied Jacobian from t->cost.
-                lnprior += xp.log(4*xp.pi*xp.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
-                lnprior -= xp.log(events['weights']) # Weights for multipop analysis.
-                lnprior -= xp.log(events['dluminosity_distance_dredshift']*xp.power(1+events['redshift'],2.))
+                lnprior = xp.array(events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle'])
+                lnprior -= xp.log(xp.sin(xp.array(events['spin2_polar_angle'])) * xp.sin(xp.array(events['spin1_polar_angle']))) # Accounts from implied Jacobian from t->cost.
+                lnprior += xp.log(4 * xp.pi * xp.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
+                lnprior -= xp.log(xp.array(events['weights'])) # Weights for multipop analysis.
+                lnprior -= xp.log(xp.array(events['dluminosity_distance_dredshift']) * xp.power(1+xp.array(events['redshift']),2.))
                 prior = xp.exp(lnprior)
 
                 inj_dict = {
-                    'mass_1':              xp.array(events['mass1_source'] * (1 + events['redshift'])),
-                    'mass_2':              xp.array(events['mass2_source'] * (1 + events['redshift'])),
+                    'mass_1': xp.array(xp.array(events['mass1_source']) * (1 + xp.array(events['redshift']))),
+                    'mass_2': xp.array(xp.array(events['mass2_source']) * (1 + xp.array(events['redshift']))),
                     'luminosity_distance': xp.array(events['luminosity_distance'])}
             
             else:
