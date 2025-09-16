@@ -321,7 +321,7 @@ usage = """
         model-rate                  [str  ]  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
         model-cosmology             [str  ]  Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
         model-bkg-cosmo             [str  ]  Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
-        w0wa_earlyMD_constraint     [bool ]  Flag to implement the (w0 + wa < 0) constraint, to ensure early MD era. (See e.g. [arXiv:2503.14738]). Default: False
+        w0wa_earlyMD_constraint     [bool ]  Flag to implement the (w0 + wa < 0) constraint, to ensure early MD era. (See e.g. section VII of [https://arxiv.org/abs/2503.14738]). Default: False
 
         redshift-transition         [str  ]  Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture            [bool ]  Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
