@@ -59,6 +59,20 @@ def linear_tailored_prior_upper_bound(m1d):
     """
     return 60. + 3. * (m1d - 10.)
 
+def chirp_mass_prior_width(mc, snr):
+    """
+    Parameters
+    ----------
+    mc: float or array-like 
+        chirp mass (detector frame)
+    
+    Return
+    ------
+    width_Mc_prior: float or array-like
+        prior width
+    """
+    return mc**(5/3)/15 * (12/snr)
+
 
 config_template = """[input]
 output                = {output}
@@ -69,6 +83,7 @@ screen-output         = {screen_output}
 event-parameters      = {event_parameters}
 strain-file           = {strain_file}
 priors                = {priors}
+PE-prior-masses       = {pe_prior_masses}
 priors-dict           = {priors_dict}
 observing-run         = {observing_run}
 waveform              = {waveform}
@@ -90,14 +105,15 @@ def main():
     parser = OptionParser(usage=initialise.usage)
     parser.add_option('-d', '--pop-dir',           type='string', metavar = 'pop_dir',      default = None             )
     # model options
-    parser.add_option('-p', '--priors-dict',       type='string', metavar = 'priors_dict',  default = 'bilby',           help="Options: bilby, custom")
-    parser.add_option('-t', '--tailor_priors',     type='string', metavar = 'tailor_priors',default = 'linear',          help="Options: linear, farr16")
+    parser.add_option('-p', '--priors-dict',       type='string', metavar = 'priors_dict',  default = 'bilby',           help="Options: m1-m2_bilby, m1-m2_custom, Mc-q")
+    parser.add_option('-m', '--pe-prior-masses',   type='string', metavar = 'pe_prior_masses', default = 'm1-m2',        help="Options: m1-m2, Mc-q")
+    parser.add_option('-t', '--tailor_priors',     type='string', metavar = 'tailor_priors',default = 'linear',          help="Options: linear, farr16, chirp")
     parser.add_option('-k', '--nsigma',            type='int',    metavar = 'nsigma',       default = 7,                 help="Width of the tailored prior ranges, in units of estimate of m1_std (prior: m1 +/- nsigma * m1_std).")
     parser.add_option(      '--phase', action="store_true", dest='phase_marginalization',   default = False,             help="Flag to turn on phase marginalization in the PE corresponding to the generated config files.")
     parser.add_option('-r', '--use-recorded-strain', action="store_true", dest='use_recorded_strain', default = False,   help="Flag to use saved strain data from detection pipeline, if there is any.")
     # sampler
     parser.add_option('-s', '--sampler',           type='string', metavar = 'sampler',      default = 'dynesty'        )
-    parser.add_option('-m', '--print-method',      type='string', metavar = 'print_method', default = 'interval-60'    )
+    parser.add_option(      '--print-method',      type='string', metavar = 'print_method', default = 'interval-60'    )
     # nested samplers options
     parser.add_option('-l', '--nlive',             type='int',    metavar = 'nlive',        default = 1000             )
     parser.add_option('-n', '--npool',             type='int',    metavar = 'npool',        default = 10               )
@@ -169,15 +185,22 @@ def main():
         # Remove unused IFOs from list, which appear as str with only white spaces.
         event_parameters['ifos_on'] = [ifo for ifo in event_parameters['ifos_on'] if ifo.strip()]
 
+        if   observing_run == 'O3': m1_prior_abs_max, mc_prior_abs_max = 200., 200.
+        elif observing_run == 'O4': m1_prior_abs_max, mc_prior_abs_max = 300., 300.
+        elif observing_run == 'O5': m1_prior_abs_max, mc_prior_abs_max = 400., 400.
+
         priors = {}
-        if opts.tailor_priors == 'farr16':
+        if (opts.pe_prior_masses == 'Mc-q' or opts.priors_dict == 'Mc-q') and opts.tailor_priors == 'chirp':
+            mc  = chirp_mass(event_parameters['mass_1'], event_parameters['mass_2'])
+            snr = event_parameters['snr']
+            mc_prior_width = chirp_mass_prior_width(mc, snr)
+            mc_prior_min, mc_prior_max = max(1., mc - mc_prior_width), min(mc_prior_abs_max, mc + mc_prior_width)
+            priors['chirp_mass'] = [mc_prior_min, mc_prior_max]
+        elif opts.tailor_priors == 'farr16':
             mc  = chirp_mass(event_parameters['mass_1'], event_parameters['mass_2'])
             q   = event_parameters['mass_2']/event_parameters['mass_1']
             snr = event_parameters['snr']
             m1_std = primary_mass_expected_std(mc, q, snr)
-            if   observing_run == 'O3': m1_prior_abs_max = 200.
-            elif observing_run == 'O4': m1_prior_abs_max = 300.
-            elif observing_run == 'O5': m1_prior_abs_max = 400.
             m1_prior_min, m1_prior_max = max(1., event_parameters['mass_1'] - opts.nsigma * m1_std), min(m1_prior_abs_max, event_parameters['mass_1'] + opts.nsigma * m1_std)
             priors['mass_1'] = [m1_prior_min, m1_prior_max]
             priors['mass_2'] = [1.0         , m1_prior_max]
@@ -235,6 +258,7 @@ def main():
             strain_file              = strain_record_filepath,
             priors                   = priors,
             priors_dict              = opts.priors_dict,
+            pe_prior_masses         = opts.pe_prior_masses,
             observing_run            = observing_run,
             waveform                 = waveform,
             precession               = precession,

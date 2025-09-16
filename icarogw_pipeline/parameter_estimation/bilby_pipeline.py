@@ -4,6 +4,7 @@ from optparse import OptionParser
 
 # Internal imports
 import initialise
+from generate_configs import chirp_mass
 sys.path.append('../simulations')
 import snr_computation as snr
 sys.path.append('../')
@@ -12,6 +13,8 @@ import icarogw_runner as icarorun
 latex_labels = {
     'mass_1': r"$m_1$", 
     'mass_2': r"$m_2$", 
+    'chirp_mass': r"$\mathcal{M}_c$", 
+    'mass_ratio': r"$q$", 
     'luminosity_distance': r"$d_L$", 
     'ra': r"$\alpha$", 
     'psi': r"$\psi$", 
@@ -39,25 +42,59 @@ def set_mass_constraint(params):
 def initialise_prior(dict_in, dict_out, input_pars, trigtime=None, precession=False):
 
     # Masses 
-    if   type(dict_in['mass_1']) == list:  dict_out['mass_1'] = bilby.core.prior.Uniform(dict_in['mass_1'][0], dict_in['mass_1'][1], latex_label=latex_labels['mass_1'])
-    elif type(dict_in['mass_1']) == float: dict_out['mass_1'] = dict_in['mass_1']
-    else:  raise ValueError(f"Unknown type for prior on mass_1: {dict_in['mass_1']}. Please provide either a 2-list for prior bounds, or a float to fix mass_1.")
+    if input_pars['PE-prior-masses'] == 'm1-m2':
 
-    if   input_pars['priors-dict'] == 'bilby':
-        dict_out['mass_2'] = bilby.core.prior.ConditionalUniform(
-            condition_func = bilby.gw.prior.secondary_mass_condition_function,
-            minimum        = dict_in['mass_2'][0], 
-            maximum        = dict_in['mass_2'][1],
-            latex_label=latex_labels['mass_2'],
-        )
-        # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
-        snr.clean_dict(dict_out, ['chirp_mass', 'mass_ratio'])
+        if   type(dict_in['mass_1']) == list:  dict_out['mass_1'] = bilby.core.prior.Uniform(dict_in['mass_1'][0], dict_in['mass_1'][1], latex_label=latex_labels['mass_1'])
+        elif type(dict_in['mass_1']) == float: dict_out['mass_1'] = dict_in['mass_1']
+        else:  raise ValueError(f"Unknown type for prior on mass_1: {dict_in['mass_1']}. Please provide either a 2-list for prior bounds, or a float to fix mass_1.")
+
+        if   input_pars['priors-dict'] == 'm1-m2_bilby':
+            if   type(dict_in['mass_2']) == list:  
+                dict_out['mass_2'] = bilby.core.prior.ConditionalUniform(
+                    condition_func = bilby.gw.prior.secondary_mass_condition_function,
+                    minimum        = dict_in['mass_2'][0], 
+                    maximum        = dict_in['mass_2'][1],
+                    latex_label=latex_labels['mass_2'],
+                )
+            elif type(dict_in['mass_2']) == float: dict_out['mass_2'] = dict_in['mass_2']
+            else: raise ValueError(f"Unknown type for prior on mass_2: {dict_in['mass_2']}. Please provide either a 2-list for prior bounds, or a float to fix mass_2.")
+            # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
+            snr.clean_dict(dict_out, ['chirp_mass', 'mass_ratio'])
+            
+        elif input_pars['priors-dict'] == 'm1-m2_custom':
+            if   type(dict_in['mass_2']) == list:  dict_out['mass_2'] = bilby.core.prior.Uniform(dict_in['mass_2'][0], dict_in['mass_2'][1], latex_label=latex_labels['mass_2'])
+            elif type(dict_in['mass_2']) == float: dict_out['mass_2'] = dict_in['mass_2']
+            else: raise ValueError(f"Unknown type for prior on mass_2: {dict_in['mass_2']}. Please provide either a 2-list for prior bounds, or a float to fix mass_2.")
+
+            if   type(dict_in['mass_ratio']) == list and len(dict_in['mass_ratio']) == 2:  dict_out['mass_ratio'] = bilby.core.prior.Constraint(minimum = dict_in['mass_ratio'][0], maximum = dict_in['mass_ratio'][1])
+            else: raise ValueError(f"Unknown type for constraints bounds on mass_ratio: {dict_in['mass_ratio']}. Please provide a 2-list for prior bounds.")
+            # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
+            snr.clean_dict(dict_out, ['chirp_mass'])
         
-    elif input_pars['priors-dict'] == 'custom':
-        dict_out['mass_2'] = bilby.core.prior.Uniform(dict_in['mass_2'][0], dict_in['mass_2'][1], latex_label=latex_labels['mass_2'])
-        dict_out['mass_ratio'] = bilby.core.prior.Constraint(minimum = dict_in['mass_ratio'][0], maximum = dict_in['mass_ratio'][1])
-        # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
-        snr.clean_dict(dict_out, ['chirp_mass'])
+        elif input_pars['priors-dict'] == 'Mc-q':
+
+            if   type(dict_in['chirp_mass']) == list:  dict_out['chirp_mass'] = bilby.gw.prior.UniformInComponentsChirpMass(minimum=dict_in['chirp_mass'][0], maximum=dict_in['chirp_mass'][1], latex_label=latex_labels['chirp_mass'])
+            elif type(dict_in['chirp_mass']) == float: dict_out['chirp_mass'] = dict_in['chirp_mass']
+            else:  raise ValueError(f"Unknown type for prior on chirp_mass: {dict_in['chirp_mass']}. Please provide either a 2-list for prior bounds, or a float to fix chirp_mass.")
+
+            if   type(dict_in['mass_ratio']) == list:  dict_out['mass_ratio'] = bilby.gw.prior.UniformInComponentsMassRatio(minimum=dict_in['mass_ratio'][0], maximum=dict_in['mass_ratio'][1], latex_label=latex_labels['mass_ratio'])
+            elif type(dict_in['mass_ratio']) == float: dict_out['mass_ratio'] = dict_in['mass_ratio']
+            else:  raise ValueError(f"Unknown type for prior on mass_ratio: {dict_in['mass_ratio']}. Please provide either a 2-list for prior bounds, or a float to fix mass_ratio.")
+            # Clean priors on other mass parameters that could have been initialized if dict_out was a bilby.gw.priors.BBHPriorDict object.
+            snr.clean_dict(dict_out, ['mass_1', 'mass_2'])
+
+    elif input_pars['PE-prior-masses'] == 'Mc-q':
+
+        if   type(dict_in['chirp_mass']) == list:  dict_out['chirp_mass'] = bilby.core.prior.Uniform(dict_in['chirp_mass'][0], dict_in['chirp_mass'][1], latex_label=latex_labels['chirp_mass'])
+        elif type(dict_in['chirp_mass']) == float: dict_out['chirp_mass'] = dict_in['chirp_mass']
+        else:  raise ValueError(f"Unknown type for prior on chirp_mass: {dict_in['chirp_mass']}. Please provide either a 2-list for prior bounds, or a float to fix chirp_mass.")
+
+        if   type(dict_in['mass_ratio']) == list:  dict_out['mass_ratio'] = bilby.core.prior.Uniform(dict_in['mass_ratio'][0], dict_in['mass_ratio'][1], latex_label=latex_labels['mass_ratio'])
+        elif type(dict_in['mass_ratio']) == float: dict_out['mass_ratio'] = dict_in['mass_ratio']
+        else:  raise ValueError(f"Unknown type for prior on mass_ratio: {dict_in['mass_ratio']}. Please provide either a 2-list for prior bounds, or a float to fix mass_ratio.")
+    
+    else:
+        raise KeyError("Wrong option for mass priors. Please choose between 'm1-m2' or 'Mc-q'.")
 
     # Luminosity distance
     if   type(dict_in['luminosity_distance']) == list:  dict_out['luminosity_distance'] = bilby.core.prior.Uniform(dict_in['luminosity_distance'][0], dict_in['luminosity_distance'][1], latex_label=latex_labels['luminosity_distance'])
@@ -120,8 +157,10 @@ def initialise_prior(dict_in, dict_out, input_pars, trigtime=None, precession=Fa
         max_len = len(max(dict_out.keys(), key = len))
         print('\t{}  {}'.format(key.ljust(max_len), dict_out[key]))
     
-    if input_pars['priors-dict'] == 'custom':
+    if input_pars['priors-dict'] == 'm1-m2_custom':
         dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function=set_mass_constraint)
+    elif input_pars['priors-dict'] == 'Mc-q_custom' or input_pars['PE-prior-masses'] == 'Mc-q':
+        dict_out = bilby.core.prior.PriorDict(dict_out)
 
     return dict_out
 
@@ -214,7 +253,7 @@ def main():
     BilbyClass.inject_signal()
 
     # Initialise priors.
-    if   input_pars['priors-dict'] == 'bilby':
+    if   input_pars['priors-dict'] == 'm1-m2_bilby':
         priors = bilby.gw.prior.BBHPriorDict()
         priors = initialise_prior(
             input_pars['priors'], 
@@ -223,7 +262,7 @@ def main():
             trigtime   = injection_parameters['geocent_time'], 
             precession = input_pars['precession']
         )
-    elif input_pars['priors-dict'] == 'custom':
+    elif input_pars['priors-dict'] == 'm1-m2_custom' or input_pars['priors-dict'] == 'Mc-q':
         priors = {}
         priors = initialise_prior(
             input_pars['priors'], 
@@ -265,10 +304,17 @@ def main():
 
     # Make a corner plot.
     print("\n * Producing the corner plot...")
+    if (input_pars['PE-prior-masses'] == 'Mc-q') or (input_pars['PE-prior-masses'] == 'm1-m2' and input_pars['priors-dict'] == 'Mc-q'):
+        pars_to_plot = ['mass_1', 'mass_2'] + [key for key in result.search_parameter_keys if key not in {'chirp_mass', 'mass_ratio'}] + ['chirp_mass', 'mass_ratio']
+        BilbyClass.projected_event_dict['chirp_mass'] = chirp_mass(m1=BilbyClass.projected_event_dict['mass_1'], m2=BilbyClass.projected_event_dict['mass_2'])
+        BilbyClass.projected_event_dict['mass_ratio'] = BilbyClass.projected_event_dict['mass_2'] / BilbyClass.projected_event_dict['mass_1']
+    elif input_pars['PE-prior-masses'] == 'm1-m2':
+        pars_to_plot = result.search_parameter_keys
     result.plot_corner(
         # priors = True,
-        truths = {key: BilbyClass.projected_event_dict[key] for key in result.search_parameter_keys},
+        truths = {key: BilbyClass.projected_event_dict[key] for key in pars_to_plot},
     )
+
     print("\t...done !\n")
 
 

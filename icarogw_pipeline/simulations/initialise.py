@@ -10,6 +10,7 @@ def InitialiseOptions(Config):
         'run-type'                      : 'population',
         'screen-output'                 : False,
         'postprocessing'                : False,
+        'drawing-method'                : 'rejection-sampling',
 
         'events-number'                 : 1000,
         'estimate-events-number'        : False,
@@ -86,7 +87,7 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path'):
+        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path') or (key == 'drawing-method'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if (key == 'SNR-cut') or (key == 'SNR-soft-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
@@ -293,6 +294,7 @@ usage = """
         run-type                      [str  ]  Type of simulation to run. Options: 'population', 'injections'. Default: 'population'.
         screen-output                 [bool ]  Flag to deviate the standard output to screen. Default: '0'.
         postprocessing                [bool ]  Flag to only postprocess an existing simulation. Default: '0'.
+        drawing-method                [str  ]  Method used to draw samples from the target population distribution. Options: 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'. Default: 'rejection-sampling'.
 
         events-number                 [int  ]  Number of generated events to draw from the astrophysical popoulation. Option used if the run-type is 'population'. Default: 1000.
         estimate-events-number        [bool ]  Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.

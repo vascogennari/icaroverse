@@ -615,7 +615,7 @@ def get_distribution_samples(pars):
     # Compute the number of astrophysical events, if required.
     if pars['estimate-events-number']: pars['events-number'] = estimate_events_number(pars)
 
-    # Extract the number of events to generate, distinguishing between population and injections simulations
+    # Extract the number of events to generate, distinguishing between population and injections simulations.
     if   pars['run-type'] == 'population': N_events = pars['events-number'         ]
     elif pars['run-type'] == 'injections': N_events = pars['injections-number-bank']
     else: raise ValueError("Unknown run-type. Please choose between 'population' and 'injections'.")
@@ -626,13 +626,22 @@ def get_distribution_samples(pars):
     q_array  = np.linspace(pars['bounds-q' ][0], pars['bounds-q' ][1], pars['N-points'])
     z_array  = np.linspace(pars['bounds-z' ][0], pars['bounds-z' ][1], pars['N-points'])
 
+    # Set the sampler to draw events.
+    if   pars['drawing-method'] == 'rejection-sampling'             : _sampler = rejection_sampling_1D
+    elif pars['drawing-method'] == 'inverse-transform'              : _sampler = draw_samples_CDF_1D
+    elif pars['drawing-method'] == 'deterministic-inverse-transform': _sampler = draw_stratified_samples_CDF_1D
+    else: raise ValueError("Unknown drawing-method. Please choose between 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'.")
+
     # Rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
-    
-    # Convert from rate to probability distribution.
-    tmp = pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
-    zs, pdf_z = rejection_sampling_1D(z_array, tmp, N_events)
-    if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+    tmp = pars['wrappers']['rw'].rate.evaluate(z_array)
+    if not 'RedshiftProbability' in pars['model-rate']:
+        tmp *= pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
+        zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
+        if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+    else:
+        zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
+        if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
@@ -641,12 +650,15 @@ def get_distribution_samples(pars):
         pdf_m1 = np.zeros(N_events)
         for i,z in tqdm(enumerate(zs),  total = len(zs)):
             tmp = pars['wrappers']['m1w'].pdf(m1_array, z)
-            # For redshift evolving distributions, we use the redshift samples to draw the masses.
-            m1s[i], pdf_m1[i] = rejection_sampling_1D(m1_array, tmp, 1)
+            if not pars['drawing-method'] == 'deterministic-inverse-transform':
+                # For redshift evolving distributions, we use the redshift samples to draw the masses.
+                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp, 1, 2)
+            else:
+                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp, N_events, 2, quantile_index = i)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
-        m1s, pdf_m1 = rejection_sampling_1D(m1_array, tmp, N_events)
+        m1s, pdf_m1 = _sampler(m1_array, tmp, N_events, 2)
 
     # If required, remove the log10 contribution.
     if pars['log10-PDF']:
@@ -658,7 +670,7 @@ def get_distribution_samples(pars):
         if 'MassRatio' in pars['model-secondary']:
             update_weights(pars['wrappers']['m2w'], pars['truths'])
             tmp = pars['wrappers']['m2w'].pdf(q_array)
-            qs, pdf_q = rejection_sampling_1D(q_array, tmp, N_events)
+            qs, pdf_q = _sampler(q_array, tmp, N_events, 3)
 
             # If required, remove the log10 contribution.
             if pars['log10-PDF']:
@@ -700,31 +712,7 @@ def get_distribution_samples(pars):
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
 
-def draw_samples_CDF_1D(x, PDF, N):
-    '''
-        Draw N samples from a distribution that follows the array PDF.
-
-        Compute the cumulative distribution (CDF) and draw uniformly from [0,1].
-        Interpolate the resulting samples to get a continuous extraction on x.
-    '''
-    # Normalize PDF to ensure it sums to 1.
-    PDF = PDF / np.sum(PDF)
-    # Compute CDF and ensure it starts at 0.
-    CDF = np.cumsum(PDF)
-    CDF = np.insert(CDF, 0, 0)  # Insert 0 at the beginning
-    x_extended = np.insert(x, 0, x[0])  # Extend x for interpolation
-    # Draw uniform samples from [0,1].
-    tmp = np.random.uniform(0, 1, N)
-    # Inverse transform sampling: interpolate using the CDF.
-    samps = np.interp(tmp, CDF, x_extended)
-    # Compute the derivative of the CDF (which is the PDF) using finite differences
-    dCDF_dx = np.gradient(CDF, x_extended)  # Approximate derivative
-    pdf_s = np.interp(samps, x_extended, dCDF_dx)  # Interpolate to get PDF values
-
-    return samps, pdf_s
-
-
-def rejection_sampling_1D(x, PDF, N):
+def rejection_sampling_1D(x, PDF, N, _, quantile_index = None):
     '''
         Draw N samples from a distribution that follows the array PDF,
         using a rejection sampling algorithm.
@@ -750,6 +738,65 @@ def rejection_sampling_1D(x, PDF, N):
     pdf_samples = np.interp(samples, x, PDF)
 
     return samples, pdf_samples
+
+
+def draw_samples_CDF_1D(x, PDF, N, _, quantile_index = None):
+    '''
+        Draw N samples from a distribution that follows the array PDF.
+
+        Compute the cumulative distribution (CDF) and draw uniformly from [0,1].
+        Interpolate the resulting samples to get a continuous extraction on x.
+    '''
+    # Normalize PDF to ensure it sums to 1.
+    PDF = PDF / np.sum(PDF)
+    # Compute CDF and ensure it starts at 0.
+    CDF = np.cumsum(PDF)
+    CDF = np.insert(CDF, 0, 0)  # Insert 0 at the beginning
+    x_extended = np.insert(x, 0, x[0])  # Extend x for interpolation
+    # Draw uniform samples from [0,1].
+    tmp = np.random.uniform(0, 1, N)
+    # Inverse transform sampling: interpolate using the CDF.
+    samps = np.interp(tmp, CDF, x_extended)
+    # Compute the derivative of the CDF (which is the PDF) using finite differences
+    dCDF_dx = np.gradient(CDF, x_extended)  # Approximate derivative
+    pdf_s = np.interp(samps, x_extended, dCDF_dx)  # Interpolate to get PDF values
+
+    return samps, pdf_s
+
+
+def draw_stratified_samples_CDF_1D(x, PDF, N, seed, quantile_index = None):
+    '''
+    Generate N deterministic samples from a given 1D discrete PDF using stratified quantiles.
+    
+    Inputs:
+        x    : array of x-values corresponding to the PDF
+        PDF  : unnormalized PDF values over x
+        N    : number of samples to generate
+        seed : seed for random shuffling
+        
+    Returns:
+        samps : array of smooth, noise-free samples
+        pdf_s : interpolated PDF values at sample locations
+    '''
+    # Normalize the PDF to make it a proper probability distribution
+    PDF = PDF / np.sum(PDF)
+    # Compute the CDF and ensure it starts at 0
+    CDF = np.cumsum(PDF)
+    CDF = np.insert(CDF, 0, 0)
+    x_extended = np.insert(x, 0, x[0])
+
+    q = (np.arange(N) + 0.5) / N
+    rng = np.random.default_rng(seed)
+    q = q[rng.permutation(N)]
+    if quantile_index is not None: q = q[quantile_index]
+
+    # Inverse transform sampling via interpolation
+    samps = np.interp(q, CDF, x_extended)
+    # Compute the derivative (approximate PDF) using finite differences
+    dCDF_dx = np.gradient(CDF, x_extended)
+    pdf_s = np.interp(samps, x_extended, dCDF_dx)
+
+    return samps, pdf_s
 
 
 
