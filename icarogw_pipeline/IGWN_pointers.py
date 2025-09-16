@@ -167,8 +167,8 @@ O4a_BBHs_FAR_1 = {
 }
 
 sensitivity_estimates = {
-    'GWTC-3': '~IGWN_data_path/MISSING',
-    'GWTC-4.0': '~IGWN_data_path/mixture-semi_o1_o2-real_o3_o4a-polar_spins_20250503134659UTC.hdf',
-    'O3': '~IGWN_data_path/endo3_bbhpop-LIGO-T2100113-v12.hdf5',
-    'O4a': '~IGWN_data_path/MISSING',
+    'GWTC-3': '~IGWN_injections_path/MISSING',
+    'GWTC-4.0': '~IGWN_injections_path/mixture-semi_o1_o2-real_o3_o4a-polar_spins_20250503134659UTC.hdf',
+    'O3': '~IGWN_injections_path/endo3_bbhpop-LIGO-T2100113-v12.hdf5',
+    'O4a': '~IGWN_injections_path/MISSING',
 }

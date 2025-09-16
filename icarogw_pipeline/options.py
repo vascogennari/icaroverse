@@ -18,8 +18,8 @@ def InitialiseOptions(Config):
 
         'data-path'                   : '',
         'real-data'                   : False,
-        'catalog'                     : 'GWTC-4.0',
         'real-noise-injections'       : False,
+        'catalog'                     : 'GWTC-4.0',
         'remove-events'               : [],
         'inverse-mass-ratio'          : False,
         'PE-prior-distance'           : 'dL3',
@@ -304,8 +304,8 @@ usage = """
 
         data-path                   [str  ]  Path of the single event data. Default: ''.
         real-data                   [bool ]  Option to process real GW events. Default: 0.
-        catalog                     [str  ]  Catalog of events to be used in the analysis. Options: 'GWTC-3', 'GWTC-4.0', 'O3', 'O4a'. Default: 'GWTC-4.0'.
         real-noise-injections       [bool ]  Option to use IGWN real noise sensitivy estimates for the selection effects. Default: 0.
+        catalog                     [str  ]  Catalog of events to be used in the analysis. Options: 'GWTC-3', 'GWTC-4.0', 'O3', 'O4a'. Default: 'GWTC-4.0'.
         remove-events               [list ]  List of events to be removed from the analysis. Example: ['GW190412_053044', 'GW190521_030229']. Default: [].
         PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in comoving volume). Default: 'dL3'.
         PE-prior-masses             [str  ]  Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.

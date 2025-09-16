@@ -273,16 +273,18 @@ class SelectionEffects:
         
     def __init__(self, pars, ref_cosmo):
 
-        print('\n * Loading injections for selection effects.\n\n\t{}'.format(pars['injections-path']))
+        print('\n * Loading injections for selection effects.')
 
         # Use IGWN real-noise injections from IGWN.
         if pars['real-noise-injections']:
 
             print('\n\tUsing IGWN sensitivity estimates in real noise to evaluate selection effects.')
 
-            from IGNW_pointers import sensitivity_estimates
-            try: data_inj = h5py.File(sensitivity_estimates[pars['catalog']])
+            from IGWN_pointers import sensitivity_estimates
+            path = sensitivity_estimates[pars['catalog']].replace("~IGWN_injections_path", pars['injections-path'])
+            try: data_inj = h5py.File(path)
             except: raise ValueError('Could not open the file containing the injections for selection effects. Please verify that you have downloaded the IGWN sensitivity estimates and that the path is correct:\n{}'.format(sensitivity_estimates[pars['catalog']]))
+            print('\n\t{}'.format(path))
 
             # FIXME: Add control to make sure that the injections used correspond to the correct catalog.
             if   pars['catalog'] == 'GWTC-3':   obs_time = None # FIXME: Where can this value be found?
@@ -294,7 +296,7 @@ class SelectionEffects:
 
             pars['injections-number'] = data_inj.attrs['total_generated']
 
-            if   pars['O3']:
+            if   pars['catalog'] == 'O3':
 
                 prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
                 # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m1s,m2s,z)->(m1d,m2d,dL).
@@ -313,7 +315,7 @@ class SelectionEffects:
                     inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj['injections/mass1'][()]
                     prior *= data_inj['injections/mass1'][()] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
 
-            elif pars['GWTC-4.0']:
+            elif pars['catalog'] == 'GWTC-4.0':
 
                 pars['injections-number'] = data_inj.attrs['total_generated']
                 events = data_inj['events'][:]
@@ -339,6 +341,9 @@ class SelectionEffects:
                     'mass_1':              events['mass1_source'] * (1 + events['redshift']),
                     'mass_2':              events['mass2_source'] * (1 + events['redshift']),
                     'luminosity_distance': events['luminosity_distance']}
+            
+            else:
+                raise ValueError('Catalog option not yet implemented. Please choose GWTC-4.0 or O3.')
 
             # If using the mass ratio, correct the prior with the Jacobian m2->q.
             if 'MassRatio' in pars['model-secondary']:
@@ -349,6 +354,7 @@ class SelectionEffects:
         else:
 
             print('\n\tUsing simulated injections to evaluate selection effects.')
+            print('\n\t{}'.format(pars['injections-path']))
 
             try:
                 if '.pickle' in pars['injections-path']:
@@ -387,7 +393,7 @@ class SelectionEffects:
                 inj_dict.pop('mass_2')
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
-        if not pars['GWTC-4.0']:
+        if not pars['catalog'] == 'GWTC-4.0':
             if   pars['selection-effects-cut'] == 'snr' : self.injections.update_cut(data_inj['snr'] >= pars['snr-cut' ])
             elif pars['selection-effects-cut'] == 'ifar': self.injections.update_cut(ifarmax         >= pars['ifar-cut'])
             else:
@@ -438,7 +444,7 @@ class Data:
             # https://zenodo.org/records/8177023 for O3b events.
             # https://zenodo.org/records/17014085 for O4a events.
 
-            from IGNW_pointers import O1_O2_BBHs_FAR_1, O3_BBHs_FAR_1, O4a_BBHs_FAR_1
+            from IGWN_pointers import O1_O2_BBHs_FAR_1, O3_BBHs_FAR_1, O4a_BBHs_FAR_1
 
             if   pars['catalog'] == 'GWTC-3':   catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1
             elif pars['catalog'] == 'GWTC-4.0': catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1 | O4a_BBHs_FAR_1
