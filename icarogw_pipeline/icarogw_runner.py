@@ -13,17 +13,17 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
     if cosmo_wrap:
         # if bkg_cosmo_wrap_name is not None, it is assumed that wrap_name refers to a modified gravity cosmology wrapper
         if bkg_cosmo_wrap_name is not None:
-            bkg_wrap = get_wrapper(bkg_cosmo_wrap_name, cosmo_wrap=True)
+            bkg_wrap = get_wrapper(bkg_cosmo_wrap_name, cosmo_wrap=True, zmax=zmax)
             return wrap(bkg_wrap)
         else:
-            return wrap(zmax=20)
+            return wrap(zmax=zmax)
     elif transition == None:
         if order == None:
             if not input_wrapper == None:
@@ -214,9 +214,9 @@ class Wrappers:
         if   (mc in icarogw_models and models[mc]['class'] == 'MG') and (mb in icarogw_models and models[mc]['class'] == 'GR'):
             raise ValueError("Unknown GR model for the background cosmology: {}.\nPlease choose from the available models:\n\t{}".format(mb, "\n\t".join([m for m in icarogw_models if models[m]['class'] == 'GR'])))
         elif (mc in icarogw_models and models[mc]['class'] == 'MG'):
-            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=models[mb]['wrap name'])
+            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=models[mb]['wrap name'], zmax=pars['zmax'])
         elif (mc in icarogw_models and models[mc]['class'] == 'GR'):
-            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=None)
+            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=None                   , zmax=pars['zmax'])
         else:
             raise ValueError("Unknown model for the Cosmology: {}.\nPlease choose from the available models:\n\t{}".format(mc, "\n\t".join(icarogw_models)))
         return w
@@ -512,15 +512,40 @@ class LikelihoodPrior:
     def Prior(self, pars, w):
 
         def initialise_prior(dict_in, dict_out, w):
+
+            available_bilby_priors = [
+                'Uniform',
+                'LogUniform',
+            ]
               
             for par in w.population_parameters:
-                if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
+
+                if   type(dict_in[par]) == list and (len(dict_in[par]) == 2): 
+                    dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
+
+                elif type(dict_in[par]) == list and (len(dict_in[par]) > 2):
+                    if dict_in[par][2] in available_bilby_priors:
+                        bilby_prior_class = getattr(bilby.core.prior, dict_in[par][2])
+                        dict_out[par] = bilby_prior_class(dict_in[par][0], dict_in[par][1])
+                    else:
+                        raise KeyError("Unknown bilby prior. Available (in this pipeline):\n\t" + '\n\t'.join(available_bilby_priors))
+
                 elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+
                 else:
                     raise ValueError('Unknown type for prior on {}'.format(dict_in[par]))
             
             print('\n * Using the following priors.\n')
             print_dictionary({key: dict_in[key] for key in dict_out.keys()})
+
+            if pars['model-cosmology'] == 'Flatw0waCDM' and pars['w0wa_earlyMD_constraint']:
+                print("\n\tImplementing [ w0 + wa < 0 ] constraint.\n")
+                def w0wa_earlyMD_constraint(params):
+                    converted_params = params.copy()
+                    converted_params['w0wa_earlyMD_constraint'] = params['w0'] + params['wa']
+                    return converted_params
+                dict_out['w0wa_earlyMD_constraint'] = bilby.core.prior.Constraint(minimum = -100., maximum = 0.)
+                dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = w0wa_earlyMD_constraint)
 
             return dict_out
 
