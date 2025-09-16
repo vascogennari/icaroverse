@@ -172,6 +172,7 @@ def default_priors():
         'delta_m_a'     : [   0.  ,  30.  ],
         'delta_m_b'     : [   0.  ,  30.  ],
         'delta_m_c'     : [   0.  ,  30.  ],
+        'delta_m_d'     : [   0.  ,  30.  ],
         'delta'         : [   0.  ,   0.15],
 
         'alpha'         : [  -4.  , 120.  ],
@@ -182,6 +183,7 @@ def default_priors():
         'alpha_a'       : [  -4.  , 120.  ],
         'alpha_b'       : [  -4.  ,  20.  ],
         'alpha_c'       : [  -4.  ,  20.  ],
+        'alpha_d'       : [  -4.  ,  20.  ],
         'break_p'       : [   0.  ,   1.  ],
         'm_b'           : [   5.  ,   7.  ],
 
@@ -219,9 +221,11 @@ def default_priors():
         'mmin_a'        : [   1.  , 100.  ],
         'mmin_b'        : [   1.  , 100.  ],
         'mmin_c'        : [   1.  , 100.  ],
+        'mmin_d'        : [   1.  , 100.  ],
         'mmax_a'        : [  30.  , 200.  ],
         'mmax_b'        : [  30.  , 200.  ],
         'mmax_c'        : [  30.  , 200.  ],
+        'mmax_d'        : [  30.  , 200.  ],
 
         'mu_g'          : [  20.  ,  60.  ],
         'mu_z0'         : [  20.  ,  60.  ],
@@ -255,6 +259,7 @@ def default_priors():
         'mix_beta_z1'   : [   0.  ,   1.  ],
         'mix_alpha'     : [   0.  ,   1.  ],
         'mix_beta'      : [   0.  ,   1.  ],
+        'mix_gamma'     : [   0.  ,   1.  ],
         'mix'           : [   0.  ,   1.  ],
 
         'amp'           : [   0.  ,   0.2 ],

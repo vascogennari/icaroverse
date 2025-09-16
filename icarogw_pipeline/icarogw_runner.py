@@ -26,7 +26,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
         if order == None:
             if not input_wrapper == None:
                 return wrap(input_wrapper)
-            elif wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
+            elif wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
                 return wrap(flag_powerlaw_smoothing = smoothing)
             else:
                 return wrap()
@@ -103,6 +103,7 @@ class Wrappers:
             'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                    {'wrap name': 'PowerLaw_PowerLaw',                                                    'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw':                                           {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                           'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-PowerLaw-PowerLaw':                                  {'wrap name': 'PowerLaw_PowerLaw_PowerLaw_PowerLaw',                                  'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-Gaussian':                                           {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                           'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-GaussianRedshiftLinear':                                      {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                      'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLaw-GaussianRedshiftQuadratic':                                   {'wrap name': 'PowerLaw_GaussianRedshiftQuadratic',                                   'z evolution': True,  'smoothing': 'component-wise'},
@@ -127,7 +128,7 @@ class Wrappers:
 
         if mp in icarogw_models:
             # Non-evolving models.
-            if   (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'global': 
+            if   (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'global':
                 w = get_wrapper(models[mp]['wrap name'])
                 if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
             elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
