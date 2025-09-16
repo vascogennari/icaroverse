@@ -72,7 +72,7 @@ else:        slurm_partition    = 'htc'
 
 # Set the specific directory for the runs
 directory    = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/config_files'
-subdirectory = 'EXP_H0-prospects_GPU'
+subdirectory = 'temp'
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')
