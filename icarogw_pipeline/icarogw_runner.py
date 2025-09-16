@@ -3,25 +3,27 @@ from optparse import OptionParser
 from inspect import getmembers, isclass
 
 import pickle, h5py, pandas as pd, json
-import numpy as np
 import icarogw, bilby, astropy
+
+if icarogw.cupy_pal.is_there_cupy(): import cupy  as xp
+else:                                import numpy as xp
 
 # Internal imports
 import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
     if cosmo_wrap:
         # if bkg_cosmo_wrap_name is not None, it is assumed that wrap_name refers to a modified gravity cosmology wrapper
         if bkg_cosmo_wrap_name is not None:
-            bkg_wrap = get_wrapper(bkg_cosmo_wrap_name, cosmo_wrap=True)
+            bkg_wrap = get_wrapper(bkg_cosmo_wrap_name, cosmo_wrap=True, zmax=zmax)
             return wrap(bkg_wrap)
         else:
-            return wrap(zmax=20)
+            return wrap(zmax=zmax)
     elif transition == None:
         if order == None:
             if not input_wrapper == None:
@@ -74,7 +76,7 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
             if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
             # Check effective numer of posterior samples.
             try:
-                N_eff_PE  = np.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
+                N_eff_PE  = xp.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
                 print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
             except AttributeError as err:
                 # The first likelihood evaluation at true population values gives 0 because the effective number of injections is below threshold.
@@ -213,9 +215,9 @@ class Wrappers:
         if   (mc in icarogw_models and models[mc]['class'] == 'MG') and (mb in icarogw_models and models[mc]['class'] == 'GR'):
             raise ValueError("Unknown GR model for the background cosmology: {}.\nPlease choose from the available models:\n\t{}".format(mb, "\n\t".join([m for m in icarogw_models if models[m]['class'] == 'GR'])))
         elif (mc in icarogw_models and models[mc]['class'] == 'MG'):
-            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=models[mb]['wrap name'])
+            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=models[mb]['wrap name'], zmax=pars['zmax'])
         elif (mc in icarogw_models and models[mc]['class'] == 'GR'):
-            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=None)
+            w = get_wrapper(models[mc]['wrap name'], cosmo_wrap=True, bkg_cosmo_wrap_name=None                   , zmax=pars['zmax'])
         else:
             raise ValueError("Unknown model for the Cosmology: {}.\nPlease choose from the available models:\n\t{}".format(mc, "\n\t".join(icarogw_models)))
         return w
@@ -303,24 +305,19 @@ class SelectionEffects:
                 # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m1s,m2s,z)->(m1d,m2d,dL).
                 prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
 
-                tmp = np.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
-                ifarmax = np.max(tmp, axis = 0)
+                tmp = xp.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
+                ifarmax = xp.max(tmp, axis = 0)
 
                 inj_dict = {
-                    'mass_1':              data_inj['injections/mass1'][()],
-                    'mass_2':              data_inj['injections/mass2'][()],
-                    'luminosity_distance': data_inj['injections/distance'][()]}
-                
-                # If using the mass ratio, correct the prior with the Jacobian m2->q.
-                if 'MassRatio' in pars['model-secondary']:
-                    inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj['injections/mass1'][()]
-                    prior *= data_inj['injections/mass1'][()] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+                    'mass_1':              xp.array(data_inj['injections/mass1'][()]),
+                    'mass_2':              xp.array(data_inj['injections/mass2'][()]),
+                    'luminosity_distance': xp.array(data_inj['injections/distance'][()])}
 
             elif pars['catalog'] == 'GWTC-4.0':
 
                 pars['injections-number'] = data_inj.attrs['total_generated']
                 events = data_inj['events'][:]
-                ifarmax = 1 / np.min([events[search + '_far'] for search in data_inj.attrs['searches']], axis = 0)
+                ifarmax = 1 / xp.min([events[search + '_far'] for search in data_inj.attrs['searches']], axis = 0)
                 if   pars['selection-effects-cut'] == 'snr' : real_noise_condition = ifarmax >= pars['snr-cut']
                 elif pars['selection-effects-cut'] == 'ifar': real_noise_condition = ifarmax >= pars['ifar-cut']
                 else:
@@ -332,16 +329,16 @@ class SelectionEffects:
                 selected_filt = detected_filt & not_ER15
 
                 lnprior = events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle']
-                lnprior -= np.log(np.sin(events['spin2_polar_angle'])*np.sin(events['spin1_polar_angle'])) # Accounts from implied Jacobian from t->cost.
-                lnprior += np.log(4*np.pi*np.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
-                lnprior -= np.log(events['weights']) # Weights for multipop analysis.
-                lnprior -= np.log(events['dluminosity_distance_dredshift']*np.power(1+events['redshift'],2.))
-                prior = np.exp(lnprior)
+                lnprior -= xp.log(xp.sin(events['spin2_polar_angle'])*xp.sin(events['spin1_polar_angle'])) # Accounts from implied Jacobian from t->cost.
+                lnprior += xp.log(4*xp.pi*xp.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
+                lnprior -= xp.log(events['weights']) # Weights for multipop analysis.
+                lnprior -= xp.log(events['dluminosity_distance_dredshift']*xp.power(1+events['redshift'],2.))
+                prior = xp.exp(lnprior)
 
                 inj_dict = {
-                    'mass_1':              events['mass1_source'] * (1 + events['redshift']),
-                    'mass_2':              events['mass2_source'] * (1 + events['redshift']),
-                    'luminosity_distance': events['luminosity_distance']}
+                    'mass_1':              xp.array(events['mass1_source'] * (1 + events['redshift'])),
+                    'mass_2':              xp.array(events['mass2_source'] * (1 + events['redshift'])),
+                    'luminosity_distance': xp.array(events['luminosity_distance'])}
             
             else:
                 raise ValueError('Catalog option not yet implemented. Please choose GWTC-4.0 or O3.')
@@ -367,30 +364,27 @@ class SelectionEffects:
             
             # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
             # Whatever distribution and variables used to generate the injections, please make sure it follows such conventions.
-            prior = data_inj['prior']
+            prior = xp.array(data_inj['prior'])
             obs_time = 1
-            mass_1 = 'm1d'
-            mass_2 = 'm2d'
-            dist   = 'dL'
 
             inj_dict = {
-                'mass_1':              data_inj[mass_1],
-                'mass_2':              data_inj[mass_2],
-                'luminosity_distance': data_inj[dist]}
+                'mass_1':              xp.array(data_inj['m1d']),
+                'mass_2':              xp.array(data_inj['m2d']),
+                'luminosity_distance': xp.array(data_inj['dL'])}
             
             if not pars['single-mass']:
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
                 if 'MassRatio' in pars['model-secondary']:
                     if not pars['inverse-mass-ratio']:
-                        inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj[mass_1]
-                        prior *= data_inj[mass_1]                             # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+                        inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / inj_dict['mass_1']
+                        prior *= inj_dict['mass_1']                             # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
                     else:
-                        inj_dict['mass_ratio'] = data_inj[mass_1] / inj_dict.pop('mass_2')
-                        prior *= data_inj[mass_1] / inj_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
+                        inj_dict['mass_ratio'] = inj_dict['mass_1'] / inj_dict.pop('mass_2')
+                        prior *= inj_dict['mass_1'] / inj_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
             else:
                 # If only using one mass, remove the Jacobian contribution from the secondary.
                 # This operation depends on the injection prior used to generate the injections.
-                prior *= (1 + ref_cosmo.dl2z(data_inj[dist]))
+                prior *= (1 + ref_cosmo.dl2z(inj_dict['luminosity_distance']))
                 inj_dict.pop('mass_2')
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
@@ -402,7 +396,7 @@ class SelectionEffects:
         else:
             self.injections.update_cut(selected_filt)
 
-        print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data_original['mass_1']), len(inj_dict['mass_1'])))
+        print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data['mass_1']), len(self.injections.injections_data_original['mass_1'])))
 
     def return_SelectionEffects(self):
         return self.injections
@@ -466,14 +460,14 @@ class Data:
                 data_evs = tmp[catalog[ev]['PE_waveform']]['posterior_samples']
 
                 pos_dict  = {
-                    'mass_1'             : data_evs['mass_1'][()],
-                    'mass_2'             : data_evs['mass_2'][()],
-                    'luminosity_distance': data_evs['luminosity_distance'][()]}
+                    'mass_1'             : xp.array(data_evs['mass_1'][()]),
+                    'mass_2'             : xp.array(data_evs['mass_2'][()]),
+                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()])}
 
                 # Account for PE priors. For O3 data, PE priors are uniform in component masses.
                 # Luminosity distance.
-                if   pars['PE-prior-distance'] == 'dL' : prior = np.ones(len(data_evs['luminosity_distance'][()]))    # Set the prior to one.
-                elif pars['PE-prior-distance'] == 'dL3': prior = np.power(   data_evs['luminosity_distance'][()], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+                if   pars['PE-prior-distance'] == 'dL' : prior = xp.ones(len(pos_dict['luminosity_distance']))    # Set the prior to one.
+                elif pars['PE-prior-distance'] == 'dL3': prior = xp.power(   pos_dict['luminosity_distance'], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
 
                 # Case of using mass ratio instead of the secondary mass.
                 if 'MassRatio' in pars['model-secondary']:
@@ -498,19 +492,19 @@ class Data:
 
                 if pars['true-data']:
                     pos_dict = {
-                        'mass_1':              np.array([data_evs['m1d'][i]]),
-                        'mass_2':              np.array([data_evs['m2d'][i]]),
-                        'luminosity_distance': np.array([data_evs['dL' ][i]])}
+                        'mass_1':              xp.array([data_evs['m1d'][i]]),
+                        'mass_2':              xp.array([data_evs['m2d'][i]]),
+                        'luminosity_distance': xp.array([data_evs['dL' ][i]])}
                 else:
                     idx = list(data_evs['m1d'].keys())[i]
                     if idx in pars['remove-events']: continue
                     pos_dict = {
-                        'mass_1':              np.array(data_evs['m1d'][idx]),
-                        'mass_2':              np.array(data_evs['m2d'][idx]),
-                        'luminosity_distance': np.array(data_evs['dL' ][idx])}
+                        'mass_1':              xp.array(data_evs['m1d'][idx]),
+                        'mass_2':              xp.array(data_evs['m2d'][idx]),
+                        'luminosity_distance': xp.array(data_evs['dL' ][idx])}
 
                 # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
-                prior = np.full(len(pos_dict['mass_1']), 1.)
+                prior = xp.full(len(pos_dict['mass_1']), 1.)
 
                 if 'MassRatio' in pars['model-secondary']:
                     if not pars['inverse-mass-ratio']: pos_dict['mass_ratio'] = pos_dict['mass_2'] / pos_dict['mass_1']
@@ -573,15 +567,40 @@ class LikelihoodPrior:
     def Prior(self, pars, w):
 
         def initialise_prior(dict_in, dict_out, w):
+
+            available_bilby_priors = [
+                'Uniform',
+                'LogUniform',
+            ]
               
             for par in w.population_parameters:
-                if   type(dict_in[par]) == list:  dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
+
+                if   type(dict_in[par]) == list and (len(dict_in[par]) == 2): 
+                    dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
+
+                elif type(dict_in[par]) == list and (len(dict_in[par]) > 2):
+                    if dict_in[par][2] in available_bilby_priors:
+                        bilby_prior_class = getattr(bilby.core.prior, dict_in[par][2])
+                        dict_out[par] = bilby_prior_class(dict_in[par][0], dict_in[par][1])
+                    else:
+                        raise KeyError("Unknown bilby prior. Available (in this pipeline):\n\t" + '\n\t'.join(available_bilby_priors))
+
                 elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+
                 else:
                     raise ValueError('Unknown type for prior on {}'.format(dict_in[par]))
             
             print('\n * Using the following priors.\n')
             print_dictionary({key: dict_in[key] for key in dict_out.keys()})
+
+            if pars['model-cosmology'] == 'Flatw0waCDM' and pars['w0wa_earlyMD_constraint']:
+                print("\n\tImplementing [ w0 + wa < 0 ] constraint.\n")
+                def w0wa_earlyMD_constraint(params):
+                    converted_params = params.copy()
+                    converted_params['w0wa_earlyMD_constraint'] = params['w0'] + params['wa']
+                    return converted_params
+                dict_out['w0wa_earlyMD_constraint'] = bilby.core.prior.Constraint(minimum = -100., maximum = 0.)
+                dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = w0wa_earlyMD_constraint)
 
             return dict_out
 
@@ -638,7 +657,9 @@ def main():
         sys.stdout = open(os.path.join(input_pars['output'], 'stdout_icarogw.txt'), 'w')
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
-    print('\n\n Starting  i c a r o g w  runner\n\n')
+    print('\n\n ===== Starting  i c a r o g w  runner ===== \n\n')
+
+    if icarogw.cupy_pal.is_there_cupy(): print(" * I will run with cupy on GPU.")
 
     # Print run parameters.
     print(' * I will be running with the following parameters.\n')
@@ -668,8 +689,13 @@ def main():
     likelihood, prior = tmp.return_LikelihoodPrior()
 
     # Plot weighted injections
-    try: icarogw_postprocessing.plot_weighted_injections(input_pars, injections=injections, rate=wrapper, data=data)
-    except: print("\n * Weighted injections plotting failed. Carry on...\n")
+    # print("\n * Plotting weighted injections")
+    # try: 
+    #     icarogw_postprocessing.plot_weighted_injections(input_pars, injections=injections, rate=wrapper, data=data)
+    #     print("\t...done !")
+    # except: 
+    #     pass
+    #     print("\t...failed. Carry on...\n")
 
     # Control the effective number of injections on the injected model.
     check_effective_number_injections(input_pars, likelihood, data.n_ev)
@@ -681,10 +707,18 @@ def main():
     # Extracting the input parameters specific to each class of sampler 
     print('\n * Running hierarchical analysis with this settings.\n')
     if   input_pars['sampler'] == 'dynesty' or input_pars['sampler'] == 'nessai':
-        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'print-method', 'sample', 'npool']}
+        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'print-method', 'sample']}
+        if icarogw.cupy_pal.is_there_cupy():
+            sampler_pars['npool'] = None
+            print("\tRunning sampler on GPU, enforcing npool==None (no multiprocessing).")
+        else: 
+            sampler_pars['npool'] = input_pars['npool']
         print_dictionary(sampler_pars)
     elif input_pars['sampler'] == 'ptemcee':
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']}
+        print_dictionary(sampler_pars)
+    elif input_pars['sampler'] == 'emcee': 
+        sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'nsteps', 'npool']}
         print_dictionary(sampler_pars)
     else:
         raise ValueError('Sampler not available.')
@@ -710,12 +744,12 @@ def main():
     with open('{}/log_evidence.txt'.format(input_pars['output']), 'w') as f:
         f.write('{}\n'.format('# log_Z_base_e\tlog_Z_err\tmax_log_L'))
         log_evidence_err = round(tmp['log_evidence_err'], 2)
-        if np.isnan(tmp['log_evidence_err']): log_evidence_err = 0.1
+        if xp.isnan(tmp['log_evidence_err']): log_evidence_err = 0.1
         f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), log_evidence_err, round(max(df['log_likelihood']), 2)))
 
     # Control the effective number of injections on the maximum likelihood model.
     print('\n * Computing effective number of injections.')
-    maxL_index  = np.argmax(df['log_likelihood'])
+    maxL_index  = int(xp.argmax(xp.array(df['log_likelihood'])))
     maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
     check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
     print('\n * Maximum likelihood values.\n')

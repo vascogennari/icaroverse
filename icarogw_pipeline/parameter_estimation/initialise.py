@@ -16,7 +16,8 @@ def InitialiseOptions(Config):
         'event-parameters'      : {},
         'strain-file'           : '',
         'priors'                : {},
-        'priors-dict'           : 'bilby',
+        'PE-prior-masses'      : 'm1-m2',
+        'priors-dict'           : 'm1-m2_bilby',
         'observing-run'         : 'O3',
         'waveform'              : 'IMRPhenomXHM',
         'precession'            : False,
@@ -56,7 +57,7 @@ def InitialiseOptions(Config):
         if (key == 'event-parameters') or (key == 'priors'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
-        if (key == 'observing-run') or (key == 'waveform') or (key == 'priors-dict') or (key == 'strain-file'): 
+        if (key == 'observing-run') or (key == 'waveform') or (key == 'priors-dict') or (key == 'strain-file') or (key == 'PE-prior-masses'): 
             try: input_pars[key] = Config.get('model', key)
             except: pass
         if (key == 'precession') or (key == 'phase-marginalization'): 
@@ -125,6 +126,7 @@ def default_PE_priors(precession = False):
     dict = {
         'mass_1'             : [1., 300.],
         'mass_2'             : [1., 300.],
+        'chirp_mass'         : [1., 300.],
         'mass_ratio'         : [0.05, 1.0],
         'luminosity_distance': [0.,1.6e4],
         'theta_jn'           : [0., np.pi],
@@ -181,7 +183,8 @@ usage = """
 
         event-parameters            [dict ] Dictionary containing the event parameters. Default: {}.
         priors                      [dict ] Prior ranges to use for event parameters inference. Default: {}.
-        priors-dict                 [str  ] Prior dictionary to use for event parameters inference. 'bilby' is bilby.gw.prior.BBHPriorDict. 'custom' is bilby.core.prior.PriorDict with dummy variable mass_constraint. Options: 'bilby', 'custom'. Default: 'bilby'.
+        PE-prior-masses             [str  ] Mass parametrization to use for PE. Options: 'm1-m2' (uniform in componenet masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
+        priors-dict                 [str  ] Prior dictionary to use for event parameters inference. 'm1-m2_bilby' is rbilby.gw.prio.BBHPriorDict ; 'm1-m2_custom' is bilby.core.prior.PriorDict with dummy variable mass_constraint ; 'Mc-q' is bilby.core.prior.PriorDict with uniform in component masses but sampling over Mc-q. Options: 'm1-m2_bilby', 'm1-m2_custom', 'Mc-q'. Default: 'm1-m2_bilby'.
         observing-run               [str  ] Detector sensitivity used to compute the SNR with Bilby. Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         waveform                    [str  ] Waveform model used to compute the SNR with Bilby. Default: 'IMRPhenomXHM'.
         precession                  [bool ] Flag to turn on if the waveform model is a precessing one. Default: False.

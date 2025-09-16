@@ -89,7 +89,7 @@ def main():
             pars['submission_filepath'] = os.path.join(pars['slurm_files_dir_path'], f"submit_{pars['job_name']}.sh")
             activate_slurm_submit(pars)
 
-        print('\nThe PE config files in {configs_path} are running in detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = pars['population_PE_dir_path'], conda_env=pars['conda_env']))
+        print('\nThe PE config files in {configs_path} are running in {n_jobs} detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = pars['population_PE_dir_path'], conda_env=pars['conda_env'], n_jobs=len(events_dir_list)))
 
     else:
 
@@ -112,7 +112,7 @@ def main():
             
             activate_slurm_submit(pars)
         
-        print('\nThe PE config files in {configs_path} are running in detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = pars['config_files_dir_path'], conda_env=pars['conda_env']))
+        print('\nThe PE config files in {configs_path} are running in {n_jobs} detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = pars['config_files_dir_path'], conda_env=pars['conda_env'], n_jobs=len(config_filenames)))
 
 # ---------------------------------------------------------------------- #
 
@@ -120,9 +120,9 @@ pars = {
     'conda_env'    : 'in2_env',
     'user_mail'    : '',
     'slurm_nodes'  : 1,
-    'slurm_cpus'   : 8,
-    'slurm_memory' : 4,
-    'slurm_time'   : {'days': 2, 'hours': 0, 'minutes': 0},
+    'slurm_cpus'   : 12,
+    'slurm_memory' : 8,
+    'slurm_time'   : {'days': 4, 'hours': 0, 'minutes': 0},
 }
 pars['slurm_python_path']     = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=pars['conda_env'])
 pars['slurm_executable_file'] = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/parameter_estimation/bilby_pipeline.py'
