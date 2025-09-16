@@ -54,7 +54,7 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
 
     tmp_dict = None
     if maxL_values == None:
-        if pars['simulation'] and (not pars['true-values'] == {}):
+        if (not pars['real-data']) and (not pars['true-values'] == {}):
             tmp_dict = pars['true-values']
             tmp_str  = 'injected'
     else:
@@ -273,21 +273,17 @@ class SelectionEffects:
         
     def __init__(self, pars, ref_cosmo):
 
-        # Load file with the injections used to compute selection effects.
         print('\n * Loading injections for selection effects.\n\n\t{}'.format(pars['injections-path']))
-        try:
-            if   '.hdf5'   in pars['injections-path'] or '.hdf' in pars['injections-path']:
-                data_inj = h5py.File(pars['injections-path'])
-            elif '.pickle' in pars['injections-path']:
-                with open(pars['injections-path'], 'rb') as f: data_inj = pickle.load(f)
-            else:
-                raise ValueError('Unknown format for the file containing the injections for selection effects. Please make sure the file is correct:\n{}'.format(pars['injections-path']))
-        except:
-            raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
 
         # Use IGWN real-noise injections from IGWN.
         if pars['real-noise-injections']:
-        
+
+            print('\n\tUsing IGWN sensitivity estimates in real noise to evaluate selection effects.')
+
+            from IGNW_pointers import sensitivity_estimates
+            try: data_inj = h5py.File(sensitivity_estimates[pars['catalog']])
+            except: raise ValueError('Could not open the file containing the injections for selection effects. Please verify that you have downloaded the IGWN sensitivity estimates and that the path is correct:\n{}'.format(sensitivity_estimates[pars['catalog']]))
+
             # FIXME: Add control to make sure that the injections used correspond to the correct catalog.
             if   pars['catalog'] == 'GWTC-3':   obs_time = None # FIXME: Where can this value be found?
             elif pars['catalog'] == 'GWTC-4.0': obs_time = data_inj.attrs['total_analysis_time'] / 31557600.0
@@ -317,7 +313,7 @@ class SelectionEffects:
                     inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / data_inj['injections/mass1'][()]
                     prior *= data_inj['injections/mass1'][()] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
 
-            elif pars['GWTC-4p0']:
+            elif pars['GWTC-4.0']:
 
                 pars['injections-number'] = data_inj.attrs['total_generated']
                 events = data_inj['events'][:]
@@ -350,8 +346,18 @@ class SelectionEffects:
                 prior *= inj_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
 
         # Use simulated injections.
-        elif pars['simulation']:
+        else:
 
+            print('\n\tUsing simulated injections to evaluate selection effects.')
+
+            try:
+                if '.pickle' in pars['injections-path']:
+                    with open(pars['injections-path'], 'rb') as f: data_inj = pickle.load(f)
+                else:
+                    raise ValueError('Only pickle files are currently supported for custom injections:\n{}'.format(pars['injections-path']))
+            except:
+                raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
+            
             # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
             # Whatever distribution and variables used to generate the injections, please make sure it follows such conventions.
             prior = data_inj['prior']
@@ -379,11 +385,9 @@ class SelectionEffects:
                 # This operation depends on the injection prior used to generate the injections.
                 prior *= (1 + ref_cosmo.dl2z(data_inj[dist]))
                 inj_dict.pop('mass_2')
-        else:
-            raise ValueError('Unknown option to compute selection effects.')
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
-        if not pars['GWTC-4p0']:
+        if not pars['GWTC-4.0']:
             if   pars['selection-effects-cut'] == 'snr' : self.injections.update_cut(data_inj['snr'] >= pars['snr-cut' ])
             elif pars['selection-effects-cut'] == 'ifar': self.injections.update_cut(ifarmax         >= pars['ifar-cut'])
             else:
@@ -403,9 +407,6 @@ class Data:
     def __init__(self, pars):
         
         print('\n * Loading data.\n\n\t{}'.format(pars['data-path']))
-
-        # Either use real data or simulations.
-        if pars['real-data'] and pars['simulation']: raise ValueError('Please choose either real GW data or simulated data, not both.')
     
         if not pars['true-data']:
             if   pars['PE-prior-distance'] == 'dL'   :     print('\n\tUsing a prior for PE samples uniform in luminosity distance.'               )
@@ -427,6 +428,8 @@ class Data:
         # Real GW data.
         if pars['real-data']:
 
+            print('\n\tUsing IGWN catalogs of real GW events.')
+
             # FIXME: Implement option to select events based on FAR and/or SNR.
             # Need to add a new FAR/SNR key in the IGNW_events files.
 
@@ -435,7 +438,7 @@ class Data:
             # https://zenodo.org/records/8177023 for O3b events.
             # https://zenodo.org/records/17014085 for O4a events.
 
-            from IGNW_events import O1_O2_BBHs_FAR_1, O3_BBHs_FAR_1, O4a_BBHs_FAR_1
+            from IGNW_pointers import O1_O2_BBHs_FAR_1, O3_BBHs_FAR_1, O4a_BBHs_FAR_1
 
             if   pars['catalog'] == 'GWTC-3':   catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1
             elif pars['catalog'] == 'GWTC-4.0': catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1 | O4a_BBHs_FAR_1
@@ -473,7 +476,9 @@ class Data:
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
 
         # Internal simulations.
-        elif pars['simulation']:
+        else:
+
+            print('\n\tUsing a simulated catalog of GW events.')
 
             if '.pickle' in pars['data-path']:
                 with open(pars['data-path'], 'rb') as f: data_evs = pickle.load(f)
@@ -528,10 +533,6 @@ class Data:
                                 elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
-
-            
-        else:
-            raise ValueError('Unknown option to process single events data.')
         
         self.data = icarogw.posterior_samples.posterior_samples_catalog(samps_dict)
         print('\n\tUsing a population of {} events.'.format(self.data.n_ev))

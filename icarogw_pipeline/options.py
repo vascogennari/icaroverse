@@ -18,8 +18,7 @@ def InitialiseOptions(Config):
 
         'data-path'                   : '',
         'real-data'                   : False,
-        'simulation'                  : True,
-        'catalog'                     : 'GWTC-4p0',
+        'catalog'                     : 'GWTC-4.0',
         'real-noise-injections'       : False,
         'remove-events'               : [],
         'inverse-mass-ratio'          : False,
@@ -95,7 +94,7 @@ def InitialiseOptions(Config):
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'real-data') or (key == 'simulation') or (key == 'real-noise-injections') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
+        if (key == 'real-data') or (key == 'real-noise-injections') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
@@ -301,10 +300,12 @@ usage = """
         selection-effects-cut       [str  ]  Type of cut to select events and injections. Options: 'snr', 'ifar'. Default: 'snr'.
         snr-cut                     [float]  Value of signal-to-noise ratio used as detection threshold for events and injections. Default: 12.
         ifar-cut                    [float]  Value of inverse false-alarm-rate used as detection threshold for events and injections. Default: 4
+        snr-cut-analytic            [float]  Value of signal-to-noise ratio used as detection threshold for the analytic estimate of selection effects. Default: 10.
 
         data-path                   [str  ]  Path of the single event data. Default: ''.
-        O3-cosmology                [bool ]  Option to process PE samples using O3 data from the LVK GWTC-3 cosmology paper (https://arxiv.org/abs/2111.03604). Default: 0.
-        simulation                  [bool ]  Option to process PE samples using simulated events. Default: 1.
+        real-data                   [bool ]  Option to process real GW events. Default: 0.
+        catalog                     [str  ]  Catalog of events to be used in the analysis. Options: 'GWTC-3', 'GWTC-4.0', 'O3', 'O4a'. Default: 'GWTC-4.0'.
+        real-noise-injections       [bool ]  Option to use IGWN real noise sensitivy estimates for the selection effects. Default: 0.
         remove-events               [list ]  List of events to be removed from the analysis. Example: ['GW190412_053044', 'GW190521_030229']. Default: [].
         PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in comoving volume). Default: 'dL3'.
         PE-prior-masses             [str  ]  Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
