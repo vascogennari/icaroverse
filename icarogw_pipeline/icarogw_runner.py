@@ -13,7 +13,7 @@ import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, zmax = 20.):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, order_splines = None, custom_knots = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -30,6 +30,9 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
                 return wrap(input_wrapper)
             elif wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
                 return wrap(flag_powerlaw_smoothing = smoothing)
+            elif wrap_name == 'Splines':
+                print('\t\tUsing a spline model with {} splines of order {}. Custom knots: {}.'.format(n_splines, order_splines, custom_knots))
+                return wrap(n_basis = n_splines, degree = order_splines, custom_knots = custom_knots)
             else:
                 return wrap()
         else:
@@ -119,6 +122,7 @@ class Wrappers:
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': True},
+            'Splines':                                                              {'wrap name': 'Splines',                                                              'z evolution': False, 'smoothing': 'component-wise'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -133,6 +137,8 @@ class Wrappers:
             if   (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'global':
                 w = get_wrapper(models[mp]['wrap name'])
                 if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
+            elif mp == 'Splines':
+                w = get_wrapper(models[mp]['wrap name'], n_splines = pars['splines-number'], order_splines = pars['splines-order'], custom_knots = pars['custom-knots'])
             elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
                 w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing)
             # Evolving models.

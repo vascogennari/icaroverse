@@ -42,6 +42,10 @@ def InitialiseOptions(Config):
         'single-mass'                 : False,
         'zmax'                        : 20.,
 
+        'splines-number'              : 10,
+        'splines-order'               : 3,
+        'custom-knots'                : False,
+
         # Sampler
         'sampler'                     : 'dynesty',
         'neffPE'                      : 10,
@@ -107,7 +111,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'w0wa_earlyMD_constraint'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'w0wa_earlyMD_constraint') or (key == 'custom-knots'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -115,6 +119,9 @@ def InitialiseOptions(Config):
             except: pass
         if (key == 'priors'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
+            except: pass
+        if (key == 'splines-number') or (key == 'splines-order'):
+            try: input_pars[key] = Config.getint('model', key)
             except: pass
 
         # Sampler
@@ -272,6 +279,28 @@ def default_priors():
         'zt'            : [   0.  ,   1.  ],
         'delta_zt'      : [   1.  , 100.  ],
 
+        'c0'            : 0.,
+        'c1'            : 0.,
+        'c2'            : [   0.  ,  50.  ],
+        'c3'            : [   0.  ,  50.  ],
+        'c4'            : [   0.  ,  50.  ],
+        'c5'            : [   0.  ,  50.  ],
+        'c6'            : [   0.  ,  50.  ],
+        'c7'            : [   0.  ,  50.  ],
+        'c8'            : [   0.  ,  50.  ],
+        'c9'            : [   0.  ,  50.  ],
+        'c10'           : [   0.  ,  50.  ],
+        'c11'           : [   0.  ,  50.  ],
+        'c12'           : [   0.  ,  50.  ],
+        'c13'           : [   0.  ,  50.  ],
+        'c14'           : [   0.  ,  50.  ],
+        'c15'           : [   0.  ,  50.  ],
+        'c16'           : [   0.  ,  50.  ],
+        'c17'           : [   0.  ,  50.  ],
+        'c18'           : [   0.  ,  50.  ],
+        'c19'           : 0.,
+        'c20'           : 0.,
+
         # Secondary mass distribution
         'beta'          : [ -20.  ,  20.  ],
         'mu_q'          : [   0.1 ,   1.  ],
@@ -340,6 +369,10 @@ usage = """
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
+
+        splines-number              [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
+        splines-order               [int  ]  Order of the splines used for the spline models. The option only applies to models including splines. Default: 3.
+        custom-knots                [bool ]  Flag to use custom knots for the splines models. If False, the knots are evenly spaced in log(1+m) between mmin and mmax. If True, the knots are hardcoded in the wrappers.Splines class. The option only applies to models including splines. Default: False.
 
     # ------- #
     # sampler #
