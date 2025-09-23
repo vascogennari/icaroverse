@@ -55,24 +55,25 @@ def activate_slurm_submit(config_name):
     os.system('sbatch {}'.format(subfile))
 
 parser = ArgumentParser()
-parser.add_argument('-g', '--gpu', action='store_true', default=False)
+parser.add_argument("-g", "--gpu", nargs="?", const='v100', default=None, type=str, help="If provided, will request a GPU job, with specified GPU model (available : v100, h100). Otherwise, will request a classical CPU job")
 args = parser.parse_args()
 
 # ---------------------------------------------------------------------- #
-conda_env    = 'icaro_models'
+conda_env    = 'icaro_gpu'
 user_mail    = 'vasco.gennari@l2it.in2p3.fr'
 slurm_nodes  = 1
-slurm_cpus   = 4
+slurm_cpus   = 1
 slurm_memory = 5
-slurm_time   = {'days': 1, 'hours': 0, 'minutes': 0}
-slurm_executable_path = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
-slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
-if args.gpu: slurm_partition = 'gpu\n#SBATCH --gres=gpu:v100:1'
-else:        slurm_partition = 'htc'
+slurm_time   = {'days': 0, 'hours': 1, 'minutes': 0}
+slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
+slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
+
+if args.gpu in ['v100', 'h100']: slurm_partition    = f"gpu\n#SBATCH --gres=gpu:{args.gpu}:1"
+else:                            slurm_partition    = "htc"
 
 # Set the specific directory for the runs
-directory    = '/sps/virgo/USERS/vgennari/icarogw_pipeline/config_files/GWTC-4.0'
-subdirectory = 'additional'
+directory    = '/sps/virgo/USERS/vgennari/icarogw_pipeline/config_files/GWTC-4'
+subdirectory = 'splines'
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')

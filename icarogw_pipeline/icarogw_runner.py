@@ -595,19 +595,45 @@ class LikelihoodPrior:
                 elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
 
                 else:
-                    raise ValueError('Unknown type for prior on {}'.format(dict_in[par]))
+                    raise ValueError("Unknown type for prior on {}. Please provide either a fixed value, or a 2-list [min, max], or a 3-list [min, max, type]".format(dict_in[par]))
             
             print('\n * Using the following priors.\n')
             print_dictionary({key: dict_in[key] for key in dict_out.keys()})
 
-            if pars['model-cosmology'] == 'Flatw0waCDM' and pars['w0wa_earlyMD_constraint']:
-                print("\n\tImplementing [ w0 + wa < 0 ] constraint.\n")
-                def w0wa_earlyMD_constraint(params):
-                    converted_params = params.copy()
-                    converted_params['w0wa_earlyMD_constraint'] = params['w0'] + params['wa']
-                    return converted_params
-                dict_out['w0wa_earlyMD_constraint'] = bilby.core.prior.Constraint(minimum = -100., maximum = 0.)
-                dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = w0wa_earlyMD_constraint)
+            # Miscellaneous built-in additional constraints for some models
+            constraints_dict = {
+                'MD_redundancy': {
+                    'pars':        ['gamma', 'kappa'], 
+                    'func':        (lambda x, y: x + y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0, 
+                                                               maximum = dict_in['gamma'][1] + dict_in['kappa'][1]),
+                    'print':       "\n\tImplementing [ gamma + kappa > 0 ] constraint.\n",
+                },
+                'w0wa_earlyMDera': {
+                    'pars':        ['w0', 'wa'], 
+                    'func':        (lambda x, y: x + y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = dict_in['w0'][0] + dict_in['wa'][0], 
+                                                               maximum = 0),
+                    'print':       "\n\tImplementing [ w0 + wa < 0 ] constraint.\n",
+                },
+            }
+
+            if not (pars['model-rate'] == 'MadauDickinson'   and pars['constraint_MD_redundancy']):   constraints_dict.pop('MD_redundancy')
+            if not (pars['model-cosmology'] == 'Flatw0waCDM' and pars['constraint_w0wa_earlyMDera']): constraints_dict.pop('w0wa_earlyMDera')
+
+            def constraints_conversion_function(params):
+                converted_params = params.copy()
+                for const in constraints_dict:
+                    converted_params[const] = constraints_dict[const]['func'](
+                        *[params[par] for par in constraints_dict[const]['pars']]
+                    )
+                return converted_params
+
+            for const in constraints_dict:
+                dict_out[const] = constraints_dict[const]['const_bilby']
+                print(constraints_dict[const]['print'])
+            
+            dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = constraints_conversion_function)
 
             return dict_out
 
