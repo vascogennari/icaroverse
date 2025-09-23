@@ -30,7 +30,8 @@ def InitialiseOptions(Config):
         'model-rate'                  : 'PowerLaw',
         'model-cosmology'             : 'FlatLambdaCDM',
         'model-bkg-cosmo'             : 'FlatLambdaCDM',
-        'w0wa_earlyMD_constraint'     : False,
+        'constraint_w0wa_earlyMDera'  : False,
+        'constraint_MD_redundancy'    : False,
 
         'redshift-transition'         : 'linear',
         'redshift-mixture'            : True,
@@ -105,7 +106,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'w0wa_earlyMD_constraint'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -321,7 +322,8 @@ usage = """
         model-rate                  [str  ]  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
         model-cosmology             [str  ]  Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
         model-bkg-cosmo             [str  ]  Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
-        w0wa_earlyMD_constraint     [bool ]  Flag to implement the (w0 + wa < 0) constraint, to ensure early MD era. (See e.g. section VII of [https://arxiv.org/abs/2503.14738]). Default: False
+        constraint_w0wa_earlyMDera  [bool ]  Flag to implement the (w0 + wa < 0) constraint, to ensure early MD era. (See e.g. section VII of [https://arxiv.org/abs/2503.14738]). Default: False
+        constraint_MD_redundancy    [bool ]  Flag to implement the (gamma + kappa > 0) constraint, to avoid unphysical redundancy in MadauDickinson rate evolution parametrization. Default: False
 
         redshift-transition         [str  ]  Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture            [bool ]  Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
