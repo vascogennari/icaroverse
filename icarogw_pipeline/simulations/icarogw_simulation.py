@@ -2,7 +2,7 @@ import os, sys, shutil, configparser
 import numpy as np, pickle, pandas as pd, bilby
 import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 from tqdm import tqdm
 from multiprocessing import Process, Value, Lock, Manager
 import json, re, time, datetime
@@ -1100,8 +1100,8 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
             ax[0].plot(x_array, pdf+z, color = colors[zi])
             ax[1].plot(x_array, pdf,   color = colors[zi])
 
-        ax[0].set_xlabel('$m_1\ [M_{\odot}]$')
-        ax[1].set_xlabel('$m_1\ [M_{\odot}]$')
+        ax[0].set_xlabel(r'$m_1\ [M_{\odot}]$')
+        ax[1].set_xlabel(r'$m_1\ [M_{\odot}]$')
         ax[0].set_ylabel('$z$')
         ax[1].set_ylabel('$p(m_1)$')
         ax[1].set_xlim(0, 100)
