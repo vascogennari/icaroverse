@@ -573,24 +573,6 @@ class LikelihoodPrior:
             
             dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = constraints_conversion_function)
 
-            # if pars['model-rate'] == 'MadauDickinson' and pars['MadauDickinson_redundancy_constraint']:
-            #     print("\n\tImplementing [ gamma + kappa > 0 ] constraint.\n")
-            #     def MadauDickinson_redundancy_constraint(params):
-            #         converted_params = params.copy()
-            #         converted_params['MadauDickinson_redundancy_constraint'] = params['gamma'] + params['kappa']
-            #         return converted_params
-            #     dict_out['w0wa_earlyMD_constraint'] = bilby.core.prior.Constraint(minimum = -100., maximum = 0.)
-            #     dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = MadauDickinson_redundancy_constraint)
-
-            # if pars['model-cosmology'] == 'Flatw0waCDM' and pars['w0wa_earlyMD_constraint']:
-            #     print("\n\tImplementing [ w0 + wa < 0 ] constraint.\n")
-            #     def w0wa_earlyMD_constraint(params):
-            #         converted_params = params.copy()
-            #         converted_params['w0wa_earlyMD_constraint'] = params['w0'] + params['wa']
-            #         return converted_params
-            #     dict_out['w0wa_earlyMD_constraint'] = bilby.core.prior.Constraint(minimum = -100., maximum = 0.)
-            #     dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = w0wa_earlyMD_constraint)
-
             return dict_out
 
         prior = bilby.core.prior.PriorDict()
