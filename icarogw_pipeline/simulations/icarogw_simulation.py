@@ -621,6 +621,7 @@ def get_distribution_samples(pars):
     m2_array = np.linspace(pars['bounds-m2'][0], pars['bounds-m2'][1], pars['N-points'])
     q_array  = np.linspace(pars['bounds-q' ][0], pars['bounds-q' ][1], pars['N-points'])
     z_array  = np.linspace(pars['bounds-z' ][0], pars['bounds-z' ][1], pars['N-points'])
+    dL_array = np.linspace(pars['bounds-dL'][0], pars['bounds-dL'][1], pars['N-points'])
 
     # Set the sampler to draw events.
     if   pars['drawing-method'] == 'rejection-sampling'             : _sampler = rejection_sampling_1D
@@ -630,15 +631,22 @@ def get_distribution_samples(pars):
 
     # Rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
-    tmp = pars['wrappers']['rw'].rate.evaluate(z_array)
-    if not 'RedshiftProbability' in pars['model-rate']:
-        tmp *= pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
-        zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
-        if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+    if not 'LuminosityProbability' in pars['model-rate']:
+        tmp = pars['wrappers']['rw'].rate.evaluate(z_array)
+        if not 'RedshiftProbability' in pars['model-rate']:
+            tmp *= pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
+            zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
+            if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+        else:
+            zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
+            if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
+        pdf_z_array = tmp
     else:
-        zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
+        tmp = pars['wrappers']['rw'].rate.evaluate(dL_array)
+        dL, pdf_dL = _sampler(dL_array, tmp, N_events, 1)
+        zs = pars['wrappers']['ref-cosmo'].dl2z(dL)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
-    pdf_z_array = tmp
+        pdf_z_array = tmp
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
@@ -700,14 +708,19 @@ def get_distribution_samples(pars):
     # Get detector frame quantities.
     m1d = m1s * (1 + zs)
     m2d = m2s * (1 + zs)
-    dL  = pars['wrappers']['ref-cosmo'].z2dl(zs)
+    if not 'LuminosityProbability' in pars['model-rate']:
+        dL = pars['wrappers']['ref-cosmo'].z2dl(zs)
 
     if not pars['single-mass']:
         # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz].
         prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
     else:
-        # Transform the prior from source to detector frame: |J_(m1s,z)->(m1d,dL)| = 1/ [(1+z) * ddL/dz].
-        prior = (pdf_m1   * pdf_z) / ((1 + zs)    * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+        if not 'LuminosityProbability' in pars['model-rate']:
+            # Transform the prior from source to detector frame: |J_(m1s,z)->(m1d,dL)| = 1/ [(1+z) * ddL/dz].
+            prior = (pdf_m1 * pdf_z) / ((1 + zs)  * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+        else:
+            # Transform the prior from source to detector frame: |J_(m1s,dL)->(m1d,dL)| = 1/ (1+z).
+            prior = (pdf_m1 * pdf_dL) / ((1 + zs))
 
     # Save injected population.
     data = np.column_stack((m1_array, q_array, z_array, pdf_m1_array, pdf_q_array, pdf_z_array))

@@ -189,6 +189,7 @@ class Wrappers:
             'RedshiftProbability-Beta':         {'wrap name': 'rateevolution_beta_redshift_probability'},
             'RedshiftProbability-Uniform':      {'wrap name': 'rateevolution_uniform_redshift_probability'},
             'RedshiftProbability-PowerLaw':     {'wrap name': 'rateevolution_powerlaw_redshift_probability'},
+            'LuminosityProbability-Beta':       {'wrap name': 'rateevolution_beta_redshift_probability'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -278,8 +279,12 @@ class Rate():
                 self.w = icarogw.rates.CBC_rate_m_given_redshift(         cw, m1w,      rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m_given_redshift'))
             else:
-                self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+                if not 'Luminosity' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+                else:
+                    self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
+                    print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
