@@ -6,6 +6,7 @@ from scipy.integrate import simpson as simps
 from tqdm import tqdm
 from multiprocessing import Process, Value, Lock, Manager
 import json, re, time, datetime
+import astropy
 from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
 # Internal imports
@@ -68,6 +69,10 @@ def main():
     tmp = icarorun.Wrappers(input_pars)
     m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw, 'ref-cosmo': ref_cosmo}
+
+    # Initilialise the cosmology.
+    #cw.cosmology.astropycosmology(input_pars['ref-cosmology']['z-max'])
+    cw.cosmology.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = input_pars['truths']['H0'], Om0 = input_pars['truths']['Om0']))
 
     # Save and print true parameters.
     population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters
@@ -644,7 +649,7 @@ def get_distribution_samples(pars):
     else:
         tmp = pars['wrappers']['rw'].rate.evaluate(dL_array)
         dL, pdf_dL = _sampler(dL_array, tmp, N_events, 1)
-        zs = pars['wrappers']['ref-cosmo'].dl2z(dL)
+        zs = pars['wrappers']['cw'].cosmology.dl2z(dL)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
         pdf_z_array = tmp
 
@@ -709,7 +714,7 @@ def get_distribution_samples(pars):
     m1d = m1s * (1 + zs)
     m2d = m2s * (1 + zs)
     if not 'LuminosityProbability' in pars['model-rate']:
-        dL = pars['wrappers']['ref-cosmo'].z2dl(zs)
+        dL = pars['wrappers']['cw'].cosmology.z2dl(zs)
 
     if not pars['single-mass']:
         # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz].

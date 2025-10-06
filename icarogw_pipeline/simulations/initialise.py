@@ -78,7 +78,7 @@ def InitialiseOptions(Config):
         'bounds-m1'                     : [0, 200],
         'bounds-m2'                     : [0, 200],
         'bounds-q'                      : [0.1, 1],
-        'bounds-dL'                     : [0, 10000],
+        'bounds-dL'                     : [0, 100000],
         'bounds-z'                      : [1e-6, 3.0],
         'plot-astrophysical'            : False,
     }
