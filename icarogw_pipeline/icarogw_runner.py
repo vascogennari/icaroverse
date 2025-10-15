@@ -41,7 +41,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
     else:
         if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftQuadratic' or wrap_name == 'PowerLaw_GaussianRedshiftPowerLaw' or wrap_name == 'PowerLaw_GaussianRedshiftSigmoid' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear':
             return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture, flag_powerlaw_smoothing = smoothing)
-        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear':
+        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear':
             return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture)
 
 def print_dictionary(dictionary):
@@ -103,26 +103,27 @@ class Wrappers:
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         models = {
-            'PowerLaw':                                                             {'wrap name': 'massprior_PowerLaw',                                                   'z evolution': False, 'smoothing': 'global'},
-            'PowerLaw-Gaussian':                                                    {'wrap name': 'massprior_PowerLawPeak',                                               'z evolution': False, 'smoothing': 'global'},
-            'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'global'},
-            'PowerLaw-PowerLaw':                                                    {'wrap name': 'PowerLaw_PowerLaw',                                                    'z evolution': False, 'smoothing': 'component-wise'},
-            'PowerLaw-PowerLaw-PowerLaw':                                           {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                           'z evolution': False, 'smoothing': 'component-wise'},
-            'PowerLaw-PowerLaw-PowerLaw-PowerLaw':                                  {'wrap name': 'PowerLaw_PowerLaw_PowerLaw_PowerLaw',                                  'z evolution': False, 'smoothing': 'component-wise'},
-            'PowerLaw-PowerLaw-Gaussian':                                           {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                           'z evolution': False, 'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftLinear':                                      {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                      'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftQuadratic':                                   {'wrap name': 'PowerLaw_GaussianRedshiftQuadratic',                                   'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftPowerLaw':                                    {'wrap name': 'PowerLaw_GaussianRedshiftPowerLaw',                                    'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftSigmoid':                                     {'wrap name': 'PowerLaw_GaussianRedshiftSigmoid',                                     'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLawBroken-GaussianRedshiftLinear':                                {'wrap name': 'PowerLawBroken_GaussianRedshiftLinear',                                'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLawRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               {'wrap name': 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               'z evolution': True,  'smoothing': 'component-wise'},
-            'GaussianRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
-            'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
-            'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': True},
-            'Splines':                                                              {'wrap name': 'Splines',                                                              'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
+            'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-PowerLaw':                                                                  {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-PowerLaw-PowerLaw':                                                         {'wrap name': 'PowerLaw_PowerLaw_PowerLaw_PowerLaw',                                                         'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-Gaussian':                                                                  {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftLinear':                                                             {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                                             'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftQuadratic':                                                          {'wrap name': 'PowerLaw_GaussianRedshiftQuadratic',                                                          'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftPowerLaw':                                                           {'wrap name': 'PowerLaw_GaussianRedshiftPowerLaw',                                                           'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftSigmoid':                                                            {'wrap name': 'PowerLaw_GaussianRedshiftSigmoid',                                                            'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawBroken-GaussianRedshiftLinear':                                                       {'wrap name': 'PowerLawBroken_GaussianRedshiftLinear',                                                       'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-GaussianRedshiftLinear':                                               {'wrap name': 'PowerLawRedshiftLinear_GaussianRedshiftLinear',                                               'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':                                      {'wrap name': 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',                                      'z evolution': True,  'smoothing': 'component-wise'},
+            'GaussianRedshiftLinear-GaussianRedshiftLinear':                                               {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear',                                               'z evolution': True,  'smoothing': 'component-wise'},
+            'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'GaussianRedshift-order-X':                                                                    {'wrap name': 'GaussianEvolving',                                                                            'z evolution': True},
+            'Splines':                                                                                     {'wrap name': 'Splines',                                                                                     'z evolution': False, 'smoothing': 'component-wise'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -328,17 +329,12 @@ class SelectionEffects:
                 elif pars['selection-effects-cut'] == 'ifar': real_noise_condition = ifarmax >= pars['ifar-cut']
                 else:
                     raise ValueError('Unknown option to compute the selection effects cut.')
-                detected_filt = (real_noise_condition) | (xp.array(events['semianalytic_observed_phase_maximized_snr_net']) >= pars['snr-cut-analytic'])
-
-                # Exclude events in the ER15 gap. (FIXME: What is this?)
-                time_geocenter = xp.array(events['time_geocenter'])
-                not_ER15 = (time_geocenter <= 1366933504) | (time_geocenter >= 1368975618)
-                selected_filt = detected_filt & not_ER15
+                selected_filt = (real_noise_condition) | (xp.array(events['semianalytic_observed_phase_maximized_snr_net']) >= pars['snr-cut-analytic'])
 
                 lnprior = xp.array(events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle'])
                 lnprior -= xp.log(xp.sin(xp.array(events['spin2_polar_angle'])) * xp.sin(xp.array(events['spin1_polar_angle']))) # Accounts from implied Jacobian from t->cost.
                 lnprior += xp.log(4 * xp.pi * xp.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
-                lnprior -= xp.log(xp.array(events['weights'])) # Weights for multipop analysis.
+                lnprior -= xp.log(xp.array(events['weights'])) # Weights for different observing runs.
                 lnprior -= xp.log(xp.array(events['dluminosity_distance_dredshift']) * xp.power(1+xp.array(events['redshift']),2.))
                 prior = xp.exp(lnprior)
 
@@ -755,6 +751,9 @@ def main():
         print_dictionary(sampler_pars)
     else:
         raise ValueError('Sampler not available.')
+
+    if input_pars['sampler'] == 'nessai':
+        sampler_pars.update(dict(nessai_plot = False))
 
     # Start Bilby sampler.
     print('\n * Starting the sampler.\n')
