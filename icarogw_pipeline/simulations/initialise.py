@@ -10,8 +10,14 @@ def InitialiseOptions(Config):
         'run-type'                      : 'population',
         'screen-output'                 : False,
         'postprocessing'                : False,
+        'drawing-method'                : 'rejection-sampling',
 
         'events-number'                 : 1000,
+        'estimate-events-number'        : False,
+        'R0'                            : 25.,
+        'observation-time'              : 1.,
+        'save-strain'                   : False,
+
         'injections-number'             : 1000,
         'injections-number-bank'        : 100,
         'inverse-checkpoint-rate'       : 1,
@@ -26,9 +32,12 @@ def InitialiseOptions(Config):
         'drawing-method'                : 'rejection-sampling',
         'seed'                          : 42,
 
+        'selection-effects-cut'         : 'snr',
         'SNR-method'                    : 'bilby',
         'observing-run'                 : 'O3',
         'PSD-path'                      : '',
+        'SNR-cut'                       : 12.,
+        'SNR-soft-cut'                  : -1.,
 
         # SNR-options
         'snr-bilby-waveform'            : 'IMRPhenomXHM',
@@ -96,7 +105,7 @@ def InitialiseOptions(Config):
         if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'inverse-checkpoint-rate') or (key == 'n-processes') or (key == 'seed'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'estimate-events-number') or (key == 'parallel'):
+        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'estimate-events-number') or (key == 'parallel') or (key == 'save-strain'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
 
@@ -296,6 +305,7 @@ usage = """
         run-type                      [str  ]  Type of simulation to run. Options: 'population', 'injections'. Default: 'population'.
         screen-output                 [bool ]  Flag to deviate the standard output to screen. Default: '0'.
         postprocessing                [bool ]  Flag to only postprocess an existing simulation. Default: '0'.
+        drawing-method                [str  ]  Method used to draw samples from the target population distribution. Options: 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'. Default: 'rejection-sampling'.
 
         events-number                 [int  ]  Number of generated events to draw from the astrophysical popoulation. Option used if the run-type is 'population'. Default: 1000.
         estimate-events-number        [bool ]  Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.
@@ -303,6 +313,7 @@ usage = """
         observation-time              [float]  Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Is overwritten by official IGWN observing-run duration if a negative value is given. Option used if the run-type is 'population'. Default: 1.
         drawing-method                [str  ]  Method used to draw samples from the target population distribution. Options: 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'. Default: 'rejection-sampling'.
         seed                          [int  ]  Seed for the random number generator. Default: 42.
+        save-strain                   [bool ]  Flag to save strain data when generating a population. Default: False
 
         injections-number             [int  ]  Number of detected injections to draw from the popoulation. Option used if the run-type is 'injections'. Default: 1000.
         injections-number-bank        [int  ]  Number of injections to draw from the popoulation until 'injections-number' is obtained. Option used if the run-type is 'injections'. Default: 100.

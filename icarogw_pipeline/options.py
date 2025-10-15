@@ -14,10 +14,12 @@ def InitialiseOptions(Config):
         'selection-effects-cut'       : 'snr',
         'snr-cut'                     : 12.,
         'ifar-cut'                    : 4.,
+        'snr-cut-analytic'            : 10.,
 
         'data-path'                   : '',
-        'O3-cosmology'                : False,
-        'simulation'                  : True,
+        'real-data'                   : False,
+        'real-noise-injections'       : False,
+        'catalog'                     : 'GWTC-4.0',
         'remove-events'               : [],
         'inverse-mass-ratio'          : False,
         'PE-prior-distance'           : 'dL3',
@@ -31,6 +33,8 @@ def InitialiseOptions(Config):
         'model-rate'                  : 'PowerLaw',
         'model-cosmology'             : 'FlatLambdaCDM',
         'model-bkg-cosmo'             : 'FlatLambdaCDM',
+        'constraint_w0wa_earlyMDera'  : False,
+        'constraint_MD_redundancy'    : False,
 
         'redshift-transition'         : 'linear',
         'redshift-mixture'            : True,
@@ -38,6 +42,11 @@ def InitialiseOptions(Config):
         'priors'                      : {},
         'scale-free'                  : False,
         'single-mass'                 : False,
+        'zmax'                        : 20.,
+
+        'splines-number'              : 10,
+        'splines-order'               : 3,
+        'custom-knots'                : False,
 
         'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308, 'z-max': 10.},
 
@@ -90,13 +99,13 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if (key == 'output') or (key == 'injections-path') or (key == 'selection-effects-cut') or (key == 'data-path') or (key == 'PE-prior-distance') or (key == 'PE-prior-masses'):
+        if (key == 'output') or (key == 'injections-path') or (key == 'selection-effects-cut') or (key == 'data-path') or (key == 'catalog') or (key == 'PE-prior-distance') or (key == 'PE-prior-masses'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'O3-cosmology') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'ignore-selection-effects'):
+        if (key == 'real-data') or (key == 'real-noise-injections') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
@@ -107,11 +116,17 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'custom-knots'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if (key == 'priors') or (key == 'ref-cosmology'):
+        if (key == 'zmax'):
+            try: input_pars[key] = Config.getfloat('model', key)
+            except: pass
+        if (key == 'priors'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
+            except: pass
+        if (key == 'splines-number') or (key == 'splines-order'):
+            try: input_pars[key] = Config.getint('model', key)
             except: pass
 
         # Sampler
@@ -174,6 +189,7 @@ def default_priors():
         'delta_m_a'     : [   0.  ,  30.  ],
         'delta_m_b'     : [   0.  ,  30.  ],
         'delta_m_c'     : [   0.  ,  30.  ],
+        'delta_m_d'     : [   0.  ,  30.  ],
         'delta'         : [   0.  ,   0.15],
 
         'alpha'         : [  -4.  , 120.  ],
@@ -184,6 +200,7 @@ def default_priors():
         'alpha_a'       : [  -4.  , 120.  ],
         'alpha_b'       : [  -4.  ,  20.  ],
         'alpha_c'       : [  -4.  ,  20.  ],
+        'alpha_d'       : [  -4.  ,  20.  ],
         'break_p'       : [   0.  ,   1.  ],
         'm_b'           : [   5.  ,   7.  ],
         'm_b_z0'        : [   5.  ,   7.  ],
@@ -194,21 +211,27 @@ def default_priors():
         'alpha_a_z0'    : [  -4.  , 120.  ],
         'alpha_b_z0'    : [  -4.  , 120.  ],
         'alpha_c_z0'    : [  -4.  , 120.  ],
+        'alpha_d_z0'    : [  -4.  , 120.  ],
         'alpha_a_z1'    : [-100.  , 100.  ],
         'alpha_b_z1'    : [-100.  , 100.  ],
         'alpha_c_z1'    : [-100.  , 100.  ],
+        'alpha_d_z1'    : [-100.  , 100.  ],
         'mmin_a_z0'     : [   1.  , 100.  ],
         'mmin_b_z0'     : [   1.  , 100.  ],
         'mmin_c_z0'     : [   1.  , 100.  ],
+        'mmin_d_z0'     : [   1.  , 100.  ],
         'mmin_a_z1'     : [-100.  , 100.  ],
         'mmin_b_z1'     : [-100.  , 100.  ],
         'mmin_c_z1'     : [-100.  , 100.  ],
+        'mmin_d_z1'     : [-100.  , 100.  ],
         'mmax_a_z0'     : [  30.  , 200.  ],
         'mmax_b_z0'     : [  30.  , 200.  ],
         'mmax_c_z0'     : [  30.  , 200.  ],
+        'mmax_d_z0'     : [  30.  , 200.  ],
         'mmax_a_z1'     : 0.,
         'mmax_b_z1'     : 0.,
         'mmax_c_z1'     : 0.,
+        'mmax_d_z1'     : 0.,
 
         'mmin'          : [   1.  , 100.  ],
         'mmin_z0'       : [   1.  , 100.  ],
@@ -225,9 +248,11 @@ def default_priors():
         'mmin_a'        : [   1.  , 100.  ],
         'mmin_b'        : [   1.  , 100.  ],
         'mmin_c'        : [   1.  , 100.  ],
+        'mmin_d'        : [   1.  , 100.  ],
         'mmax_a'        : [  30.  , 200.  ],
         'mmax_b'        : [  30.  , 200.  ],
         'mmax_c'        : [  30.  , 200.  ],
+        'mmax_d'        : [  30.  , 200.  ],
 
         'mu_g'          : [  20.  ,  60.  ],
         'mu_z0'         : [  20.  ,  60.  ],
@@ -259,8 +284,11 @@ def default_priors():
         'mix_alpha_z1'  : [   0.  ,   1.  ],
         'mix_beta_z0'   : [   0.  ,   1.  ],
         'mix_beta_z1'   : [   0.  ,   1.  ],
+        'mix_gamma_z0'  : [   0.  ,   1.  ],
+        'mix_gamma_z1'  : [   0.  ,   1.  ],
         'mix_alpha'     : [   0.  ,   1.  ],
         'mix_beta'      : [   0.  ,   1.  ],
+        'mix_gamma'     : [   0.  ,   1.  ],
         'mix'           : [   0.  ,   1.  ],
 
         'amp'           : [   0.  ,   0.2 ],
@@ -274,6 +302,27 @@ def default_priors():
         'scale_johnson' : [   0.01,  10.  ],
         'mmin_johnson'  : 3.,
         'mmax_johnson'  : 9.,
+
+        'c1'            : [ -20.  , 70.  ],
+        'c2'            : [ -20.  , 70.  ],
+        'c3'            : [ -20.  , 70.  ],
+        'c4'            : [ -20.  , 70.  ],
+        'c5'            : [ -20.  , 70.  ],
+        'c6'            : [ -20.  , 70.  ],
+        'c7'            : [ -20.  , 70.  ],
+        'c8'            : [ -20.  , 70.  ],
+        'c9'            : [ -20.  , 70.  ],
+        'c10'           : [ -20.  , 70.  ],
+        'c11'           : [ -20.  , 70.  ],
+        'c12'           : [ -20.  , 70.  ],
+        'c13'           : [ -20.  , 70.  ],
+        'c14'           : [ -20.  , 70.  ],
+        'c15'           : [ -20.  , 70.  ],
+        'c16'           : [ -20.  , 70.  ],
+        'c17'           : [ -20.  , 70.  ],
+        'c18'           : [ -20.  , 70.  ],
+        'c19'           : [ -20.  , 70.  ],
+        'c20'           : [ -20.  , 70.  ],
 
         # Secondary mass distribution
         'beta'          : [ -20.  ,  20.  ],
@@ -321,10 +370,12 @@ usage = """
         selection-effects-cut       [str  ]  Type of cut to select events and injections. Options: 'snr', 'ifar'. Default: 'snr'.
         snr-cut                     [float]  Value of signal-to-noise ratio used as detection threshold for events and injections. Default: 12.
         ifar-cut                    [float]  Value of inverse false-alarm-rate used as detection threshold for events and injections. Default: 4
+        snr-cut-analytic            [float]  Value of signal-to-noise ratio used as detection threshold for the analytic estimate of selection effects. Default: 10.
 
         data-path                   [str  ]  Path of the single event data. Default: ''.
-        O3-cosmology                [bool ]  Option to process PE samples using O3 data from the LVK GWTC-3 cosmology paper (https://arxiv.org/abs/2111.03604). Default: 0.
-        simulation                  [bool ]  Option to process PE samples using simulated events. Default: 1.
+        real-data                   [bool ]  Option to process real GW events. Default: 0.
+        real-noise-injections       [bool ]  Option to use IGWN real noise sensitivy estimates for the selection effects. Default: 0.
+        catalog                     [str  ]  Catalog of events to be used in the analysis. Options: 'GWTC-3', 'GWTC-4.0', 'O3', 'O4a'. Default: 'GWTC-4.0'.
         remove-events               [list ]  List of events to be removed from the analysis. Example: ['GW190412_053044', 'GW190521_030229']. Default: [].
         PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in comoving volume). Default: 'dL3'.
         PE-prior-masses             [str  ]  Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
@@ -340,6 +391,8 @@ usage = """
         model-rate                  [str  ]  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
         model-cosmology             [str  ]  Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
         model-bkg-cosmo             [str  ]  Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
+        constraint_w0wa_earlyMDera  [bool ]  Flag to implement the (w0 + wa < 0) constraint, to ensure early MD era. (See e.g. section VII of [https://arxiv.org/abs/2503.14738]). Default: False
+        constraint_MD_redundancy    [bool ]  Flag to implement the (gamma + kappa > 0) constraint, to avoid unphysical redundancy in MadauDickinson rate evolution parametrization. Default: False
 
         redshift-transition         [str  ]  Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture            [bool ]  Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
@@ -348,6 +401,11 @@ usage = """
         scale-free                  [bool ]  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
+        zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
+
+        splines-number              [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
+        splines-order               [int  ]  Order of the splines used for the spline models. The option only applies to models including splines. Default: 3.
+        custom-knots                [bool ]  Flag to use custom knots for the splines models. If False, the knots are evenly spaced in log(1+m) between mmin and mmax. If True, the knots are hardcoded in the wrappers.Splines class. The option only applies to models including splines. Default: False.
 
     # ------- #
     # sampler #
