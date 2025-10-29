@@ -160,6 +160,7 @@ class Wrappers:
             'MassRatio-Gaussian': {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
             'MassRatio-PowerLaw': {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
             'MassRatio-Gamma':    {'wrap name': 'Gamma',                     'var': 'q' }, 
+            'MassRatio-Beta':     {'wrap name': 'Beta',                      'var': 'q' },
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
