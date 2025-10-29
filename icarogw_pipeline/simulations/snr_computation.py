@@ -167,7 +167,7 @@ def there_is_fully_parametrised_spins(event_dict):
 # Class to compute SNR & draw missing single event parameters
 class BilbyDetectionPipeline():
 
-    def __init__(self, psd_dir, observing_run, reference_frequency=20., sampling_frequency=2048., approximant='IMRPhenomXPHM', precessing_apx=True):
+    def __init__(self, psd_dir, observing_run, reference_frequency=20., sampling_frequency=2048., approximant='IMRPhenomXPHM', precessing_apx=True, duration=None, start_time=None):
         """
         A class that initialises a simulated event with some single event parameters, 
         drawing the missing ones, and injecting the signal 
@@ -194,6 +194,8 @@ class BilbyDetectionPipeline():
         self.sampling_frequency = sampling_frequency
         self.approximant = approximant
         self.precessing_apx = precessing_apx
+        self.duration = duration
+        self.start_time = start_time
 
     def load_psd_from_file(self):
         self.all_ifos_available_psd_dict = {
@@ -203,7 +205,7 @@ class BilbyDetectionPipeline():
             for ifo in ['H1', 'L1', 'V1'] + ['K1']*(self.observing_run in {'O4', 'O5'})
         }
 
-    def set_event_dict(self, init_dict):
+    def set_event_dict(self, init_dict, set_duration_and_start_time=False):
         """
         Stocks all single event parameters in a dictionary eventually containing 
         - geocent_time
@@ -245,6 +247,20 @@ class BilbyDetectionPipeline():
         if 'ifos_on' not in self.event_dict: 
             self.draw_ifos_on()
 
+        if set_duration_and_start_time:
+            # Calculate the time between the moment the binary's frequency enters the detector's band (default: 20 Hz) and the merger
+            time_to_merger = bilby.gw.utils.calculate_time_to_merger(
+                self.reference_frequency,
+                self.event_dict['mass_1'],
+                self.event_dict['mass_2'],
+                chi = chieff_from_wf_params(self.event_dict),
+                safety = 1.1,
+            )
+            # The duration of signal considered is time_to_merger + 4s
+            self.duration = int(np.ceil(time_to_merger)) + 4
+            # The start time is set to be at self.duration +1s before the geocent_time of the event.
+            self.start_time = self.event_dict['geocent_time'] - (self.duration - 1.)
+
     def draw_geocent_time(self):
         """
         Draw GPS time uniformly in the time window associated to self.observing_run
@@ -278,8 +294,8 @@ class BilbyDetectionPipeline():
         * rignt ascention is drawn uniformly from [0, 2*pi]
         * cos(pi/2 - declination) is drawn randomly in [-1, 1]
         """
-        self.event_dict['ra']  = np.random.uniform(0., 2*np.pi)
-        self.event_dict['dec'] = np.pi/2 - np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['ra']           = np.random.uniform(0., 2*np.pi)
+        self.event_dict['dec']          = np.pi/2 - np.arccos(np.random.uniform(-1., 1.))
 
     def draw_inclination(self):
         """
@@ -287,19 +303,19 @@ class BilbyDetectionPipeline():
         
         * cos(theta_jn) is drawn randomly in [-1, 1]
         """
-        self.event_dict['theta_jn'] = np.arccos(np.random.uniform(-1., 1.))
+        self.event_dict['theta_jn']     = np.arccos(np.random.uniform(-1., 1.))
 
     def draw_polarization(self):
         """
         Draw polarization angle uniformly in [0, 2*pi]
         """
-        self.event_dict['psi'] = np.random.uniform(0., 2*np.pi)
+        self.event_dict['psi']          = np.random.uniform(0., 2*np.pi)
 
     def draw_phase(self):
         """
         Draw reference phare uniformly in [0, 2*pi]
         """
-        self.event_dict['phase'] = np.random.uniform(0., 2*np.pi)
+        self.event_dict['phase']        = np.random.uniform(0., 2*np.pi)
 
     def draw_ifos_on(self):
         """
@@ -312,22 +328,22 @@ class BilbyDetectionPipeline():
         Checks that all the expected CBC parameters are present in self.event_dict
         """
         if not (
-            ('geocent_time'        in self.event_dict) and
-            ('mass_1'              in self.event_dict) and
-            ('mass_2'              in self.event_dict) and
+            ('geocent_time' in self.event_dict) and
+            ('mass_1' in self.event_dict) and
+            ('mass_2' in self.event_dict) and
             ('luminosity_distance' in self.event_dict) and
-            ('dec'                 in self.event_dict) and
-            ('ra'                  in self.event_dict) and
-            ('theta_jn'            in self.event_dict) and
-            ('psi'                 in self.event_dict) and
-            ('phase'               in self.event_dict) and
-            ('a_1'                 in self.event_dict) and
-            ('a_2'                 in self.event_dict) and
-            ('tilt_1'              in self.event_dict) and
-            ('tilt_2'              in self.event_dict) and
-            ('phi_12'              in self.event_dict) and
-            ('phi_jl'              in self.event_dict) and
-            ('ifos_on'             in self.event_dict)
+            ('dec' in self.event_dict) and
+            ('ra' in self.event_dict) and
+            ('theta_jn' in self.event_dict) and
+            ('psi' in self.event_dict) and
+            ('phase' in self.event_dict) and
+            ('a_1' in self.event_dict) and
+            ('a_2' in self.event_dict) and
+            ('tilt_1' in self.event_dict) and
+            ('tilt_2' in self.event_dict) and
+            ('phi_12' in self.event_dict) and
+            ('phi_jl' in self.event_dict) and
+            ('ifos_on' in self.event_dict)
         ):
             raise KeyError("Some single event parameters are missing for SNR computation. Please consider reloading the event dict with the set_event_dict() method")
 
@@ -354,38 +370,13 @@ class BilbyDetectionPipeline():
     def set_frequency_mask(self):
         """
         Manually sets the frequency_mask attribute of bilby's Interferometers objects
-        based on the frequency_array, the minimum and maximum frequencies of each Interferometer
+        based on the frequency_array, the minimum and maximum frequencies of each Interferometer.
         """
         for ifo in self.ifos_list:
             ifo.frequency_mask = ((ifo.strain_data.minimum_frequency < self.ifos_list.frequency_array) & 
                                   (self.ifos_list.frequency_array < ifo.strain_data.maximum_frequency))
-    
-    def set_ifos_and_inject_signal(self):
-        """
-        Initialise bilby's Interferometers objects, compute strain data from psd, 
-        and inject signal for event with parameters contained in self.event_dict.
 
-        If self.approximant is a non precessing one, then self.precessing_apx should be set to False.
-        Additionally, spins in the parameters dict given to the waveform generator are projected along the z-axis, 
-        but non projected spins are still stored in self.event_dict
-
-        Requirements
-        ------------
-        self.event_dict initialised (with all BH binary parameters) 
-        """
-        self.check_all_parameters_present()
-
-        # Calculate the time between the moment the binary's frequency enters the detector's band (default: 20 Hz) and the merger
-        time_to_merger = bilby.gw.utils.calculate_time_to_merger(
-            self.reference_frequency,
-            self.event_dict['mass_1'],
-            self.event_dict['mass_2'],
-            chi = chieff_from_wf_params(self.event_dict),
-            safety = 1.1,
-        )
-        # The duration of signal considered is time_to_merger + 4s
-        duration = int(np.ceil(time_to_merger)) + 4
-
+    def set_waveform_generator(self):
         # Setup the Bilby waveform
         waveform_arguments = dict(
             waveform_approximant = self.approximant,
@@ -393,23 +384,49 @@ class BilbyDetectionPipeline():
         )
         self.waveform_generator = bilby.gw.waveform_generator.WaveformGenerator(
             sampling_frequency            = self.sampling_frequency, 
-            duration                      = duration,
+            duration                      = self.duration,
             frequency_domain_source_model = bilby.gw.source.lal_binary_black_hole,
             parameter_conversion          = bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters,
             waveform_arguments            = waveform_arguments
         )
-
-        # Setup ifos list & respective psd
-        self.set_ifos_list()
-
+    
+    def set_strain_data_from_psd(self):
+        """
+        Set the strain data in all the detectors of the network from the loaded PSDs.
+        """
         # Setup ifos strain data from psd
         self.set_random_seed()
         self.ifos_list.set_strain_data_from_power_spectral_densities(
             sampling_frequency = self.sampling_frequency, 
-            duration           = duration,
-            start_time         = self.event_dict['geocent_time'] - (duration - 1.)
+            duration           = self.duration,
+            start_time         = self.start_time,
         )
 
+    def set_strain_data_from_arrays(self, strain_data_list):
+        """
+        Set strain data in all of the detectors of the network from given arrays.
+
+        Note that the strain_data_list should contain the same number of strain arrays as detectors in the network (i.e len(strain_data_list) == len(self.ifos_list))
+        and to ensure consistent simulation:
+        > strain_data_list[i] should be the strain to put in the interferometer self.ifos_list[i].
+        > duration and start time should match the ones that would be computed from the event contained in self.event_dict().
+
+        """
+        # Setup ifos strain data from psd
+        for ifo, strain_data in zip(self.ifos_list, strain_data_list):
+            ifo.set_strain_data_from_frequency_domain_strain(
+                strain_data, 
+                sampling_frequency = self.sampling_frequency, 
+                duration           = self.duration, 
+                start_time         = self.start_time,
+            )
+
+    def inject_signal(self):
+        """
+        Inject GW signal into each detector of the network.
+        """
+
+        self.check_all_parameters_present()
         # update the frequency mask (it doesn't update by itself : brute force way of solving the issue)
         self.set_frequency_mask()
 
