@@ -64,6 +64,7 @@ def InitialiseOptions(Config):
         'model-cosmology'               : 'FlatLambdaCDM',
         'model-bkg-cosmo'               : 'FlatLambdaCDM',
 
+        'zmax'                          : 20.,
         'redshift-transition'           : 'linear',
         'redshift-mixture'              : True,
         'low-smoothing'                 : False,
@@ -123,6 +124,9 @@ def InitialiseOptions(Config):
             except: pass
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
+            except: pass
+        if (key == 'zmax'):
+            try: input_pars[key] = Config.getfloat('model', key)
             except: pass
         if (key == 'truths'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
@@ -291,7 +295,7 @@ usage = """
     # ----- #
 
         output                        [str  ]  Path where the output is saved. Default: 'icarogw_population'.
-        run-type                      [str  ]  Type of simulation to run. Options: 'population', 'injections'. Default: 'population'.
+        run-type                      [str  ]  Type of simulation to run. Options: 'population', 'injections', 'noise'. Default: 'population'.
         screen-output                 [bool ]  Flag to deviate the standard output to screen. Default: '0'.
         postprocessing                [bool ]  Flag to only postprocess an existing simulation. Default: '0'.
         drawing-method                [str  ]  Method used to draw samples from the target population distribution. Options: 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'. Default: 'rejection-sampling'.
@@ -352,6 +356,7 @@ usage = """
         model-rate                    [str  ]  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
         model-cosmology               [str  ]  Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
         model-bkg-cosmo               [str  ]  Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
+        zmax                          [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
         redshift-transition           [str  ]  Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture              [bool ]  Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
         low-smoothing                 [bool ]  Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.

@@ -2,7 +2,7 @@ import os, sys, shutil, configparser
 import numpy as np, pickle, pandas as pd, bilby
 import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
-from scipy.integrate import simps
+from scipy.integrate import simpson
 from tqdm import tqdm
 from multiprocessing import Process, Value, Lock, Manager
 import json, re, time, datetime
@@ -47,7 +47,11 @@ def main():
     if not os.path.exists(os.path.join(input_pars['output'], 'plots')): os.makedirs(os.path.join(input_pars['output'], 'plots'))
 
     # Copy config file to output.
-    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    dest = os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file)))
+    if os.path.abspath(config_file) != os.path.abspath(dest):
+        shutil.copyfile(config_file, dest)
+    else:
+        pass
 
     # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
@@ -90,23 +94,30 @@ def main():
     else:
         print('\n * Generating new {}.'.format(input_pars['run-type']))
         save_settings_pretty_json(input_pars['output'], input_pars)
-        
+
         # Generate either a synthetic population or a set of injections for selection effects.
         if   input_pars['run-type'] == 'population':                            samps_dict_astrophysical, samps_dict_observed, strain_records = generate_population(input_pars)
-        elif input_pars['run-type'] == 'injections' and input_pars['parallel']: samps_dict_astrophysical, samps_dict_observed = generate_injections_parallel(input_pars)
-        elif input_pars['run-type'] == 'injections':                            samps_dict_astrophysical, samps_dict_observed = generate_injections(input_pars)
+        elif input_pars['run-type'] == 'injections' and input_pars['parallel']: samps_dict_astrophysical, samps_dict_observed                 = generate_injections_parallel(input_pars)
+        elif input_pars['run-type'] == 'injections':                            samps_dict_astrophysical, samps_dict_observed                 = generate_injections(input_pars)
+        elif input_pars['run-type'] == 'noise':                                                           samps_dict_observed, strain_records = generate_noise(input_pars)
         else: raise ValueError('Invalid type of run. Please either select "population" or "injections".')
 
-        with open(os.path.join(input_pars['output'], '{}_observed.pickle'     ).format(input_pars['run-type']), 'wb') as handle:
+        # Saving observed events
+        run_type = "population" if input_pars['run-type'] == "noise" else input_pars['run-type']
+        with open(os.path.join(input_pars['output'], '{}_observed.pickle'     ).format(run_type), 'wb') as handle:
             pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
-        with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
-            pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
-        if input_pars['run-type'] == 'population' and input_pars['save-strain']:
-            with open(os.path.join(input_pars['output'], 'strain_records.pickle').format(input_pars['run-type']), 'wb') as handle:
+        # Saving astrophysical (genereated) events
+        if (input_pars['run-type'] != 'noise'):
+            with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
+                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        # Saving strain data
+        if (input_pars['run-type'] == 'population' or input_pars['run-type'] == 'noise') and input_pars['save-strain']:
+            with open(os.path.join(input_pars['output'], 'strain_records.pickle'), 'wb') as handle:
                 pickle.dump(strain_records, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
     # Plots section.
-    plot_population(input_pars, samps_dict_astrophysical, samps_dict_observed)
+    if input_pars['run-type'] != 'noise':
+        plot_population(input_pars, samps_dict_astrophysical, samps_dict_observed)
     print(' * Finished.\n')
 
 
@@ -472,6 +483,28 @@ def worker_generate_injection_parallel(lock, pid, inj_number, n_batches, samps_d
             print(f"Task {pid}: already reached desired number of injections {pars['injections-number']}. No update.")
 
 
+def generate_noise(pars):
+
+    try:
+        filepath = os.path.join(pars['output'], 'population_observed.pickle')
+        samps_dict_observed = pd.read_pickle(filepath)
+        print('\n * Reading existing population.\n')
+    except: 
+        raise FileNotFoundError('Existing population file {} not found. Exiting...\n'.format(filepath))
+        
+    m1d, m2d, dL = samps_dict_observed["m1d"], samps_dict_observed["m2d"], samps_dict_observed["dL"] 
+    other_parameters = {par for par in {'geocent_time', 'dec', 'ra', 'theta_jn', 'psi', 'phase', 'a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl', 'ifos_on'} if par in samps_dict_observed}
+    other_parameters = {par: samps_dict_observed[par] for par in other_parameters}
+
+    SNR, _, _, additional_parameters, strain_records = compute_SNR(pars, None, None, None, m1d, m2d, dL, save_strain=True, other_parameters=other_parameters)
+
+    samps_dict_observed.update({'snr': SNR})
+    print(samps_dict_observed.keys())
+    print(samps_dict_observed['snr'])
+
+    return samps_dict_observed, strain_records
+
+
 def load_checkpoint_parallel(pars):
     
     try:
@@ -599,7 +632,7 @@ def estimate_events_number(pars):
     # Project the rate on the light cone.
     tmp = pars['R0'] * pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
     # Integrate in redshift and multiply by the observation time.
-    events_number = round(simps(tmp, z_array) * pars['observation-time'])
+    events_number = round(simpson(tmp, z_array) * pars['observation-time'])
 
     print('\n * Drawing {} events from the population.'.format(events_number))
     return events_number
@@ -804,7 +837,7 @@ def draw_stratified_samples_CDF_1D(x, PDF, N, seed, quantile_index = None):
 #      SNR utils      #
 #######################
 
-def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
+def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_parameters=None):
     '''
     Compute the SNR with various methods for the input events
 
@@ -852,8 +885,8 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
         dictionary with arrays of additional parameters
     '''
     # Extract the number of events to generate, distinguishing between population and injections simulations
-    if   pars['run-type'] == 'population': N_events = pars['events-number'         ]
-    elif pars['run-type'] == 'injections': N_events = pars['injections-number-bank']
+    if   pars['run-type'] == 'population' or pars['run-type'] == 'noise': N_events = pars['events-number']
+    elif pars['run-type'] == 'injections':                                N_events = pars['injections-number-bank']
     else: raise ValueError("Unknown run-type. Please choose between 'population' and 'injections'.")
     strain_records = None
 
@@ -876,16 +909,25 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
             precessing_apx      = pars['snr-bilby-precessing-wf'      ],
         )
  
-        if   pars['run-type'] == 'population': iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby", miniters=int(pars['events-number'])//200)
-        elif pars['run-type'] == 'injections': iterator = zip(m1d, m2d, dL)
+        if   pars['run-type'] == 'population': 
+            iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby", miniters=int(pars['events-number'])//200)
+        elif pars['run-type'] == 'injections': 
+            iterator = zip(m1d, m2d, dL)
+        elif pars['run-type'] == 'noise': 
+            iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby")
+        else:
+            raise KeyError("Unknown run-type. Please choose from population, injections, noise.")
 
-        for _m1, _m2, _dL in iterator:
+        for i, (_m1, _m2, _dL) in enumerate(iterator):
+            init_dict = {
+                'mass_1':              _m1,
+                'mass_2':              _m2,
+                'luminosity_distance': _dL,
+            }
+            if other_parameters is not None:
+                init_dict.update({par: other_parameters[par][i] for par in other_parameters})
             bdp.set_event_dict(
-                {
-                    'mass_1':              _m1,
-                    'mass_2':              _m2,
-                    'luminosity_distance': _dL,
-                },
+                init_dict,
                 set_duration_and_start_time=True
             )
             try: 
@@ -1117,8 +1159,8 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
             ax[0].plot(x_array, pdf+z, color = colors[zi])
             ax[1].plot(x_array, pdf,   color = colors[zi])
 
-        ax[0].set_xlabel('$m_1\ [M_{\odot}]$')
-        ax[1].set_xlabel('$m_1\ [M_{\odot}]$')
+        ax[0].set_xlabel('$m_1 [M_{\odot}]$')
+        ax[1].set_xlabel('$m_1 [M_{\odot}]$')
         ax[0].set_ylabel('$z$')
         ax[1].set_ylabel('$p(m_1)$')
         ax[1].set_xlim(0, 100)
