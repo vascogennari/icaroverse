@@ -265,6 +265,7 @@ def default_population():
         'beta'          : 4.,
         'mu_q'          : 0.8,
         'sigma_q'       : 0.1,
+        'alpha_q'       : 1.2,
 
         # Rate evolution
         'gamma'         : 0.,
