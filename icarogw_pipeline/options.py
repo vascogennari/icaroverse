@@ -45,7 +45,7 @@ def InitialiseOptions(Config):
 
         'splines-number'              : 10,
         'splines-order'               : 3,
-        'custom-knots'                : False,
+        'spacing'                     : 'log',
 
         # Sampler
         'sampler'                     : 'dynesty',
@@ -109,10 +109,10 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
+        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'custom-knots'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -315,6 +315,11 @@ def default_priors():
         'sigma_q'       : [   0.01,   0.9 ],
         'alpha_q'       : [ -20.  ,  20.  ],
 
+        'a_beta'        : [   0.1 ,   3.  ],
+        'b_beta'        : [   1.  ,  10.  ],
+        'loc_beta'      : 0.,
+        'scale_beta'    : [   1.  ,  10.  ],
+
         'a_gamma'       : [   1.  ,  10.  ],
         'theta'         : [   0.01,   1.  ],
 
@@ -381,7 +386,7 @@ usage = """
 
         splines-number              [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
         splines-order               [int  ]  Order of the splines used for the spline models. The option only applies to models including splines. Default: 3.
-        custom-knots                [bool ]  Flag to use custom knots for the splines models. If False, the knots are evenly spaced in log(1+m) between mmin and mmax. If True, the knots are hardcoded in the wrappers.Splines class. The option only applies to models including splines. Default: False.
+        spacing                     [str  ]  Spacing of the spline knots. Options: 'linear', 'log'. The option only applies to models including splines. Default: 'log'.
 
     # ------- #
     # sampler #
