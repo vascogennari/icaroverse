@@ -259,7 +259,7 @@ def main():
             mc_prior_min, mc_prior_max = max(1., mc - mc_prior_width), mc + mc_prior_width
             priors['chirp_mass'] = [mc_prior_min, mc_prior_max]
 
-        elif args.mass_parameters_sampled == 'm1-m2' and args.tailor_priors == 'farr16':
+        elif args.mass_parameters_sampled in ['m1-m2_custom', 'm1-m2_bilby'] and args.tailor_priors == 'farr16':
             mc  = chirp_mass(event_parameters['mass_1'], event_parameters['mass_2'])
             q   = event_parameters['mass_2']/event_parameters['mass_1']
             snr = event_parameters['snr']
@@ -268,17 +268,20 @@ def main():
             priors['mass_1'] = [m1_prior_min, m1_prior_max]
             priors['mass_2'] = [1.0         , m1_prior_max]
 
-        elif args.mass_parameters_sampled == 'm1-m2' and args.tailor_priors == 'linear':
+        elif args.mass_parameters_sampled in ['m1-m2_custom', 'm1-m2_bilby'] and args.tailor_priors == 'linear':
             m1d_prior_upper_bound = linear_tailored_prior_component_masses_upper_bound(event_parameters['mass_1'])
             priors['mass_1'] = [1.0 , m1d_prior_upper_bound]
             priors['mass_2'] = [1.0 , m1d_prior_upper_bound] # This is actually redundant with q < 1 constraint, we keep it for consistency
         
         else:
-            raise ValueError("Unknown combination of mass_parameters_sampled and tailor_priors. Possible combinations:\n\tmass_parameters_sampled = 'Mc-q' and tailor_priors = 'chirp' \n\tmass_parameters_sampled = 'm1-m2' and tailor_priors = 'farr16' \n\tmass_parameters_sampled = 'm1-m2' and tailor_priors = 'linear' ")
+            raise ValueError("Unknown combination ({}, {}) of mass_parameters_sampled and tailor_priors. Possible combinations:\n\tmass_parameters_sampled = 'Mc-q' and tailor_priors = 'chirp' \n\tmass_parameters_sampled = 'm1-m2' and tailor_priors = 'farr16' \n\tmass_parameters_sampled = 'm1-m2' and tailor_priors = 'linear' ".format(args.mass_parameters_sampled, args.tailor_priors))
+
+        if i+1 == len(events_list): print(f"\n * Using following settings for mass parameters:\n\tSampling over {args.mass_parameters_sampled.split("_")[0]}, \n\tPriors are uniform over {args.mass_parameters_uniform_prior}, \n\tPrior bounds are tailored according to the {args.tailor_priors} option.\n")
 
         # Distance
         dL_prior_upper_bound = linear_tailored_prior_luminosity_distance_upper_bound(event_parameters['luminosity_distance'])
         if args.distance_prior in ["Uniform", "PowerLaw", "UniformSourceFrame", "UniformComovingVolume"]:
+            if i+1 == len(events_list): print(f"\n * Using a {args.distance_prior} prior for the luminosity_distance.\n")
             priors['luminosity_distance'] = [0., dL_prior_upper_bound, args.distance_prior] # Mpc
         else:
             raise ValueError("Unknown distance prior. Please choose between:\n\tUniform\n\tPowerLaw\n\tUniformSourceFrame\n\tUniformComovingVolume.")
