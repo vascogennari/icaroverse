@@ -59,14 +59,14 @@ parser.add_argument("-g", "--gpu", nargs="?", const='v100', default=None, type=s
 args = parser.parse_args()
 
 # ---------------------------------------------------------------------- #
-conda_env    = 'icarogw_coswg_env'
-user_mail    = 'vasco.gennari@l2it.in2p3.fr'
+conda_env    = 'icarogw_gpu'
+user_mail    = 'tom.bertheas@l2it.in2p3.fr'
 slurm_nodes  = 1
-slurm_cpus   = 1
-slurm_memory = 2
-slurm_time   = {'days': 0, 'hours': 3, 'minutes': 0}
-slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
-slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline_LISA/icarogw_pipeline/icarogw_runner.py'
+slurm_cpus   = 4
+slurm_memory = 8
+slurm_time   = {'days': 7, 'hours': 0, 'minutes': 0}
+slurm_executable_path = '/sps/virgo/USERS/tbertheas/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
+slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
 if args.gpu in ['v100', 'h100']: slurm_partition    = f"gpu\n#SBATCH --gres=gpu:{args.gpu}:1"
 else:                            slurm_partition    = "htc"
 

@@ -16,25 +16,28 @@ template = """#!/bin/sh
 #SBATCH --time={time}
 #SBATCH --account=virgo
 #SBATCH --licenses=sps
-#SBATCH --mail-user={user_mail}
-#SBATCH --mail-type=ALL
+{email_option}
 
 module load conda
 conda activate {conda_env}
-{executable} {script} --config-file {config}
+{executable} {script} --config-file {config} -n $SLURM_CPUS_PER_TASK
+"""
+
+email_option_template = """
+#SBATCH --mail-user={user_mail}
+#SBATCH --mail-type=ALL
 """
 
 def activate_slurm_submit(pars):
 
     sys.stderr.write('generating {}\n'.format(pars['submission_filepath']))
 
-    if not os.path.exists(pars['slurm_files_dir_path']): os.makedirs(pars['slurm_files_dir_path'])
-
-    submission_filepath = os.path.join(pars['slurm_files_dir_path'], f"submit_{pars['job_name']}.sh")
-
     if not os.path.exists(os.path.dirname(pars['slurm_files_dir_path'])): os.makedirs(os.path.dirname(pars['slurm_files_dir_path']))
+    if not os.path.exists(pars['slurm_files_dir_path']):                  os.makedirs(pars['slurm_files_dir_path'])
 
     with open(pars['submission_filepath'], 'w') as f:
+        if pars['user_mail'] != '': email_option = email_option_template.format(user_mail=pars['user_mail'])
+        else: email_option = ''
         submission_command = template.format(
             name                = pars['job_name'],
             slurm_files_dir_path = pars['slurm_files_dir_path'],
@@ -42,12 +45,13 @@ def activate_slurm_submit(pars):
             cpus                = pars['slurm_cpus'],
             memory              = pars['slurm_memory'],
             time                = '{}-{}:{}:00'.format(pars['slurm_time']['days'], pars['slurm_time']['hours'], pars['slurm_time']['minutes']),
-            user_mail           = pars['user_mail'],
+            email_option        = email_option,
             conda_env           = pars['conda_env'],
             executable          = pars['slurm_python_path'],
             script              = pars['slurm_executable_file'],
-            config              = pars['config_filepath'])
-                                             
+            config              = pars['config_filepath']
+        )
+
         f.write(submission_command)
     
     sys.stderr.write('submitting {}\n\n'.format(pars['submission_filepath']))
@@ -71,7 +75,7 @@ def main():
         if not os.path.exists(pars['population_PE_dir_path']):
             raise FileNotFoundError("No `parameter_estimation` directory found in the population directory. Please make sure the `population_directory` path is correct and/or the corresponding population has been processed with `generate_configs.py`")
 
-        events_dir_list = os.listdir(pars['population_PE_dir_path'])
+        events_dir_list = sorted([ev_dir for ev_dir in os.listdir(pars['population_PE_dir_path']) if 'event' in ev_dir])
 
         print('')
         for event_dir_name in events_dir_list:
@@ -85,7 +89,7 @@ def main():
             pars['submission_filepath'] = os.path.join(pars['slurm_files_dir_path'], f"submit_{pars['job_name']}.sh")
             activate_slurm_submit(pars)
 
-        print('\nThe PE config files in {configs_path} are running in detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = pars['population_PE_dir_path'], conda_env=pars['conda_env']))
+        print('\nThe PE config files in {configs_path} are running in {n_jobs} detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = pars['population_PE_dir_path'], conda_env=pars['conda_env'], n_jobs=len(events_dir_list)))
 
     else:
 
@@ -108,26 +112,26 @@ def main():
             
             activate_slurm_submit(pars)
         
-        print('\nThe PE config files in {configs_path} are running in detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = pars['config_files_dir_path'], conda_env=pars['conda_env']))
+        print('\nThe PE config files in {configs_path} are running in {n_jobs} detached slurm jobs, within {conda_env} conda environment. Good luck!\n'.format(configs_path = pars['config_files_dir_path'], conda_env=pars['conda_env'], n_jobs=len(config_filenames)))
 
 # ---------------------------------------------------------------------- #
 
 pars = {
     'conda_env'    : 'in2_env',
-    'user_mail'    : 'tom.bertheas@l2it.in2p3.fr',
+    'user_mail'    : '',
     'slurm_nodes'  : 1,
-    'slurm_cpus'   : 10,
-    'slurm_memory' : 5,
-    'slurm_time'   : {'days': 2, 'hours': 0, 'minutes': 0},
+    'slurm_cpus'   : 12,
+    'slurm_memory' : 8,
+    'slurm_time'   : {'days': 4, 'hours': 0, 'minutes': 0},
 }
 pars['slurm_python_path']     = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=pars['conda_env'])
 pars['slurm_executable_file'] = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/parameter_estimation/bilby_pipeline.py'
 
 # MAIN INPUT: Set the directory where the population is stored
-pars['population_dir_path']   = '<path_to_population_directory>'
+pars['population_dir_path']   = 'path_to_population_directory'
 # OR
 # MAIN INPUT: Set the directory where the config files are stored
-pars['config_files_dir_path'] = '<path_to_config_files_directory>'
+pars['config_files_dir_path'] = 'path_to_config_files_directory'
 
 # ---------------------------------------------------------------------- #
 
