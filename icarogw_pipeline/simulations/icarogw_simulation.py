@@ -1024,7 +1024,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
         print('\n * Computing the SNR with lisabeta')
 
         try:
-            SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+            SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL, Tobs = pars['observation-time'])
             idx_detected = snr_computation.cut_SNR(SNR)
             idx_softcut  = snr_computation.cut_SNR(SNR, snr_thr=pars['SNR-soft-cut'])
             additional_parameters = {}
