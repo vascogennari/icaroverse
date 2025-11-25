@@ -273,11 +273,11 @@ def default_priors():
         'zt'            : [   0.  ,   1.  ],
         'delta_zt'      : [   1.  , 100.  ],
 
-        'skew_j'        : [   0.  ,   3.  ],
-        'sharp_j'       : [   0.1 ,   5.  ],
+        'skew_j'        : [ -10.  ,  10.  ],
+        'sharp_j'       : [   0.  ,  10.  ],
         'peak_j'        : [   1.  ,  10.  ],
-        'scale_j'       : [   0.01,  10.  ],
-        'mmin_j'        : 3.,
+        'scale_j'       : [   0.  ,  10.  ],
+        'mmin_j'        : 2.,
         'mmax_j'        : 9.,
 
         # Secondary mass distribution
@@ -286,10 +286,10 @@ def default_priors():
         'sigma_q'       : [   0.01,   0.9 ],
         'alpha_q'       : [ -20.  ,  20.  ],
 
-        'low_b'         : [   0.1 ,   3.  ],
-        'high_b'        : [   1.  ,  10.  ],
+        'low_b'         : [   1.  ,  50.  ],
+        'high_b'        : [   1.  , 100.  ],
         'peak_b'        : 0.,
-        'scale_b'       : [   1.  ,  10.  ],
+        'scale_b'       : [   1.  ,  50.  ],
 
         'a_gamma'       : [   1.  ,  10.  ],
         'theta'         : [   0.01,   1.  ],
@@ -303,9 +303,9 @@ def default_priors():
         'sigma_r'       : [   1.  , 100.  ],
         'amp_r'         : [   1.  , 200.  ],
 
-        'low_b_r'       : [   1.  ,   5.  ],
+        'low_b_r'       : [   1.  ,  10.  ],
         'high_b_r'      : [   1.  ,  20.  ],
-        'peak_b_r'      : [   0.  ,   1.  ],
+        'peak_b_r'      : [   0.  ,  10.  ],
         'scale_b_r'     : [   1.  ,  20.  ],
 
         'z_min'         : [   0.  ,   0.5 ],
