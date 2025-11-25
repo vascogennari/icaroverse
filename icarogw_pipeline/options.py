@@ -304,9 +304,9 @@ def default_priors():
         'amp_r'         : [   1.  , 200.  ],
 
         'low_b_r'       : [   1.  ,   5.  ],
-        'high_b_r'      : [   1.  ,  30.  ],
+        'high_b_r'      : [   1.  ,  20.  ],
         'peak_b_r'      : [   0.  ,   1.  ],
-        'scale_b_r'     : [   1.  ,  50.  ],
+        'scale_b_r'     : [   1.  ,  20.  ],
 
         'z_min'         : [   0.  ,   0.5 ],
         'z_max'         : [   0.5 ,   1.  ],
