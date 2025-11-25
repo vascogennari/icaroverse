@@ -234,8 +234,8 @@ class Wrappers:
         return w
 
     def ReferenceCosmology(self):
-          
-        w = icarogw.cosmology.astropycosmology(self.pars['ref-cosmology']['z-max'])
+        
+        w = icarogw.cosmology.astropycosmology(self.pars['zmax'])
         w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = self.pars['ref-cosmology']['H0'], Om0 = self.pars['ref-cosmology']['Om0']))
         return w
 
@@ -726,11 +726,14 @@ def main():
     elif input_pars['sampler'] == 'ptemcee':
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']}
         print_dictionary(sampler_pars)
-    elif input_pars['sampler'] == 'emcee':
+    elif input_pars['sampler'] == 'emcee': 
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'nsteps', 'npool']}
         print_dictionary(sampler_pars)
     else:
         raise ValueError('Sampler not available.')
+
+    if input_pars['sampler'] == 'nessai':
+        if not input_pars['nessai-plot']: sampler_pars.update(dict(nessai_plot = False))
 
     # Start Bilby sampler.
     print('\n * Starting the sampler.\n')

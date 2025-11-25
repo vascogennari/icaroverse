@@ -41,6 +41,7 @@ def InitialiseOptions(Config):
         'scale-free'                  : False,
         'single-mass'                 : False,
         'zmax'                        : 20.,
+        'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
 
         # Sampler
         'sampler'                     : 'dynesty',
@@ -60,6 +61,7 @@ def InitialiseOptions(Config):
         'threads'                     : 1,
         'nparallel'                   : 1,
         'npool'                       : 10,
+        'nessai-plot'                 : False,
 
         # Plots
         'N-points'                    : 500,
@@ -114,7 +116,7 @@ def InitialiseOptions(Config):
         if (key == 'zmax'):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
-        if (key == 'priors'):
+        if (key == 'priors') or (key == 'ref-cosmology'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
@@ -127,6 +129,9 @@ def InitialiseOptions(Config):
             except: pass
         if (key == 'loglike-var'):
             try: input_pars[key] = Config.getfloat('sampler', key)
+            except: pass
+        if (key == 'nessai-plot'):
+            try: input_pars[key] = Config.getboolean('sampler', key)
             except: pass
 
         # Plots
@@ -272,11 +277,11 @@ def default_priors():
         'zt'            : [   0.  ,   1.  ],
         'delta_zt'      : [   1.  , 100.  ],
 
-        'a_j'           : [   0.  ,   3.  ],
-        'b_j'           : [   0.1 ,   5.  ],
-        'l_j'           : [   1.  ,  10.  ],
-        's_j'           : [   0.01,  10.  ],
-        'mmin_j'        : 3.,
+        'skew_j'        : [ -10.  ,  10.  ],
+        'sharp_j'       : [   0.  ,  10.  ],
+        'peak_j'        : [   1.  ,  10.  ],
+        'scale_j'       : [   0.  ,  10.  ],
+        'mmin_j'        : 2.,
         'mmax_j'        : 9.,
 
         # Secondary mass distribution
@@ -285,10 +290,10 @@ def default_priors():
         'sigma_q'       : [   0.01,   0.9 ],
         'alpha_q'       : [ -20.  ,  20.  ],
 
-        'a_b'           : [   0.1 ,   3.  ],
-        'b_b'           : [   1.  ,  10.  ],
-        'l_b'           : 0.,
-        's_b'           : [   1.  ,  10.  ],
+        'low_b'         : [   1.  ,  50.  ],
+        'high_b'        : [   1.  , 100.  ],
+        'peak_b'        : 0.,
+        'scale_b'       : [   1.  ,  50.  ],
 
         'a_gamma'       : [   1.  ,  10.  ],
         'theta'         : [   0.01,   1.  ],
@@ -302,10 +307,10 @@ def default_priors():
         'sigma_r'       : [   1.  , 100.  ],
         'amp_r'         : [   1.  , 200.  ],
 
-        'a_r'           : [   1.  ,   5.  ],
-        'b_r'           : [   1.  ,  30.  ],
-        'l_r'           : [   0.  ,   1.  ],
-        's_r'           : [   1.  ,  50.  ],
+        'low_b_r'       : [   1.  ,  10.  ],
+        'high_b_r'      : [   1.  ,  20.  ],
+        'peak_b_r'      : [   0.  ,  10.  ],
+        'scale_b_r'     : [   1.  ,  20.  ],
 
         'z_min'         : [   0.  ,   0.5 ],
         'z_max'         : [   0.5 ,   1.  ],
@@ -360,6 +365,7 @@ usage = """
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
+        ref-cosmology               [dict ]  Reference cosmology values used to compute the luminosity distance from redshift for injections and true values. Keys: 'H0' (Hubble constant in km/s/Mpc), 'Om0' (matter density parameter at z=0). Default: {'H0': 67.7, 'Om0': 0.308}.
 
     # ------- #
     # sampler #
@@ -374,7 +380,7 @@ usage = """
         print-method                [str  ]  Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
         sample                      [str  ]  Methods to perform the MCMC evolution to find a new point with a nested sampler. Option only available for Nested Samplers. More information on the different methods can be found in the related Bilby documentation (https://bilby-dev.github.io/bilby/dynesty-guide.html). Options: 'act-walk', 'acceptance-walk', 'rwalk'. Default: 'acceptance-walk'.
         npool                       [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). If running on a cluster, must match the number of . Default: 1.
-        # queue-size                  [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
+        nessai-plot                 [bool ]  Option to save nessai sampler diagnostic plots. Option only available for Nessai sampler. Default: 0.
 
         naccept                     [int  ]  The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
         nwalkers                    [int  ]  Number of parallel chains (walkers) running in the MCMC ensemble. Option only available for MCMC samplers. Default: 64.

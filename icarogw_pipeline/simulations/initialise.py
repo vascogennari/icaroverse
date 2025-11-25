@@ -16,6 +16,7 @@ def InitialiseOptions(Config):
         'estimate-events-number'        : False,
         'R0'                            : 25.,
         'observation-time'              : 1.,
+        'seed'                          : 42,
         'save-strain'                   : False,
 
         'injections-number'             : 1000,
@@ -23,14 +24,6 @@ def InitialiseOptions(Config):
         'inverse-checkpoint-rate'       : 1,
         'parallel'                      : False,
         'n-processes'                   : 10,
-        'selection-effects-cut'         : 'snr',
-        'SNR-cut'                       : 12.,
-        'SNR-soft-cut'                  : -1.,
-        'estimate-events-number'        : False,
-        'R0'                            : 25.,
-        'observation-time'              : 1.,
-        'drawing-method'                : 'rejection-sampling',
-        'seed'                          : 42,
 
         'selection-effects-cut'         : 'snr',
         'SNR-method'                    : 'bilby',
@@ -80,7 +73,6 @@ def InitialiseOptions(Config):
 
         'log10-PDF'                     : False,
         'inverse-mass-ratio'            : False,
-        'ref-cosmology'                 : {'H0': 67.7, 'Om0': 0.308, 'z-max': 10.},
 
         # Plots
         'N-points'                      : 10000,
@@ -133,7 +125,7 @@ def InitialiseOptions(Config):
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if (key == 'truths') or (key == 'ref-cosmology'):
+        if (key == 'truths'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
@@ -270,10 +262,23 @@ def default_population():
         'zt'            : 0.5,
         'delta_zt'      : 50.,
 
+        'skew_j'        : 0.8,
+        'sharp_j'       : 1.,
+        'peak_j'        : 5.5,
+        'scale_j'       : 0.3,
+        'mmin_j'        : 3.,
+        'mmax_j'        : 9.,
+
         # Secondary mass distribution
         'beta'          : 4.,
         'mu_q'          : 0.8,
         'sigma_q'       : 0.1,
+        'alpha_q'       : 1.2,
+
+        'low_b'         : 1.,
+        'high_b'        : 50.,
+        'peak_b'        : 0.,
+        'scale_b'       : 15.,
 
         # Rate evolution
         'gamma'         : 0.,
@@ -283,11 +288,10 @@ def default_population():
         'z_min'         : 0.,
         'z_max'         : 1.,
 
-        # LISA only
-        'm_b'           : 6.,
-        'delta'         : 0.1,
-        'a_gamma'       : 1.2,
-        'theta'         : 0.3,
+        'low_b_r'       : 2.,
+        'high_b_r'      : 6.,
+        'peak_b_r'      : 0.25,
+        'scale_b_r'     : 15.,
     }
 
     return pop

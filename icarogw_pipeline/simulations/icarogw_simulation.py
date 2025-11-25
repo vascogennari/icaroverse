@@ -65,13 +65,16 @@ def main():
     # Generate population or injections #
     # --------------------------------- #
 
+    # Set additional input parameters for icarogw_runner.
+    input_pars['zmax'] = input_pars['icarogw-sim-z-max']
+    input_pars['ref-cosmology'] = {'H0': input_pars['truths']['H0'], 'Om0': input_pars['truths']['Om0']}
+
     # Initialise the model wrappers.
     tmp = icarorun.Wrappers(input_pars)
     m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw, 'ref-cosmo': ref_cosmo}
 
     # Initilialise the cosmology.
-    #cw.cosmology.astropycosmology(input_pars['ref-cosmology']['z-max'])
     cw.cosmology.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = input_pars['truths']['H0'], Om0 = input_pars['truths']['Om0']))
 
     # Save and print true parameters.
@@ -1021,7 +1024,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
         print('\n * Computing the SNR with lisabeta')
 
         try:
-            SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+            SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL, Tobs = pars['observation-time'])
             idx_detected = snr_computation.cut_SNR(SNR)
             idx_softcut  = snr_computation.cut_SNR(SNR, snr_thr=pars['SNR-soft-cut'])
             additional_parameters = {}
