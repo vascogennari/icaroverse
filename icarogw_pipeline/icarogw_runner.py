@@ -27,8 +27,9 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
     elif transition == None:
         if order == None:
             if not input_wrapper == None:
+
                 return wrap(input_wrapper)
-            elif wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
+            elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
                 return wrap(flag_powerlaw_smoothing = smoothing)
             elif wrap_name == 'Splines':
                 print('\t\tUsing a spline model with {} splines of order {}. Spacing: {}.'.format(n_splines, order_splines, spacing))
@@ -103,7 +104,7 @@ class Wrappers:
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         models = {
-            'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw':                                                                                    {'wrap name': 'PowerLaw',                                                                                    'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
@@ -122,6 +123,7 @@ class Wrappers:
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'Gaussian':                                                                                    {'wrap name': 'Gaussian',                                                                                    'z evolution': False, 'smoothing': 'included'},
             'GaussianRedshift-order-X':                                                                    {'wrap name': 'GaussianEvolving',                                                                            'z evolution': True},
             'Splines':                                                                                     {'wrap name': 'Splines',                                                                                     'z evolution': False, 'smoothing': 'component-wise'},
         }
@@ -142,6 +144,8 @@ class Wrappers:
                 w = get_wrapper(models[mp]['wrap name'], n_splines = pars['splines-number'], order_splines = pars['splines-order'], spacing = pars['spacing'])
             elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
                 w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing)
+            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
+                w = get_wrapper(models[mp]['wrap name'])
             # Evolving models.
             elif (    models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
                 w = get_wrapper(models[mp]['wrap name'],                        order = order,                                                 )
