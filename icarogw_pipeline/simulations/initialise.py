@@ -16,6 +16,7 @@ def InitialiseOptions(Config):
         'estimate-events-number'        : False,
         'R0'                            : 25.,
         'observation-time'              : 1.,
+        'seed'                          : 42,
         'save-strain'                   : False,
 
         'injections-number'             : 1000,
@@ -261,11 +262,23 @@ def default_population():
         'zt'            : 0.5,
         'delta_zt'      : 50.,
 
+        'skew_j'        : 0.8,
+        'sharp_j'       : 1.,
+        'peak_j'        : 5.5,
+        'scale_j'       : 0.3,
+        'mmin_j'        : 3.,
+        'mmax_j'        : 9.,
+
         # Secondary mass distribution
         'beta'          : 4.,
         'mu_q'          : 0.8,
         'sigma_q'       : 0.1,
         'alpha_q'       : 1.2,
+
+        'low_b'         : 1.,
+        'high_b'        : 50.,
+        'peak_b'        : 0.,
+        'scale_b'       : 15.,
 
         # Rate evolution
         'gamma'         : 0.,
@@ -275,11 +288,10 @@ def default_population():
         'z_min'         : 0.,
         'z_max'         : 1.,
 
-        # LISA only
-        'm_b'           : 6.,
-        'delta'         : 0.1,
-        'a_gamma'       : 1.2,
-        'theta'         : 0.3,
+        'low_b_r'       : 2.,
+        'high_b_r'      : 6.,
+        'peak_b_r'      : 0.25,
+        'scale_b_r'     : 15.,
     }
 
     return pop
