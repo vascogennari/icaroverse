@@ -61,6 +61,7 @@ def InitialiseOptions(Config):
         'threads'                     : 1,
         'nparallel'                   : 1,
         'npool'                       : 10,
+        'nessai-plot'                 : False,
 
         # Plots
         'N-points'                    : 500,
@@ -128,6 +129,9 @@ def InitialiseOptions(Config):
             except: pass
         if (key == 'loglike-var'):
             try: input_pars[key] = Config.getfloat('sampler', key)
+            except: pass
+        if (key == 'nessai-plot'):
+            try: input_pars[key] = Config.getboolean('sampler', key)
             except: pass
 
         # Plots
@@ -376,7 +380,7 @@ usage = """
         print-method                [str  ]  Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
         sample                      [str  ]  Methods to perform the MCMC evolution to find a new point with a nested sampler. Option only available for Nested Samplers. More information on the different methods can be found in the related Bilby documentation (https://bilby-dev.github.io/bilby/dynesty-guide.html). Options: 'act-walk', 'acceptance-walk', 'rwalk'. Default: 'acceptance-walk'.
         npool                       [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). If running on a cluster, must match the number of . Default: 1.
-        # queue-size                  [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
+        nessai-plot                 [bool ]  Option to save nessai sampler diagnostic plots. Option only available for Nessai sampler. Default: 0.
 
         naccept                     [int  ]  The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
         nwalkers                    [int  ]  Number of parallel chains (walkers) running in the MCMC ensemble. Option only available for MCMC samplers. Default: 64.

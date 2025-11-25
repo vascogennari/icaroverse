@@ -732,6 +732,9 @@ def main():
     else:
         raise ValueError('Sampler not available.')
 
+    if input_pars['sampler'] == 'nessai':
+        if not input_pars['nessai-plot']: sampler_pars.update(dict(nessai_plot = False))
+
     # Start Bilby sampler.
     print('\n * Starting the sampler.\n')
     hierarchical = bilby.run_sampler(
