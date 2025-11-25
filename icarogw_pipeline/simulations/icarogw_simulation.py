@@ -65,13 +65,16 @@ def main():
     # Generate population or injections #
     # --------------------------------- #
 
+    # Set additional input parameters for icarogw_runner.
+    input_pars['zmax'] = input_pars['icarogw-sim-z-max']
+    input_pars['ref-cosmology'] = {'H0': input_pars['truths']['H0'], 'Om0': input_pars['truths']['Om0']}
+
     # Initialise the model wrappers.
     tmp = icarorun.Wrappers(input_pars)
     m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw, 'ref-cosmo': ref_cosmo}
 
     # Initilialise the cosmology.
-    #cw.cosmology.astropycosmology(input_pars['ref-cosmology']['z-max'])
     cw.cosmology.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = input_pars['truths']['H0'], Om0 = input_pars['truths']['Om0']))
 
     # Save and print true parameters.

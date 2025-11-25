@@ -72,7 +72,6 @@ def InitialiseOptions(Config):
 
         'log10-PDF'                     : False,
         'inverse-mass-ratio'            : False,
-        'ref-cosmology'                 : {'H0': 67.7, 'Om0': 0.308, 'z-max': 10.},
 
         # Plots
         'N-points'                      : 10000,
@@ -97,11 +96,7 @@ def InitialiseOptions(Config):
         if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'inverse-checkpoint-rate') or (key == 'n-processes') or (key == 'seed'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
-<<<<<<< HEAD
-        if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'estimate-events-number') or (key == 'parallel'):
-=======
         if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'estimate-events-number') or (key == 'parallel') or (key == 'save-strain'):
->>>>>>> main
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
 
@@ -129,7 +124,7 @@ def InitialiseOptions(Config):
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if (key == 'truths') or (key == 'ref-cosmology'):
+        if (key == 'truths'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
@@ -308,12 +303,9 @@ usage = """
         estimate-events-number        [bool ]  Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.
         R0                            [float]  Astrophysical rate of events today [Gpc^(-3)yr^(-1)]. Used to compute the number of generated events if 'estimate-events-number' is active. Option used if the run-type is 'population'. Default: 25.
         observation-time              [float]  Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Is overwritten by official IGWN observing-run duration if a negative value is given. Option used if the run-type is 'population'. Default: 1.
-<<<<<<< HEAD
         drawing-method                [str  ]  Method used to draw samples from the target population distribution. Options: 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'. Default: 'rejection-sampling'.
         seed                          [int  ]  Seed for the random number generator. Default: 42.
-=======
         save-strain                   [bool ]  Flag to save strain data when generating a population. Default: False
->>>>>>> main
 
         injections-number             [int  ]  Number of detected injections to draw from the popoulation. Option used if the run-type is 'injections'. Default: 1000.
         injections-number-bank        [int  ]  Number of injections to draw from the popoulation until 'injections-number' is obtained. Option used if the run-type is 'injections'. Default: 100.

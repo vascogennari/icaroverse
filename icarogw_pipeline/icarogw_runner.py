@@ -234,8 +234,8 @@ class Wrappers:
         return w
 
     def ReferenceCosmology(self):
-          
-        w = icarogw.cosmology.astropycosmology(self.pars['ref-cosmology']['z-max'])
+        
+        w = icarogw.cosmology.astropycosmology(self.pars['zmax'])
         w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = self.pars['ref-cosmology']['H0'], Om0 = self.pars['ref-cosmology']['Om0']))
         return w
 

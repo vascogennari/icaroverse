@@ -41,8 +41,7 @@ def InitialiseOptions(Config):
         'scale-free'                  : False,
         'single-mass'                 : False,
         'zmax'                        : 20.,
-
-        'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308, 'z-max': 10.},
+        'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
 
         # Sampler
         'sampler'                     : 'dynesty',
@@ -116,7 +115,7 @@ def InitialiseOptions(Config):
         if (key == 'zmax'):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
-        if (key == 'priors'):
+        if (key == 'priors') or (key == 'ref-cosmology'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
 
@@ -362,6 +361,7 @@ usage = """
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
+        ref-cosmology               [dict ]  Reference cosmology values used to compute the luminosity distance from redshift for injections and true values. Keys: 'H0' (Hubble constant in km/s/Mpc), 'Om0' (matter density parameter at z=0). Default: {'H0': 67.7, 'Om0': 0.308}.
 
     # ------- #
     # sampler #
