@@ -290,10 +290,10 @@ def default_priors():
         'sigma_q'       : [   0.01,   0.9 ],
         'alpha_q'       : [ -20.  ,  20.  ],
 
-        'low_b'         : [   1.  ,  50.  ],
-        'high_b'        : [   1.  , 100.  ],
-        'peak_b'        : 0.,
-        'scale_b'       : [   1.  ,  50.  ],
+        'low_b'         : [   1.  ,  20.  ],
+        'high_b'        : [   1.  ,  20.  ],
+        'start_b'       : 0.,
+        'scale_b'       : 5.,
 
         'a_gamma'       : [   1.  ,  10.  ],
         'theta'         : [   0.01,   1.  ],
@@ -309,7 +309,7 @@ def default_priors():
 
         'low_b_r'       : [   1.  ,  10.  ],
         'high_b_r'      : [   1.  ,  20.  ],
-        'peak_b_r'      : [   0.  ,  10.  ],
+        'start_b_r'     : [   0.  ,  10.  ],
         'scale_b_r'     : [   1.  ,  20.  ],
 
         'z_min'         : [   0.  ,   0.5 ],

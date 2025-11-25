@@ -276,9 +276,9 @@ def default_population():
         'alpha_q'       : 1.2,
 
         'low_b'         : 1.,
-        'high_b'        : 50.,
-        'peak_b'        : 0.,
-        'scale_b'       : 15.,
+        'high_b'        : 10.,
+        'start_b'       : 0.,
+        'scale_b'       : 5.,
 
         # Rate evolution
         'gamma'         : 0.,
@@ -290,7 +290,7 @@ def default_population():
 
         'low_b_r'       : 2.,
         'high_b_r'      : 6.,
-        'peak_b_r'      : 0.25,
+        'start_b_r'     : 0.25,
         'scale_b_r'     : 15.,
     }
 
