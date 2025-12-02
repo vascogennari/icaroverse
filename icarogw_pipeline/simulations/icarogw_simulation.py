@@ -928,7 +928,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_param
                 init_dict.update({par: other_parameters[par][i] for par in other_parameters})
             bdp.set_event_dict(
                 init_dict,
-                set_duration_and_start_time=True
+                flag_set_duration_and_start_time=True
             )
             try: 
                 bdp.set_ifos_list()

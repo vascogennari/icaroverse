@@ -16,6 +16,12 @@ def clean_dict(d, keys):
     for key in keys:
         if key in d: d.pop(key)
 
+def bring_to_next_power_of_2(x):
+    if x <= 0: 
+        raise ValueError("x must be positive")
+    else:
+        return np.power(2, np.ceil(np.log2(x)))
+
 def chieff_from_wf_params(event_pars_dict):
     """
     Compute the effective spin parameter from the masses and spins
@@ -205,7 +211,7 @@ class BilbyDetectionPipeline():
             for ifo in ['H1', 'L1', 'V1'] + ['K1']*(self.observing_run in {'O4', 'O5'})
         }
 
-    def set_event_dict(self, init_dict, set_duration_and_start_time=False):
+    def set_event_dict(self, init_dict, flag_set_duration_and_start_time=False):
         """
         Stocks all single event parameters in a dictionary eventually containing 
         - geocent_time
@@ -247,19 +253,8 @@ class BilbyDetectionPipeline():
         if 'ifos_on' not in self.event_dict: 
             self.draw_ifos_on()
 
-        if set_duration_and_start_time:
-            # Calculate the time between the moment the binary's frequency enters the detector's band (default: 20 Hz) and the merger
-            time_to_merger = bilby.gw.utils.calculate_time_to_merger(
-                self.reference_frequency,
-                self.event_dict['mass_1'],
-                self.event_dict['mass_2'],
-                chi = chieff_from_wf_params(self.event_dict),
-                safety = 1.1,
-            )
-            # The duration of signal considered is time_to_merger + 4s
-            self.duration = int(np.ceil(time_to_merger)) + 4
-            # The start time is set to be at self.duration +1s before the geocent_time of the event.
-            self.start_time = self.event_dict['geocent_time'] - (self.duration - 1.)
+        if flag_set_duration_and_start_time:
+            self.set_duration_and_start_time()
 
     def draw_geocent_time(self):
         """
@@ -322,6 +317,21 @@ class BilbyDetectionPipeline():
         Draw ifos_on based on detectors duty cycles.
         """
         self.event_dict['ifos_on']      = tell_me_ifos_on(run = self.observing_run)
+    
+    def set_duration_and_start_time(self):
+        """Title says all"""
+        time_to_merger = bilby.gw.utils.calculate_time_to_merger(
+            self.reference_frequency,
+            self.event_dict['mass_1'],
+            self.event_dict['mass_2'],
+            chi = chieff_from_wf_params(self.event_dict),
+            safety = 1.1,
+        )
+        # The duration of signal considered is time_to_merger + 4s
+        self.duration = bring_to_next_power_of_2(int(np.ceil(time_to_merger)) + 4)
+        # The start time is set to be at self.duration +1s before the geocent_time of the event.
+        self.start_time = self.event_dict['geocent_time'] - (self.duration - 1.)
+
 
     def check_all_parameters_present(self):
         """

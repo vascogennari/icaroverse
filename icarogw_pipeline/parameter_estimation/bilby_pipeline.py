@@ -274,12 +274,12 @@ def main():
     
     # Set the events and interferometers within Bilby.
     if input_pars['strain-file'] != "":
-        BilbyClass.set_event_dict(injection_parameters, set_duration_and_start_time=False)
+        BilbyClass.set_event_dict(injection_parameters, flag_set_duration_and_start_time=False)
         BilbyClass.set_ifos_list()
         BilbyClass.set_waveform_generator()
         BilbyClass.set_strain_data_from_arrays(strain_data)
     else:
-        BilbyClass.set_event_dict(injection_parameters, set_duration_and_start_time=True)
+        BilbyClass.set_event_dict(injection_parameters, flag_set_duration_and_start_time=True)
         BilbyClass.set_ifos_list()
         BilbyClass.set_waveform_generator()
         BilbyClass.set_strain_data_from_psd()
