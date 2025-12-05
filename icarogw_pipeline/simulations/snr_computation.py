@@ -517,7 +517,7 @@ try:
             waveform_params = {
                 
                 # Frequency range
-                'minf':                  1e-7,
+                'minf':                  1e-8,
                 'maxf':                  0.5,
                 
                 't0':                    t0[i],  # Reference epoch of coalescence, yr -- coalescence is at t0*yr + Deltat*s, Deltat in params
