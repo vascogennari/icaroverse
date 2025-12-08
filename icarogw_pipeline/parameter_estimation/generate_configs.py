@@ -124,7 +124,7 @@ waveform                      = {waveform}
 precession                    = {precession}
 reference-frequency           = {reference_frequency}
 sampling-frequency            = {sampling_frequency}
-phase-marginalization         = {phase_marginalization}
+{marginalization_settings}
 
 [sampler]
 sampler                       = {sampler}
@@ -144,7 +144,7 @@ def main():
     parser.add_argument(      '--distance_prior',                type=str, default = 'Uniform',         help="Distance prior. Options: Uniform, PowerLaw, UniformSourceFrame, UniformComovingVolume")
     parser.add_argument('-t', '--tailor_priors',                 type=str, default = 'linear',          help="Options: linear, farr16, chirp")
     parser.add_argument('-k', '--nsigma',                        type=int, default = 7,                 help="Width of the tailored prior ranges, in units of estimate of m1_std (prior: m1 +/- nsigma * m1_std).")
-    parser.add_argument(      '--phase_marginalization',                   default = False,             action="store_true", help="Flag to turn on phase marginalization in the PE corresponding to the generated config files.")
+    parser.add_argument(      '--marginalization',               type=str, default = None,              nargs="+", help="Parameters over which to marginalize the likelihood. Available: phase, time, distance, calibration (can stack multiple options). Default: None")
     parser.add_argument('-r', '--use_recorded_strain',                     default = False,             action="store_true", help="Flag to use saved strain data from detection pipeline, if there is any.")
     parser.add_argument('-f', '--fixed_parameters',              type=str, default = None,              nargs="+", help="Parameters to fix when running PE. Meta-options : all-but-mass-dist, all-but-mass-dist-incl. Default: None")
     # sampler
@@ -225,7 +225,15 @@ def main():
     else:
         parameters_to_fix = []
     print(f"\n * Fixing following parameters: {parameters_to_fix}\n")
-    # print("Exiting...")
+
+    # Marginalization settings
+    if args.marginalization is None:
+        marginalization_settings = ""
+        print(f"\n * Marginalizing the likelihood over: Nothing.\n")
+    else:
+        available_settings = ["phase", "time", "distance", "calibration"]
+        marginalization_settings = "\n".join([f"{ms+'-marginalization'     :<29} = True" for ms in args.marginalization if ms in available_settings])
+        print(f"\n * Marginalizing the likelihood over: {', '.join([ms for ms in args.marginalization if ms in available_settings])}.\n")
 
     print('\n * Generating config files.\n')
     # Checks for validity of parameters
@@ -339,7 +347,7 @@ def main():
             precession                    = precession,
             reference_frequency           = reference_frequency,
             sampling_frequency            = sampling_frequency,
-            phase_marginalization         = args.phase_marginalization,
+            marginalization_settings      = marginalization_settings,
             sampler                       = args.sampler,
             print_method                  = args.print_method,
             sampler_dependent_config      = sampler_dependent_config,

@@ -24,6 +24,9 @@ def InitialiseOptions(Config):
         'reference-frequency'          : 20.,
         'sampling-frequency'           : 2048.,
         'phase-marginalization'        : False,
+        'time-marginalization'         : False,
+        'distance-marginalization'     : False,
+        'calibration-marginalization'  : False,
 
         # Sampler
         'sampler'                      : 'dynesty',
@@ -60,7 +63,7 @@ def InitialiseOptions(Config):
         if (key == 'observing-run') or (key == 'waveform') or (key == 'mass_parameters_sampled') or (key == 'strain-file') or (key == 'mass_parameters_uniform_prior'): 
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'precession') or (key == 'phase-marginalization'): 
+        if (key == 'precession') or (key == 'phase-marginalization') or (key == 'time-marginalization') or (key == 'distance-marginalization') or (key == 'calibration-marginalization'): 
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'reference-frequency') or (key == 'sampling-frequency'):
@@ -190,7 +193,10 @@ usage = """
         precession                    [bool ] Flag to turn on if the waveform model is a precessing one. Default: False.
         reference-frequency           [float] Frequency at which the binary parameters are defined when Bilby generates the waveforms. Default: 20.
         sampling-frequency            [float] Sampling rate used to generate the waveform with Bilby. Default: 2048.
-        phase-marginalization         [bool ] Flag to use the phase-marginalized likelihood or the default one. Default: False
+        phase-marginalization         [bool ] Flag to marginalize over the waveform's phase. Default: False
+        time-marginalization          [bool ] Flag to marginalize over the waveform's time. Default: False
+        distance-marginalization      [bool ] Flag to marginalize over the waveform's distance. Default: False
+        calibration-marginalization   [bool ] Flag to marginalize over the waveform's calibration parameters. Default: False
 
     # ------- #
     # sampler #

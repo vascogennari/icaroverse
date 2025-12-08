@@ -269,7 +269,7 @@ def main():
         sampling_frequency  = input_pars['sampling-frequency'], 
         approximant         = input_pars['waveform'],
         precessing_apx      = input_pars['precession'],
-        **strain_record
+        **strain_record # Contains technical data such as duration and start_time
     )
     
     # Set the events and interferometers within Bilby.
@@ -307,11 +307,22 @@ def main():
         )
 
     # Initialise the likelihood.
+    optional_likelihood_arguments = {}
+    if input_pars["sampler"] == "nessai" and (input_pars['time-marginalization'] or input_pars['distance-marginalization']):
+        optional_likelihood_arguments["distance_marginalization_lookup_table"] = True
+        optional_likelihood_arguments["jitter_time"] = False
+    else:
+        pass
+
     likelihood = bilby.gw.GravitationalWaveTransient(
-        interferometers       = BilbyClass.ifos_list,
-        waveform_generator    = BilbyClass.waveform_generator,
-        priors                = priors,
-        phase_marginalization = input_pars['phase-marginalization'],
+        interferometers             = BilbyClass.ifos_list,
+        waveform_generator          = BilbyClass.waveform_generator,
+        priors                      = priors,
+        phase_marginalization       = input_pars['phase-marginalization'],
+        time_marginalization        = input_pars['time-marginalization'],
+        distance_marginalization    = input_pars['distance-marginalization'],
+        calibration_marginalization = input_pars['calibration-marginalization'],
+        **optional_likelihood_arguments
     )
 
     # Run the sampler.
