@@ -94,15 +94,19 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
                 N_eff_inj = likelihood.injections.effective_injections_number()
                 stability = N_eff_inj / (4 * n_events)
                 print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, reference_model_str))
-                N_eff_PE  = xp.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
+            except:
+                print('\n\tWARNING: Could not retrieve Neffinj')
+            try:
+                N_eff_PEs = likelihood.posterior_samples_dict.get_effective_number_of_PE()
+                N_eff_PE = xp.min(N_eff_PEs)
                 print('\n\tThe minimum effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, reference_model_str))
             except:
-                pass
+                print('\n\tWARNING: Could not retrieve NeffPE')
 
             loglike_var = likelihood.likelihood_variance
             print('\n\tThe variance on the log-likelihood for the {1} model is {0:.2e}.'.format(loglike_var, reference_model_str))
             if likelihood.likelihood_variance_thr is not None and likelihood.likelihood_variance > likelihood.likelihood_variance_thr:
-                raise AttributeError(err, "* The variance of the log likelihood for the true population values is below threshold.")
+                raise ValueError("* The variance of the log likelihood for the true population values is below threshold.")
 
 
 class Wrappers:
