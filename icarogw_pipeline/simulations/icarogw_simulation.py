@@ -58,6 +58,11 @@ def main():
         sys.stdout = open(os.path.join(input_pars['output'], 'stdout_icarogw.txt'), 'w')
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
+
+    if input_pars['run-type'] == 'injections' and input_pars['parallel']:
+        import warnings
+        warnings.filterwarnings("ignore")
+
     print('\n\n Starting  i c a r o g w  simulation\n\n')
 
     # Print run parameters.
@@ -93,7 +98,8 @@ def main():
     # Generate new data.
     else:
         print('\n * Generating new {}.'.format(input_pars['run-type']))
-        save_settings_pretty_json(input_pars['output'], input_pars)
+        filename = os.path.join(input_pars['output'], 'analysis_settings.json')
+        with open(filename, 'w') as f: json.dump(input_pars, f, indent=4)
 
         # Generate either a synthetic population or a set of injections for selection effects.
         if   input_pars['run-type'] == 'population':                            samps_dict_astrophysical, samps_dict_observed, strain_records = generate_population(input_pars)
@@ -556,67 +562,13 @@ def read_truths(path):
     return res
 
 
-def save_settings_pretty_json(path, dictionary):
-    """Pretty JSON settings saving"""
-
-    class NoIndent(object):
-        """ Value wrapper."""
-        def __init__(self, value):
-            if not isinstance(value, (list, tuple, dict, np.ndarray)):
-                raise TypeError('Only lists, tuples, dict, numpy.ndarray can be wrapped')
-            self.value = value
-
-    class MyEncoder(json.JSONEncoder):
-        """
-        Custom JSON encoder, only 1st level indented
-        See https://stackoverflow.com/questions/42710879/write-two-dimensional-list-to-json-file
-        """
-
-        FORMAT_SPEC = '@@{}@@'  # Unique string pattern of NoIndent object ids.
-        regex = re.compile(FORMAT_SPEC.format(r'(\d+)'))  # compile(r'@@(\d+)@@')
-
-        def __init__(self, **kwargs):
-            # Keyword arguments to ignore when encoding NoIndent wrapped values.
-            ignore = {'cls', 'indent'}
-            # Save copy of any keyword argument values needed for use here.
-            self._kwargs = {k: v for k, v in kwargs.items() if k not in ignore}
-            super(MyEncoder, self).__init__(**kwargs)
-
-        def default(self, obj):
-            return (self.FORMAT_SPEC.format(id(obj)) if isinstance(obj, NoIndent)
-                        else super(MyEncoder, self).default(obj))
-        
-        def iterencode(self, obj, **kwargs):
-            format_spec = self.FORMAT_SPEC  # Local var to expedite access.
-            # Replace any marked-up NoIndent wrapped values in the JSON repr
-            # with the json.dumps() of the corresponding wrapped Python object.
-            for encoded in super(MyEncoder, self).iterencode(obj, **kwargs):
-                match = self.regex.search(encoded)
-                if match:
-                    id = int(match.group(1))
-                    no_indent = PyObj_FromPtr(id)
-                    json_repr = json.dumps(no_indent.value, **self._kwargs)
-                    # Replace the matched id string with json formatted representation
-                    # of the corresponding Python object.
-                    encoded = encoded.replace(
-                                '"{}"'.format(format_spec.format(id)), json_repr)
-                yield encoded
-
-    dictionary_tosave = {}
-    for key, value in dictionary.items():
-        if   key != 'wrappers' and isinstance(value, (list, tuple, dict, np.ndarray)): dictionary_tosave[key] = NoIndent(value)
-        elif key != 'wrappers':                                                        dictionary_tosave[key] = value
-        else: pass # the wrapper entry in the input_pars 
-    filename = os.path.join(path, 'analysis_settings.json')
-    with open(filename, 'w') as f: json.dump(dictionary_tosave, f, indent=4, cls=MyEncoder)
-
-
 def build_filter_subsample(N_evs, N_subset):
 
     filt = np.full(N_evs, False, dtype = bool)
     idxs = np.random.choice(filt.shape[0], N_subset, replace = False)
     for idx in idxs: filt[idx] = True
     return filt
+
 
 def estimate_events_number(pars):
 
@@ -636,6 +588,7 @@ def estimate_events_number(pars):
 
     print('\n * Drawing {} events from the population.'.format(events_number))
     return events_number
+
 
 def get_distribution_samples(pars):
     '''
