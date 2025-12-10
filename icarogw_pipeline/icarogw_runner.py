@@ -58,37 +58,51 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
         _     = likelihood.log_likelihood()
         print('\n\tA single likelihood evaluation takes {0:.5f} [s].'.format(time.time() - count))
 
-    tmp_dict = None
+    reference_model_dict = None
     if maxL_values == None:
-        if (not pars['real-data']) and (not pars['true-values'] == {}):
-            tmp_dict = pars['true-values']
-            tmp_str  = 'injected'
+        # if (not pars['real-data']) and (not pars['true-values'] == {}):
+        if (not pars['true-values'] == {}):
+            reference_model_dict = pars['true-values']
+            reference_model_str  = 'injected'
     else:
-        tmp_dict = maxL_values
-        tmp_str  = 'maximum likelihood'
+        reference_model_dict = maxL_values
+        reference_model_str  = 'maximum likelihood'
 
-    if not tmp_dict == None:
+    if not reference_model_dict == None:
         # Set rate model parameters at true values 
-        likelihood.parameters = {key: tmp_dict[key] for key in likelihood.rate_model.population_parameters}
+        likelihood.parameters = {key: reference_model_dict[key] for key in likelihood.rate_model.population_parameters}
         # First likelihood evaluation at true values
         single_likelihood_eval()
-        if not pars['loglike-var'] == 0:
+
+        if pars['loglike-var'] <= 0.:
             # Check effective number of injections.
             N_eff_inj = likelihood.injections.effective_injections_number()
             stability = N_eff_inj / (4 * n_events)
-            print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, tmp_str))
+            print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, reference_model_str))
             if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
             # Check effective numer of posterior samples.
             try:
                 N_eff_PE  = xp.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
-                print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
+                print('\n\tThe minimum effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, reference_model_str))
             except AttributeError as err:
                 # The first likelihood evaluation at true population values gives 0 because the effective number of injections is below threshold.
                 # Consequently the initialisation of posterior samples weights is skipped.
                 raise AttributeError(err, "* The effective number of injections for the true population values is below threshold.")
+
         else:
-             loglike_var = likelihood.injections.likelihood_variance_thr()
-             print('\n\tThe variance on the log-likelihood for the {1} model is {0:.1f}.'.format(loglike_var, tmp_str))
+            try:
+                N_eff_inj = likelihood.injections.effective_injections_number()
+                stability = N_eff_inj / (4 * n_events)
+                print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, reference_model_str))
+                N_eff_PE  = xp.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
+                print('\n\tThe minimum effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, reference_model_str))
+            except:
+                pass
+
+            loglike_var = likelihood.likelihood_variance
+            print('\n\tThe variance on the log-likelihood for the {1} model is {0:.2e}.'.format(loglike_var, reference_model_str))
+            if likelihood.likelihood_variance_thr is not None and likelihood.likelihood_variance > likelihood.likelihood_variance_thr:
+                raise AttributeError(err, "* The variance of the log likelihood for the true population values is below threshold.")
 
 
 class Wrappers:
@@ -106,6 +120,7 @@ class Wrappers:
         models = {
             'PowerLaw':                                                                                    {'wrap name': 'PowerLaw',                                                                                    'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw':                                                                  {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
@@ -748,17 +763,22 @@ def main():
         else: 
             sampler_pars['npool'] = input_pars['npool']
         print_dictionary(sampler_pars)
+
     elif input_pars['sampler'] == 'ptemcee':
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']}
         print_dictionary(sampler_pars)
+
     elif input_pars['sampler'] == 'emcee': 
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'nsteps', 'npool']}
         print_dictionary(sampler_pars)
+
     else:
         raise ValueError('Sampler not available.')
 
+
     if input_pars['sampler'] == 'nessai':
         sampler_pars.update(dict(nessai_plot = False))
+
 
     # Start Bilby sampler.
     print('\n * Starting the sampler.\n')

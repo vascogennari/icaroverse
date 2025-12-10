@@ -51,7 +51,7 @@ def InitialiseOptions(Config):
         'sampler'                     : 'dynesty',
         'neffPE'                      : 10,
         'neffINJ'                     : None,
-        'loglike-var'                 : 0,
+        'loglike-var'                 : 0.,
 
         'nlive'                       : 500,
         'print-method'                : 'interval-60',
@@ -247,10 +247,14 @@ def default_priors():
         'mmax_d'        : [  30.  , 200.  ],
 
         'mu_g'          : [  20.  ,  60.  ],
+        'mu_g_low'      : [  20.  ,  60.  ],
+        'mu_g_high'     : [  20.  ,  60.  ],
         'mu_z0'         : [  20.  ,  60.  ],
         'mu_z1'         : [ -80.  ,  80.  ],
         'mu_z2'         : [ -80.  ,  80.  ],
         'sigma_g'       : [   1.  ,  30.  ],
+        'sigma_g_low'   : [   1.  ,  30.  ],
+        'sigma_g_high'  : [   1.  ,  30.  ],
         'sigma_z0'      : [   1.  ,  30.  ],
         'sigma_z1'      : [   0.  ,  20.  ],
         'sigma_z2'      : [   0.  ,  20.  ],
@@ -270,6 +274,8 @@ def default_priors():
         'sigma_z1_c'    : [   0.  , 100.  ],
 
         'lambda_peak'   : [   0.  ,   1.  ],
+        'lambda_g'      : [   0.  ,   1.  ],
+        'lambda_g_low'  : [   0.  ,   1.  ],
         'mix_z0'        : [   0.  ,   1.  ],
         'mix_z1'        : [   0.  ,   1.  ],
         'mix_alpha_z0'  : [   0.  ,   1.  ],
@@ -367,7 +373,7 @@ usage = """
     # model #
     # ----- #
 
-        model-primary               [str  ]  Model distribution for the primary object. Options: 'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-Gaussian', 'DoublePowerlaw', 'PowerLaw-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftQuadratic', 'PowerLaw-GaussianRedshiftPowerLaw', 'PowerLaw-GaussianRedshiftSigmoid', 'PowerLawBroken-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear', 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear'. Default: 'PowerLaw-Gaussian'.
+        model-primary               [str  ]  Model distribution for the primary object. Options: 'PowerLaw', 'PowerLaw-Gaussian', 'PowerLaw-Gaussian-Gaussian', 'PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-PowerLaw', 'PowerLaw-PowerLaw-Gaussian', 'DoublePowerlaw', 'PowerLaw-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftQuadratic', 'PowerLaw-GaussianRedshiftPowerLaw', 'PowerLaw-GaussianRedshiftSigmoid', 'PowerLawBroken-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-GaussianRedshiftLinear', 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear', 'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear', 'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear', 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear'. Default: 'PowerLaw-Gaussian'.
         model-secondary             [str  ]  Model distribution for the secondary object. Options: 'Mass2-PowerLaw', 'MassRatio-PowerLaw', 'MassRatio-Gaussian', 'MassRatio-Gamma'. Default: 'MassRatio-Gaussian'.
         model-rate                  [str  ]  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
         model-cosmology             [str  ]  Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
