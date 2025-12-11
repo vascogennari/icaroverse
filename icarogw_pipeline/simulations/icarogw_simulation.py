@@ -99,7 +99,9 @@ def main():
     else:
         print('\n * Generating new {}.'.format(input_pars['run-type']))
         filename = os.path.join(input_pars['output'], 'analysis_settings.json')
-        with open(filename, 'w') as f: json.dump(input_pars, f, indent=4)
+        analysis_settings = input_pars.copy()
+        analysis_settings.pop("wrappers")
+        with open(filename, 'w') as f: json.dump(analysis_settings, f, indent=4)
 
         # Generate either a synthetic population or a set of injections for selection effects.
         if   input_pars['run-type'] == 'population':                            samps_dict_astrophysical, samps_dict_observed, strain_records = generate_population(input_pars)
