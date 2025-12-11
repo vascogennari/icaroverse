@@ -27,13 +27,14 @@ def InitialiseOptions(Config):
         'true-data'                   : False,
 
         # Model
-        'model-primary'               : 'PowerLaw-Gaussian',                     
+        'model-primary'               : 'PowerLaw-Gaussian',
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
         'model-cosmology'             : 'FlatLambdaCDM',
         'model-bkg-cosmo'             : 'FlatLambdaCDM',
         'constraint_w0wa_earlyMDera'  : False,
         'constraint_MD_redundancy'    : False,
+        'constraint_MLTP_peak_ordering' : False,
 
         'redshift-transition'         : 'linear',
         'redshift-mixture'            : True,
@@ -112,7 +113,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_MLTP_peak_ordering'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -378,8 +379,10 @@ usage = """
         model-rate                  [str  ]  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
         model-cosmology             [str  ]  Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
         model-bkg-cosmo             [str  ]  Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
+
         constraint_w0wa_earlyMDera  [bool ]  Flag to implement the (w0 + wa < 0) constraint, to ensure early MD era. (See e.g. section VII of [https://arxiv.org/abs/2503.14738]). Default: False
         constraint_MD_redundancy    [bool ]  Flag to implement the (gamma + kappa > 0) constraint, to avoid unphysical redundancy in MadauDickinson rate evolution parametrization. Default: False
+        constraint_MLTP_peak_ordering [bool ]  Flag to implement the (mu_g_high > mu_g_low) constraint, to avoid ensure consistent Gaussian peak ordering in MultiPeak primary mass model. Default: False
 
         redshift-transition         [str  ]  Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture            [bool ]  Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.

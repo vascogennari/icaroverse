@@ -636,10 +636,18 @@ class LikelihoodPrior:
                                                                maximum = 0),
                     'print':       "\n\tImplementing [ w0 + wa < 0 ] constraint.\n",
                 },
+                'MLTP_peak_ordering': {
+                    'pars':        ['mu_g_high', 'mu_g_low'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\n\tImplementing [ mu_g_high > mu_g_low ] constraint.\n",
+                },
             }
 
-            if not (pars['model-rate'] == 'MadauDickinson'   and pars['constraint_MD_redundancy']):   constraints_dict.pop('MD_redundancy')
-            if not (pars['model-cosmology'] == 'Flatw0waCDM' and pars['constraint_w0wa_earlyMDera']): constraints_dict.pop('w0wa_earlyMDera')
+            if not (pars['model-rate'] == 'MadauDickinson'                and pars['constraint_MD_redundancy']):      constraints_dict.pop('MD_redundancy')
+            if not (pars['model-cosmology'] == 'Flatw0waCDM'              and pars['constraint_w0wa_earlyMDera']):    constraints_dict.pop('w0wa_earlyMDera')
+            if not (pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian' and pars['constraint_MLTP_peak_ordering']): constraints_dict.pop('MLTP_peak_ordering')
 
             def constraints_conversion_function(params):
                 converted_params = params.copy()
