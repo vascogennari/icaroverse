@@ -74,7 +74,7 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
         # First likelihood evaluation at true values
         single_likelihood_eval()
 
-        if pars['loglike-var'] <= 0.:
+        if pars['loglike-var'] is None or pars['loglike-var'] <= 0.:
             # Check effective number of injections.
             N_eff_inj = likelihood.injections.effective_injections_number()
             stability = N_eff_inj / (4 * n_events)
