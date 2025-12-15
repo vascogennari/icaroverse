@@ -2,7 +2,7 @@ import os, sys, shutil, configparser
 import numpy as np, pickle, pandas as pd, bilby
 import matplotlib.pyplot as plt, seaborn as sns
 from optparse import OptionParser
-from scipy.integrate import simps
+from scipy.integrate import simpson
 from tqdm import tqdm
 from multiprocessing import Process, Value, Lock, Manager
 import json, re, time, datetime
@@ -145,14 +145,14 @@ def generate_population(pars):
     m2d_det = m2d[idx_detected]
     dL_det  = dL[ idx_detected]
     SNR_det = SNR[idx_detected]
-    strain_records_det = strain_records[idx_detected]
+    #strain_records_det = strain_records[idx_detected]
     additional_parameters_det = {key: val[idx_detected] for key, val in additional_parameters.items()}
     
     # Save the population.
     samps_dict_observed      = {'m1s': m1s_det, 'm2s': m2s_det, 'z' : zs_det, 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det, 'snr': SNR_det, **additional_parameters_det}
     samps_dict_astrophysical = {'m1s': m1s,     'm2s': m2s,     'z' : zs,     'm1d': m1d,     'm2d': m2d,     'dL': dL,     'snr': SNR    , **additional_parameters    }
     
-    return samps_dict_astrophysical, samps_dict_observed, strain_records_det
+    return samps_dict_astrophysical, samps_dict_observed, strain_records
 
 
 def generate_injections(pars):
@@ -599,7 +599,7 @@ def estimate_events_number(pars):
     # Project the rate on the light cone.
     tmp = pars['R0'] * pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
     # Integrate in redshift and multiply by the observation time.
-    events_number = round(simps(tmp, z_array) * pars['observation-time'])
+    events_number = round(simpson(tmp, z_array) * pars['observation-time'])
 
     print('\n * Drawing {} events from the population.'.format(events_number))
     return events_number
