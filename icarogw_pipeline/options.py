@@ -366,7 +366,7 @@ usage = """
         real-noise-injections       [bool ]  Option to use IGWN real noise sensitivy estimates for the selection effects. Default: 0.
         catalog                     [str  ]  Catalog of events to be used in the analysis. Options: 'GWTC-3', 'GWTC-4.0', 'O3', 'O4a'. Default: 'GWTC-4.0'.
         remove-events               [list ]  List of events to be removed from the analysis. Example: ['GW190412_053044', 'GW190521_030229']. Default: [].
-        PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in comoving volume). Default: 'dL3'.
+        PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in detected volume), 'UniformSourceFrame' (uniform in source frame), 'per-run' (for real data analyses only: dL3 for <= O3, UniformSourceFrame for O4). Default: 'dL3'.
         PE-prior-masses             [str  ]  Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
         true-data                   [bool ]  Flag to only use the true values for the events in the analysis instead of full posteriors. This is equivalent to use one PE sample for each event. Default: 0.
     

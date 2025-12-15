@@ -439,6 +439,8 @@ class Data:
         if not pars['true-data']:
             if   pars['PE-prior-distance'] == 'dL'   :     print('\n\tUsing a prior for PE samples uniform in luminosity distance.'               )
             elif pars['PE-prior-distance'] == 'dL3'  :     print('\n\tUsing a prior for PE samples uniform in comoving volume.'                   )
+            elif pars['PE-prior-distance'] == 'UniformSourceFrame':     print('\n\tUsing a prior for PE samples uniform in source frame.'         )
+            elif pars['PE-prior-distance'] == 'per-run':   print('\n\tUsing a prior for PE samples observing run-specific. See below for each event.')
             else:
                 raise ValueError('Unknown option for PE sample prior distance.')
             if   pars['PE-prior-masses'  ] == 'm1-m2':     print('\n\tUsing a prior for PE samples uniform in component masses, (m1, m2).'        )
@@ -481,7 +483,7 @@ class Data:
                 
                 # Skip the events to be removed.
                 if ev in pars['remove-events']: continue
-                else:                           print('\t{}'.format(ev))
+                else:                           event_print = '\t{:<20}'.format(ev)
 
                 tmp = h5py.File(catalog[ev]['PE'].replace("~IGNW_data_path", pars['data-path']))
                 data_evs = tmp[catalog[ev]['PE_waveform']]['posterior_samples']
@@ -493,8 +495,42 @@ class Data:
 
                 # Account for PE priors. For O3 data, PE priors are uniform in component masses.
                 # Luminosity distance.
-                if   pars['PE-prior-distance'] == 'dL' : prior = xp.ones(len(pos_dict['luminosity_distance']))    # Set the prior to one.
-                elif pars['PE-prior-distance'] == 'dL3': prior = xp.power(   pos_dict['luminosity_distance'], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+                if   pars['PE-prior-distance'] == 'dL' : 
+                    prior = xp.ones(len(pos_dict['luminosity_distance']))    # Set the prior to one.
+                    event_print += " | dL prior: {:<30}".format('uniform in dL')
+
+                elif pars['PE-prior-distance'] == 'dL3': 
+                    prior = xp.power(   pos_dict['luminosity_distance'], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+                    event_print += " | dL prior: {:<30}".format('uniform in detected volume')
+
+                elif pars['PE-prior-distance'] == 'UniformSourceFrame':
+                    prior_usf = bilby.gw.prior.UniformSourceFrame(
+                        name='luminosity_distance', 
+                        minimum=0.1, 
+                        maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
+                        unit='Mpc'
+                    )
+                    prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                    event_print += " | dL prior: {:<30}".format('uniform in source frame')
+
+                elif pars['PE-prior-distance'] == 'per-run':
+                    if catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b'] and 'nocosmo' in catalog[ev]['PE']:
+                        prior = xp.power(   pos_dict['luminosity_distance'], 2.)
+                        event_print += " | dL prior: {:<30}".format('uniform in detected volume')
+                    elif catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b'] or catalog[ev]['run'] == 'O4a':
+                        prior_usf = bilby.gw.prior.UniformSourceFrame(
+                            name='luminosity_distance', 
+                            minimum=0.1, 
+                            maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
+                            unit='Mpc'
+                        )
+                        prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                        event_print += " | dL prior: {:<30}".format('uniform in source frame')
+                    else:
+                        raise KeyError("Unknown run for event {} in IGWN_pointers dictionary.".format(catalog[ev]['run']))
+
+                else:
+                    raise ValueError("Unknown PE-prior-distance option. Please choose from 'dL', 'dL3', 'UniformSourceFrame', 'per-run'.")
 
                 # Case of using mass ratio instead of the secondary mass.
                 if 'MassRatio' in pars['model-secondary']:
@@ -502,6 +538,7 @@ class Data:
                     prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+                print(event_print)
 
         # Internal simulations.
         else:
@@ -512,6 +549,8 @@ class Data:
                 with open(pars['data-path'], 'rb') as f: data_evs = pickle.load(f)
             else:
                 raise ValueError('Unknown format for the file containing the single events samples. Please make sure the file is correct:\n{}'.format(pars['data-path']))
+
+            if pars['PE-prior-distance'] == 'per-run': raise ValueError("'per-run' PE-prior-distance option incompatible with simulated data.")
 
             samps_dict = {}
             for i in range(len(data_evs['m1d'])):
