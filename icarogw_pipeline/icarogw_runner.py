@@ -666,27 +666,38 @@ class LikelihoodPrior:
                     'func':        (lambda x, y: x + y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0, 
                                                                maximum = xp.inf),
-                    'print':       "\n\tImplementing [ gamma + kappa > 0 ] constraint.\n",
+                    'print':       "\n\tImplementing [ gamma + kappa > 0 ] constraint.",
                 },
                 'w0wa_earlyMDera': {
                     'pars':        ['w0', 'wa'], 
                     'func':        (lambda x, y: x + y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = - xp.inf, 
                                                                maximum = 0),
-                    'print':       "\n\tImplementing [ w0 + wa < 0 ] constraint.\n",
+                    'print':       "\n\tImplementing [ w0 + wa < 0 ] constraint.",
                 },
                 'MLTP_peak_ordering': {
                     'pars':        ['mu_g_high', 'mu_g_low'], 
                     'func':        (lambda x, y: x - y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
                                                                maximum = xp.inf),
-                    'print':       "\n\tImplementing [ mu_g_high > mu_g_low ] constraint.\n",
+                    'print':       "\n\tImplementing [ mu_g_high > mu_g_low ] constraint.",
+                },
+                'nPL_peak_ordering': {
+                    'pars':        ['mmin_{}'.format(char) for char in "abcdefghij"], 
+                    'func':        lambda *mmins: min([ (mmins[i+1] - mmins[i]) for i in range(len(mmins)-1)]),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\n\tImplementing [ mmin_{p+1} > mmin_{p} for p in [0, nPL[ ] constraint (PL peak ordering).",
                 },
             }
 
             if not (pars['model-rate'] == 'MadauDickinson'                and pars['constraint_MD_redundancy']):      constraints_dict.pop('MD_redundancy')
             if not (pars['model-cosmology'] == 'Flatw0waCDM'              and pars['constraint_w0wa_earlyMDera']):    constraints_dict.pop('w0wa_earlyMDera')
             if not (pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian' and pars['constraint_MLTP_peak_ordering']): constraints_dict.pop('MLTP_peak_ordering')
+            if pars['model-primary'] == 'PowerLaw-PowerLaw'                     and pars['constraint_nPL_peak_ordering']: constraints_dict['nPL_peak_ordering']['pars'] = constraints_dict['nPL_peak_ordering']['pars'][:2]
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw'          and pars['constraint_nPL_peak_ordering']: constraints_dict['nPL_peak_ordering']['pars'] = constraints_dict['nPL_peak_ordering']['pars'][:3]
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw-PowerLaw' and pars['constraint_nPL_peak_ordering']: constraints_dict['nPL_peak_ordering']['pars'] = constraints_dict['nPL_peak_ordering']['pars'][:4]
+            else: constraints_dict.pop('nPL_peak_ordering')
 
             def constraints_conversion_function(params):
                 converted_params = params.copy()
