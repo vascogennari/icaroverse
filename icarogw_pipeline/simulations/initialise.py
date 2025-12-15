@@ -69,6 +69,7 @@ def InitialiseOptions(Config):
         'low-smoothing'                 : False,
         'single-mass'                   : False,
         'truths'                        : {},
+        'zmax'                          : 20.,
 
         'log10-PDF'                     : False,
         'inverse-mass-ratio'            : False,
@@ -123,6 +124,9 @@ def InitialiseOptions(Config):
             except: pass
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
+            except: pass
+        if (key == 'zmax'):
+            try: input_pars[key] = Config.getfloat('model', key)
             except: pass
         if (key == 'truths'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))

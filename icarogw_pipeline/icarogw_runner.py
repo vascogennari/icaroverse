@@ -1,6 +1,7 @@
 import os, sys, configparser, shutil, time, re
 from optparse import OptionParser
 from inspect import getmembers, isclass
+import multiprocessing as mp
 
 import pickle, h5py, pandas as pd, json
 import icarogw, bilby, astropy
@@ -746,4 +747,5 @@ def main():
     print('\n * Finished.\n')
 
 if __name__=='__main__':
+    mp.set_start_method("fork", force=True)
     main()
