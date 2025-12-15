@@ -8,6 +8,8 @@ import icarogw, bilby, astropy
 if icarogw.cupy_pal.is_there_cupy(): import cupy  as xp
 else:                                import numpy as xp
 
+from numpy import minimum
+
 # Internal imports
 import options, icarogw_postprocessing
 
@@ -659,6 +661,7 @@ class LikelihoodPrior:
             print('\n * Using the following priors.\n')
             print_dictionary({key: dict_in[key] for key in dict_out.keys()})
 
+            print('\n\tWith constraints:')
             # Miscellaneous built-in additional constraints for some models
             constraints_dict = {
                 'MD_redundancy': {
@@ -666,38 +669,53 @@ class LikelihoodPrior:
                     'func':        (lambda x, y: x + y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0, 
                                                                maximum = xp.inf),
-                    'print':       "\n\tImplementing [ gamma + kappa > 0 ] constraint.",
+                    'print':       "\t[ gamma + kappa > 0 ]",
                 },
                 'w0wa_earlyMDera': {
                     'pars':        ['w0', 'wa'], 
                     'func':        (lambda x, y: x + y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = - xp.inf, 
                                                                maximum = 0),
-                    'print':       "\n\tImplementing [ w0 + wa < 0 ] constraint.",
+                    'print':       "\t[ w0 + wa < 0 ]",
                 },
                 'MLTP_peak_ordering': {
                     'pars':        ['mu_g_high', 'mu_g_low'], 
                     'func':        (lambda x, y: x - y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
                                                                maximum = xp.inf),
-                    'print':       "\n\tImplementing [ mu_g_high > mu_g_low ] constraint.",
+                    'print':       "\t[ mu_g_high > mu_g_low ]",
                 },
                 'nPL_peak_ordering': {
-                    'pars':        ['mmin_{}'.format(char) for char in "abcdefghij"], 
-                    'func':        lambda *mmins: min([ (mmins[i+1] - mmins[i]) for i in range(len(mmins)-1)]),
+                    'pars':        [f'mmin_{c}' for c in "abcdefghij"], 
+                    'func':        lambda *mmins: minimum.reduce([ (mmins[i+1] - mmins[i]) for i in range(len(mmins)-1)]),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
                                                                maximum = xp.inf),
-                    'print':       "\n\tImplementing [ mmin_{p+1} > mmin_{p} for p in [0, nPL[ ] constraint (PL peak ordering).",
+                    'print':       "\t[ mmin_{p} < mmin_{p+1} for all peaks p ] (PL peak ordering).",
+                },
+                'nPL_minmax_ordering': {
+                    'pars':        [f'{p}_{c}' for c in "abcdefghij" for p in ['mmin', 'mmax']], 
+                    'func':        lambda *pars: minimum.reduce([ (pars[2*i+1] - pars[2*i]) for i in range(len(pars)//2)]),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 1., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mmin_{p} < mmax_{p} for peaks p ] (PL minmax ordering).",
                 },
             }
 
             if not (pars['model-rate'] == 'MadauDickinson'                and pars['constraint_MD_redundancy']):      constraints_dict.pop('MD_redundancy')
             if not (pars['model-cosmology'] == 'Flatw0waCDM'              and pars['constraint_w0wa_earlyMDera']):    constraints_dict.pop('w0wa_earlyMDera')
             if not (pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian' and pars['constraint_MLTP_peak_ordering']): constraints_dict.pop('MLTP_peak_ordering')
-            if pars['model-primary'] == 'PowerLaw-PowerLaw'                     and pars['constraint_nPL_peak_ordering']: constraints_dict['nPL_peak_ordering']['pars'] = constraints_dict['nPL_peak_ordering']['pars'][:2]
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw'          and pars['constraint_nPL_peak_ordering']: constraints_dict['nPL_peak_ordering']['pars'] = constraints_dict['nPL_peak_ordering']['pars'][:3]
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw-PowerLaw' and pars['constraint_nPL_peak_ordering']: constraints_dict['nPL_peak_ordering']['pars'] = constraints_dict['nPL_peak_ordering']['pars'][:4]
-            else: constraints_dict.pop('nPL_peak_ordering')
+            if pars['model-primary'] == 'PowerLaw-PowerLaw'                     and pars['constraint_nPL_peak_ordering']: 
+                constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:2]
+                constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:2*2]
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw'          and pars['constraint_nPL_peak_ordering']: 
+                constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:3]
+                constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:3*2]
+            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw-PowerLaw' and pars['constraint_nPL_peak_ordering']: 
+                constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:4]
+                constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:4*2]
+            else: 
+                constraints_dict.pop('nPL_peak_ordering')
+                constraints_dict.pop('nPL_minmax_ordering')
 
             def constraints_conversion_function(params):
                 converted_params = params.copy()
