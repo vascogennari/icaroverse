@@ -611,6 +611,12 @@ def estimate_events_number(pars):
     print('\n * Drawing {} events from the population.'.format(events_number))
     return events_number
 
+def clean_nans_in_pdf(pdf):
+
+    if not np.all(np.isfinite(pdf)):
+        pdf = np.nan_to_num(pdf, nan=0.0, posinf=0.0, neginf=0.0)
+    return pdf
+
 def get_distribution_samples(pars):
     '''
         Draw samples from the selected sitribution.
@@ -650,6 +656,7 @@ def get_distribution_samples(pars):
     update_weights(pars['wrappers']['rw'], pars['truths'])
     if not 'LuminosityProbability' in pars['model-rate']:
         tmp = pars['wrappers']['rw'].rate.evaluate(z_array)
+        tmp = clean_nans_in_pdf(tmp)
         if not 'RedshiftProbability' in pars['model-rate']:
             tmp *= pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
             zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
@@ -660,6 +667,7 @@ def get_distribution_samples(pars):
         pdf_z_array = tmp
     else:
         tmp = pars['wrappers']['rw'].rate.evaluate(dL_array)
+        tmp = clean_nans_in_pdf(tmp)
         dL, pdf_dL = _sampler(dL_array, tmp, N_events, 1)
         zs = pars['wrappers']['cw'].cosmology.dl2z(dL)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
@@ -672,6 +680,7 @@ def get_distribution_samples(pars):
         pdf_m1 = np.zeros(N_events)
         for i,z in tqdm(enumerate(zs),  total = len(zs)):
             tmp = pars['wrappers']['m1w'].pdf(m1_array, z)
+            tmp = clean_nans_in_pdf(tmp)
             if not pars['drawing-method'] == 'deterministic-inverse-transform':
                 # For redshift evolving distributions, we use the redshift samples to draw the masses.
                 m1s[i], pdf_m1[i] = _sampler(m1_array, tmp,        1, seed = pars['seed'])
@@ -680,6 +689,7 @@ def get_distribution_samples(pars):
         if pars['plot-astrophysical']: plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
+        tmp = clean_nans_in_pdf(tmp)
         m1s, pdf_m1 = _sampler(m1_array, tmp, N_events, 2)
     pdf_m1_array = tmp
 
@@ -694,6 +704,7 @@ def get_distribution_samples(pars):
         if 'MassRatio' in pars['model-secondary']:
             update_weights(pars['wrappers']['m2w'], pars['truths'])
             tmp = pars['wrappers']['m2w'].pdf(q_array)
+            tmp = clean_nans_in_pdf(tmp)
             qs, pdf_q = _sampler(q_array, tmp, N_events, 3)
             pdf_q_array = tmp
 
