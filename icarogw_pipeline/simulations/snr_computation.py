@@ -517,7 +517,7 @@ try:
             waveform_params = {
                 
                 # Frequency range
-                'minf':                  1e-8,
+                'minf':                  1e-10,
                 'maxf':                  0.5,
                 
                 't0':                    t0[i],  # Reference epoch of coalescence, yr -- coalescence is at t0*yr + Deltat*s, Deltat in params
@@ -526,8 +526,8 @@ try:
                 
                 # Further options to cut signals
                 'fend':                  None,
-                'tmin':                  t0[i] - Tobs/2, # Start the signal Tobs/2 yr before coalescence
-                'tmax':                  t0[i] + 0.5,    # Truncate the signal 0.5 yr after coalescence
+                'tmin':                  None,
+                'tmax':                  None,
 
                 # Options for the time and phase alignment -- development/testing
                 'phiref':                0.0,
