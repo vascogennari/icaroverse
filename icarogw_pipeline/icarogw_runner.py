@@ -516,9 +516,11 @@ class Data:
                     event_print += " | dL prior: {:<30}".format('uniform in source frame')
 
                 elif pars['PE-prior-distance'] == 'per-run':
+                    # If the filenames for O1-O3 events have 'nocosmo', they correspond to PE samples with dL priors \propto dL^2
                     if catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b'] and 'nocosmo' in catalog[ev]['PE']:
                         prior = xp.power(   pos_dict['luminosity_distance'], 2.)
                         event_print += " | dL prior: {:<30}".format('uniform in detected volume')
+                    # If the filenames for O1-O3 events doesn't have 'nocosmo', they correspond to PE samples with UniformSourceFrame dL priors
                     elif catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b'] or catalog[ev]['run'] == 'O4a':
                         prior_usf = bilby.gw.prior.UniformSourceFrame(
                             name='luminosity_distance', 
@@ -685,6 +687,13 @@ class LikelihoodPrior:
                                                                maximum = xp.inf),
                     'print':       "\t[ mu_g_high > mu_g_low ]",
                 },
+                'PL2G_peak_ordering': {
+                    'pars':        ['mu_b_z0', 'mu_a_z0'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mu_b_z0 > mu_a_z0 ]",
+                },
                 'nPL_peak_ordering': {
                     'pars':        [f'mmin_{c}' for c in "abcdefghij"], 
                     'func':        lambda *mmins: minimum.reduce([ (mmins[i+1] - mmins[i]) for i in range(len(mmins)-1)]),
@@ -701,22 +710,65 @@ class LikelihoodPrior:
                 },
             }
 
-            if not (pars['model-rate'] == 'MadauDickinson'                and pars['constraint_MD_redundancy']):      constraints_dict.pop('MD_redundancy')
-            if not (pars['model-cosmology'] == 'Flatw0waCDM'              and pars['constraint_w0wa_earlyMDera']):    constraints_dict.pop('w0wa_earlyMDera')
-            if not (pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian' and pars['constraint_MLTP_peak_ordering']): constraints_dict.pop('MLTP_peak_ordering')
-            if pars['model-primary'] == 'PowerLaw-PowerLaw'                     and pars['constraint_nPL_peak_ordering']: 
-                constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:2]
-                constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:2*2]
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw'          and pars['constraint_nPL_peak_ordering']: 
-                constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:3]
-                constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:3*2]
-            elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw-PowerLaw' and pars['constraint_nPL_peak_ordering']: 
-                constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:4]
-                constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:4*2]
-            else: 
+            # MD redundancy constraint
+            if not (pars['model-rate'] == 'MadauDickinson' and pars['constraint_MD_redundancy']):
+                constraints_dict.pop('MD_redundancy')
+            elif pars['model-rate'] != 'MadauDickinson' and pars['constraint_MD_redundancy']:
+                raise ValueError("MD redundancy constraint is only available when using MadauDickinson rate evolution parametrization.")
+            else:
+                pass
+            # w0wa early matter domination era constraint
+            if not (pars['model-cosmology'] == 'Flatw0waCDM' and pars['constraint_w0wa_earlyMDera']):
+                constraints_dict.pop('w0wa_earlyMDera')
+            elif pars['model-cosmology'] != 'Flatw0waCDM' and pars['constraint_w0wa_earlyMDera']:
+                raise ValueError("w0wa early MD era constraint is only available when using Flatw0waCDM cosmological model.")
+            else:
+                pass
+            # peak ordering constraints
+            if pars['constraint_peak_ordering']:
+                # MLTP
+                if not pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian': 
+                    constraints_dict.pop('MLTP_peak_ordering')
+                else:
+                    pass
+                # PL2G
+                if pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':
+                    # must not include redshift evolution
+                    if (
+                            (pars['redshift-mixture']) or
+                            (not (
+                                type(dict_in['mu_a_z1']) == float and
+                                type(dict_in['mu_b_z1']) == float and
+                                type(dict_in['sigma_a_z1']) == float and
+                                type(dict_in['sigma_b_z1']) == float
+                            ))
+                    ): 
+                        raise ValueError("peak ordering constraint for 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear' mass model is only available with no redshift evolution.")
+                    else:
+                        pass
+                else:
+                    constraints_dict.pop('PL2G_peak_ordering')
+
+                # 2PL, 3PL, 4PL (also implements minmax ordering for all peaks)
+                if pars['model-primary'] == 'PowerLaw-PowerLaw': 
+                    constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:2]
+                    constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:2*2]
+                elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw': 
+                    constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:3]
+                    constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:3*2]
+                elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw-PowerLaw': 
+                    constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:4]
+                    constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:4*2]
+                else: 
+                    constraints_dict.pop('nPL_peak_ordering')
+                    constraints_dict.pop('nPL_minmax_ordering')
+            else:
+                constraints_dict.pop('MLTP_peak_ordering')
+                constraints_dict.pop('PL2G_peak_ordering')
                 constraints_dict.pop('nPL_peak_ordering')
                 constraints_dict.pop('nPL_minmax_ordering')
 
+            # implementing the conversion function based on all the constraints that we kept
             def constraints_conversion_function(params):
                 converted_params = params.copy()
                 for const in constraints_dict:
@@ -725,6 +777,7 @@ class LikelihoodPrior:
                     )
                 return converted_params
 
+            # Adding the constraitns as bilby objects in the prior dictionary
             for const in constraints_dict:
                 dict_out[const] = constraints_dict[const]['const_bilby']
                 print(constraints_dict[const]['print'])
