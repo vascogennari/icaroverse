@@ -145,14 +145,14 @@ def generate_population(pars):
     m2d_det = m2d[idx_detected]
     dL_det  = dL[ idx_detected]
     SNR_det = SNR[idx_detected]
-    #strain_records_det = strain_records[idx_detected]
+    strain_records_det = strain_records[idx_detected]
     additional_parameters_det = {key: val[idx_detected] for key, val in additional_parameters.items()}
     
     # Save the population.
     samps_dict_observed      = {'m1s': m1s_det, 'm2s': m2s_det, 'z' : zs_det, 'm1d': m1d_det, 'm2d': m2d_det, 'dL': dL_det, 'snr': SNR_det, **additional_parameters_det}
     samps_dict_astrophysical = {'m1s': m1s,     'm2s': m2s,     'z' : zs,     'm1d': m1d,     'm2d': m2d,     'dL': dL,     'snr': SNR    , **additional_parameters    }
     
-    return samps_dict_astrophysical, samps_dict_observed, strain_records
+    return samps_dict_astrophysical, samps_dict_observed, strain_records_det
 
 
 def generate_injections(pars):
