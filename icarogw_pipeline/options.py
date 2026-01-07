@@ -45,8 +45,7 @@ def InitialiseOptions(Config):
         'zmax'                        : 20.,
 
         'splines-number'              : 10,
-        'splines-order'               : 3,
-        'spacing'                     : 'log',
+        'spacing'                     : 'uniform',
 
         # Sampler
         'sampler'                     : 'dynesty',
@@ -122,7 +121,7 @@ def InitialiseOptions(Config):
         if (key == 'priors'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
-        if (key == 'splines-number') or (key == 'splines-order'):
+        if (key == 'splines-number'):
             try: input_pars[key] = Config.getint('model', key)
             except: pass
 
@@ -295,26 +294,26 @@ def default_priors():
         'zt'            : [   0.  ,   1.  ],
         'delta_zt'      : [   1.  , 100.  ],
 
-        'c1'            : [ -20.  , 70.  ],
-        'c2'            : [ -20.  , 70.  ],
-        'c3'            : [ -20.  , 70.  ],
-        'c4'            : [ -20.  , 70.  ],
-        'c5'            : [ -20.  , 70.  ],
-        'c6'            : [ -20.  , 70.  ],
-        'c7'            : [ -20.  , 70.  ],
-        'c8'            : [ -20.  , 70.  ],
-        'c9'            : [ -20.  , 70.  ],
-        'c10'           : [ -20.  , 70.  ],
-        'c11'           : [ -20.  , 70.  ],
-        'c12'           : [ -20.  , 70.  ],
-        'c13'           : [ -20.  , 70.  ],
-        'c14'           : [ -20.  , 70.  ],
-        'c15'           : [ -20.  , 70.  ],
-        'c16'           : [ -20.  , 70.  ],
-        'c17'           : [ -20.  , 70.  ],
-        'c18'           : [ -20.  , 70.  ],
-        'c19'           : [ -20.  , 70.  ],
-        'c20'           : [ -20.  , 70.  ],
+        'c1'            : [   0.  ,   1.  ],
+        'c2'            : [   0.  ,   1.  ],
+        'c3'            : [   0.  ,   1.  ],
+        'c4'            : [   0.  ,   1.  ],
+        'c5'            : [   0.  ,   1.  ],
+        'c6'            : [   0.  ,   1.  ],
+        'c7'            : [   0.  ,   1.  ],
+        'c8'            : [   0.  ,   1.  ],
+        'c9'            : [   0.  ,   1.  ],
+        'c10'           : [   0.  ,   1.  ],
+        'c11'           : [   0.  ,   1.  ],
+        'c12'           : [   0.  ,   1.  ],
+        'c13'           : [   0.  ,   1.  ],
+        'c14'           : [   0.  ,   1.  ],
+        'c15'           : [   0.  ,   1.  ],
+        'c16'           : [   0.  ,   1.  ],
+        'c17'           : [   0.  ,   1.  ],
+        'c18'           : [   0.  ,   1.  ],
+        'c19'           : [   0.  ,   1.  ],
+        'c20'           : [   0.  ,   1.  ],
 
         # Secondary mass distribution
         'beta'          : [ -20.  ,  20.  ],
@@ -394,8 +393,7 @@ usage = """
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
 
         splines-number              [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
-        splines-order               [int  ]  Order of the splines used for the spline models. The option only applies to models including splines. Default: 3.
-        spacing                     [str  ]  Spacing of the spline knots. Options: 'linear', 'log'. The option only applies to models including splines. Default: 'log'.
+        spacing                     [str  ]  Spacing of the spline knots. Options: 'uniform', 'log'. The option only applies to models including splines. Default: 'uniform'.
 
     # ------- #
     # sampler #
