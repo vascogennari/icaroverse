@@ -856,9 +856,9 @@ def main():
         sys.stdout = open(os.path.join(input_pars['output'], 'stdout_icarogw.txt'), 'w')
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
-    print('\n\n ===== Starting  i c a r o g w  runner ===== \n\n')
+    print('\n\n ===== Starting  i c a r o g w  runner ===== \n')
 
-    if icarogw.cupy_pal.is_there_cupy(): print(" * I will run with cupy on GPU.")
+    if icarogw.cupy_pal.is_there_cupy(): print(" * I will run with cupy on GPU.\n")
 
     # Print run parameters.
     print(' * I will be running with the following parameters.\n')
