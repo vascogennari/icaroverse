@@ -34,8 +34,8 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
                 return wrap(input_wrapper)
             elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
                 return wrap(flag_powerlaw_smoothing = smoothing)
-            elif 'Splines' in wrap_name:
-                print('\t\tUsing a {} spline model with {} basis elements. Spacing: {}.'.format(wrap_name, n_splines, spacing))
+            elif 'Spline' in wrap_name:
+                print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
                 return wrap(n_basis = n_splines, spacing = spacing)
             else:
                 return wrap()
@@ -644,26 +644,41 @@ class LikelihoodPrior:
                 'Uniform',
                 'LogUniform',
             ]
+
+            # Precompute spline coefficient names safely
+            use_dirichlet = ('Spline' in pars['model-primary']) and pars['dirichlet-prior']
+            if use_dirichlet:
+                spline_coeffs = [f'c{i}' for i in range(1, pars['splines-number']+1)]
               
             for par in w.population_parameters:
 
-                if   type(dict_in[par]) == list and (len(dict_in[par]) == 2): 
+                # Dirichlet case via Gamma priors
+                if use_dirichlet and par in spline_coeffs:
+                    dict_out[par] = bilby.core.prior.Gamma(1., 1., name = par)
+
+                # Standard Uniform / LogUniform priors
+                elif isinstance(dict_in[par], list) and len(dict_in[par]) == 2:
                     dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
 
-                elif type(dict_in[par]) == list and (len(dict_in[par]) > 2):
+                elif isinstance(dict_in[par], list) and len(dict_in[par]) > 2:
                     if dict_in[par][2] in available_bilby_priors:
                         bilby_prior_class = getattr(bilby.core.prior, dict_in[par][2])
                         dict_out[par] = bilby_prior_class(dict_in[par][0], dict_in[par][1])
                     else:
                         raise KeyError("Unknown bilby prior. Available (in this pipeline):\n\t" + '\n\t'.join(available_bilby_priors))
 
-                elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+                # Fixed value
+                elif isinstance(dict_in[par], float): dict_out[par] = dict_in[par]
 
                 else:
                     raise ValueError("Unknown type for prior on {}. Please provide either a fixed value, or a 2-list [min, max], or a 3-list [min, max, type]".format(dict_in[par]))
             
             print('\n * Using the following priors.\n')
-            print_dictionary({key: dict_in[key] for key in dict_out.keys()})
+            if use_dirichlet:
+                print_dictionary({key: dict_in[key] for key in dict_out.keys()-set(spline_coeffs)})
+                print('\n\tUsing a Dirichlet prior for the spline coefficients: {}.'.format(spline_coeffs))
+            else:
+                print_dictionary({key: dict_in[key] for key in dict_out.keys()})
 
             print('\n\tWith constraints:')
             # Miscellaneous built-in additional constraints for some models

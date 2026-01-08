@@ -46,6 +46,7 @@ def InitialiseOptions(Config):
 
         'splines-number'              : 10,
         'spacing'                     : 'uniform',
+        'dirichlet-prior'             : True,
 
         # Sampler
         'sampler'                     : 'dynesty',
@@ -112,7 +113,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -394,6 +395,7 @@ usage = """
 
         splines-number              [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
         spacing                     [str  ]  Spacing of the spline knots. Options: 'uniform', 'log'. The option only applies to models including splines. Default: 'uniform'.
+        dirichlet-prior             [bool ]  Flag to use a Dirichlet prior for the spline components. This is implemented through Gamma priors on the spline coefficients, which are then normalized to form a Dirichlet distribution (i.e. uniform weights on the simplex). Default: True.
 
     # ------- #
     # sampler #
