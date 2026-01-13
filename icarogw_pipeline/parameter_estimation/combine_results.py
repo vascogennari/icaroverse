@@ -55,7 +55,7 @@ def rename(par):
 
 
 def check_format(event_dirname, n):
-    search = re.search("event_[0-9]{"+str(n)+"}(?P<extension>_?\w*)", event_dirname)
+    search = re.search(r"event_[0-9]{"+str(n)+r"}(?P<extension>_?\w*)", event_dirname)
     return search.group('extension') == ''
 
 
