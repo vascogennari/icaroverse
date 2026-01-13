@@ -16,8 +16,8 @@ def InitialiseOptions(Config):
         'event-parameters'             : {},
         'strain-file'                  : '',
         'priors'                       : {},
-        'mass_parameters_uniform_prior': 'm1-m2',
-        'mass_parameters_sampled'      : 'm1-m2_custom',
+        'mass-parameters-uniform-prior': 'm1-m2',
+        'mass-parameters-sampled'      : 'm1-m2_custom',
         'observing-run'                : 'O3',
         'waveform'                     : 'IMRPhenomXHM',
         'precession'                   : False,
@@ -60,7 +60,7 @@ def InitialiseOptions(Config):
         if (key == 'event-parameters') or (key == 'priors'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
-        if (key == 'observing-run') or (key == 'waveform') or (key == 'mass_parameters_sampled') or (key == 'strain-file') or (key == 'mass_parameters_uniform_prior'): 
+        if (key == 'observing-run') or (key == 'waveform') or (key == 'mass-parameters-sampled') or (key == 'strain-file') or (key == 'mass-parameters-uniform-prior'): 
             try: input_pars[key] = Config.get('model', key)
             except: pass
         if (key == 'precession') or (key == 'phase-marginalization') or (key == 'time-marginalization') or (key == 'distance-marginalization') or (key == 'calibration-marginalization'): 

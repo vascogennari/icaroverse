@@ -1157,8 +1157,8 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
             ax[0].plot(x_array, pdf+z, color = colors[zi])
             ax[1].plot(x_array, pdf,   color = colors[zi])
 
-        ax[0].set_xlabel('$m_1 [M_{\odot}]$')
-        ax[1].set_xlabel('$m_1 [M_{\odot}]$')
+        ax[0].set_xlabel(r'$m_1 ~\rm [M_{\odot}]$')
+        ax[1].set_xlabel(r'$m_1 ~\rm [M_{\odot}]$')
         ax[0].set_ylabel('$z$')
         ax[1].set_ylabel('$p(m_1)$')
         ax[1].set_xlim(0, 100)
