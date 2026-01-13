@@ -71,7 +71,6 @@ def InitialiseOptions(Config):
         'bounds-q'                    : [0, 1],
         'bounds-dL'                   : [0, 10000],
         'bounds-z'                    : [1e-5, 0.8],
-        'm1-logscale'                 : True,
         'log10-PDF'                   : False,  
         'true-values'                 : {},
         'selection-effects'           : False,
@@ -144,7 +143,7 @@ def InitialiseOptions(Config):
         if (key == 'true-values') or (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z')  or (key == 'percentiles'):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if (key == 'selection-effects') or (key == 'plot-prior') or (key == 'm1-logscale') or (key == 'log10-PDF'):
+        if (key == 'selection-effects') or (key == 'plot-prior') or (key == 'log10-PDF'):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
         if (key == 'downsample-postprocessing') or (key == 'KDE-bandwidth-scale') or (key == 'KDE-bandwidth-scale-m1'):
@@ -400,7 +399,6 @@ usage = """
         bounds-q                    [list ]  Bounds used to reconstruct the mass ratio distribution. Default: [0, 1].
         bounds-dL                   [list ]  Bounds used to reconstruct the distribution in luminosity distance. Default: [0, 10000].
         bounds-z                    [list ]  Bounds used to reconstruct the distribution in redshift and the rate evolution. Default: [1e-5, 0.8].
-        m1-logscale                 [bool ]  Option to plot the primary mass distribution in log-scale. Default: 1.
         true-values                 [bool ]  Option to plot the true values of the events population. Default: {}.
         selection-effects           [bool ]  Option to show on the primary mass plot the 90% CI of the injections used to compute selection effects, qulitatively corresponding to the detector sensitivity. Default: 0.
         plot-prior                  [bool ]  Option to plot reconstructed distributions from samples drawn from the analysis priors. Default: 1.
