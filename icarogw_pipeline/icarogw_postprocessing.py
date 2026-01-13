@@ -350,9 +350,13 @@ class ReconstructDistributions:
 
         for idx, samp in df.iterrows():
 
-            samp_filt = {key: samp[key] for key in w.population_parameters}
-            w.update(**samp_filt)        
+            samp_filt = {key: samp[key] for key in w.population_parameters} # Update the rate model.
+            w.update(**samp_filt)
             func = w.rate.log_evaluate(z_array)
+
+            samp_filt = {key: samp[key] for key in cw.population_parameters} # Update the cosmology model.
+            cw.update(**samp_filt)
+
             if 'RedshiftProbability' in pars['model-rate']:
                 func -= cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Get the rate from p(z).
             curves[idx] = func
@@ -370,17 +374,18 @@ class ReconstructDistributions:
 
         for idx, samp in df.iterrows():
 
-            samp_filt = {key: samp[key] for key in rw.population_parameters}
+            samp_filt = {key: samp[key] for key in rw.population_parameters} # Update the rate model.
             rw.update(**samp_filt)
+
             func = np.exp(rw.rate.log_evaluate(z_array))
             if not pars['scale-free']: curves[idx] = func * samp.R0
             else:                      curves[idx] = func
 
             # Comoving volume and redshift (1/(1+z)*dV/dz).
-            samp_filt = {key: samp[key] for key in cw.population_parameters}
+            samp_filt = {key: samp[key] for key in cw.population_parameters} # Update the cosmology model.
             cw.update(**samp_filt)
+
             if not 'RedshiftProbability' in pars['model-rate']: curves[idx] *= cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Get p(z) from the rate.
-            #curves[idx] = np.log(curves[idx])
             curves[idx] = curves[idx]
 
         curves_CI = get_curves_percentiles(curves, pars)
@@ -414,7 +419,17 @@ class ReconstructDistributions:
 
 
     def RemoveSelectionEffects(df, pars, rate_w, ref_cosmo, injections):
+        '''
+            Remove selection effects from population posterior samples by reweighting injections with the
+            corresponding population PDFs. For each population sample, the reweighted injections are used to
+            reconstruct detector-frame and source-frame distributions via KDE or GMM. The resulting bundle of
+            distributions is then used to compute confidence bands (percentiles) for masses, redshift, and
+            luminosity distance, including redshift-sliced primary mass distributions.
 
+            The detector-to-source frame conversion is done using the reference cosmology used for the injections,
+            even if the cosmological parameters are being inferred.
+        '''
+        
         N_samps = len(df.index)
         # Number of samples to be extracted from the reconstructed distribution of each PE sample to compute the KDE/GMM.
         N_samps_KDE_GMM = pars['N-points-KDE-GMM']

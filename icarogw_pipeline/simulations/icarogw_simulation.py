@@ -76,12 +76,12 @@ def main():
 
     # Set additional input parameters for icarogw_runner.
     input_pars['zmax'] = input_pars['icarogw-sim-z-max']
-    input_pars['ref-cosmology'] = {'H0': input_pars['truths']['H0'], 'Om0': input_pars['truths']['Om0']}
+    input_pars['ref-cosmology'] = {'H0': 0., 'Om0': 0.} # Placeholder required by the wrappers initialisation, never used in this script.
 
     # Initialise the model wrappers.
     tmp = icarorun.Wrappers(input_pars)
-    m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
-    input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw, 'ref-cosmo': ref_cosmo}
+    m1w, m2w, rw, cw, _ = tmp.return_Wrappers()
+    input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw}
 
     # Initilialise the cosmology.
     cw.cosmology.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = input_pars['truths']['H0'], Om0 = input_pars['truths']['Om0']))
@@ -148,7 +148,7 @@ def generate_population(pars):
         Extract a set of samples from the specified probability distribution.
 
         The event values are sampled from the source frame distribution and
-        then converted in the detector frame, assuming a reference cosmology.
+        then converted in the detector frame, assuming a cosmology.
 
         The information on the prior is not present here, and Jacobians for the
         source-detector conversion need to be handled in the running script.
@@ -593,7 +593,7 @@ def estimate_events_number(pars):
     # Set the rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
     # Project the rate on the light cone.
-    tmp = pars['R0'] * pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
+    tmp = pars['R0'] * pars['wrappers']['rw'].rate.evaluate(z_array) * pars['wrappers']['cw'].cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
     # Integrate in redshift and multiply by the observation time.
     events_number = round(simpson(tmp, z_array) * pars['observation-time'])
 
@@ -647,7 +647,7 @@ def get_distribution_samples(pars):
         tmp = pars['wrappers']['rw'].rate.evaluate(z_array)
         tmp = clean_nans_in_pdf(tmp)
         if not 'RedshiftProbability' in pars['model-rate']:
-            tmp *= pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
+            tmp *= pars['wrappers']['cw'].cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
             zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
             if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
         else:
@@ -730,11 +730,11 @@ def get_distribution_samples(pars):
 
     if not pars['single-mass']:
         # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz].
-        prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+        prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['cw'].cosmology.ddl_by_dz_at_z(zs))
     else:
         if not 'LuminosityProbability' in pars['model-rate']:
             # Transform the prior from source to detector frame: |J_(m1s,z)->(m1d,dL)| = 1/ [(1+z) * ddL/dz].
-            prior = (pdf_m1 * pdf_z) / ((1 + zs)  * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+            prior = (pdf_m1 * pdf_z) / ((1 + zs)  * pars['wrappers']['cw'].cosmology.ddl_by_dz_at_z(zs))
         else:
             # Transform the prior from source to detector frame: |J_(m1s,dL)->(m1d,dL)| = 1/ (1+z).
             prior = (pdf_m1 * pdf_dL) / ((1 + zs))

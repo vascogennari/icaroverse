@@ -270,7 +270,10 @@ class Wrappers:
         return w
 
     def ReferenceCosmology(self):
-        
+        '''
+            Reference cosmology used to generate the injections to compute selection effects.
+            This wrapper is only used to convert the injections' prior and in the post-processing.
+        '''
         w = icarogw.cosmology.astropycosmology(self.pars['zmax'])
         w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = self.pars['ref-cosmology']['H0'], Om0 = self.pars['ref-cosmology']['Om0']))
         return w
