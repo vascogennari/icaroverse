@@ -16,6 +16,7 @@ def InitialiseOptions(Config):
         'estimate-events-number'        : False,
         'R0'                            : 25.,
         'observation-time'              : 1.,
+        'seed'                          : 42,
         'save-strain'                   : False,
 
         'injections-number'             : 1000,
@@ -83,7 +84,7 @@ def InitialiseOptions(Config):
         'bounds-m1'                     : [0, 200],
         'bounds-m2'                     : [0, 200],
         'bounds-q'                      : [0.1, 1],
-        'bounds-dL'                     : [0, 10000],
+        'bounds-dL'                     : [0, 100000],
         'bounds-z'                      : [1e-6, 3.0],
         'plot-astrophysical'            : False,
     }
@@ -98,7 +99,7 @@ def InitialiseOptions(Config):
         if (key == 'SNR-cut') or (key == 'SNR-soft-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'inverse-checkpoint-rate') or (key == 'n-processes'):
+        if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'inverse-checkpoint-rate') or (key == 'n-processes') or (key == 'seed'):
             try: input_pars[key] = Config.getint('input', key)
             except: pass
         if (key == 'screen-output') or (key == 'postprocessing') or (key == 'flat-PSD') or (key == 'log10-PDF') or (key == 'estimate-events-number') or (key == 'parallel') or (key == 'save-strain'):
@@ -126,7 +127,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass') or (key == 'inverse-mass-ratio'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'single-mass') or (key == 'log10-PDF') or (key == 'inverse-mass-ratio'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -184,6 +185,7 @@ def default_population():
         'delta_m_a'     : 5.,
         'delta_m_b'     : 5.,
         'delta_m_c'     : 5.,
+        'delta'         : 0.1,
 
         'alpha'         : 4.,
         'alpha_z0'      : 4.,
@@ -194,6 +196,11 @@ def default_population():
         'alpha_b'       : 10.,
         'alpha_c'       : 10.,
         'break_p'       : 0.5,
+        'm_b'           : 6.,
+        'm_b_z0'        : 6.,
+        'm_b_z10'       : 6.,
+        'm_b_zt'        : 3.,
+        'm_b_delta_zt'  : 3.,
 
         'alpha_a_z0'    : 50.,
         'alpha_b_z0'    : 10.,
@@ -243,18 +250,18 @@ def default_population():
         'sigma_z2'      : 0.,
         'mmin_g'        : 8.,
 
-        'mu_z0_a'       : 10.,
-        'mu_z0_b'       : 15.,
-        'mu_z0_c'       : 35.,
-        'mu_z1_a'       : 0.,
-        'mu_z1_b'       : 0.,
-        'mu_z1_c'       : 0.,
-        'sigma_z0_a'    : 5.,
-        'sigma_z0_b'    : 5.,
-        'sigma_z0_c'    : 5.,
-        'sigma_z1_a'    : 0.,
-        'sigma_z1_b'    : 0.,
-        'sigma_z1_c'    : 0.,
+        'mu_a_z0'       : 10.,
+        'mu_b_z0'       : 15.,
+        'mu_c_z0'       : 35.,
+        'mu_a_z1'       : 0.,
+        'mu_b_z1'       : 0.,
+        'mu_c_z1'       : 0.,
+        'sigma_a_z0'    : 5.,
+        'sigma_b_z0'    : 5.,
+        'sigma_c_z0'    : 5.,
+        'sigma_a_z1'    : 0.,
+        'sigma_b_z1'    : 0.,
+        'sigma_c_z1'    : 0.,
 
         'lambda_peak'   : 0.1,
         'mix_z0'        : 0.9,
@@ -263,14 +270,21 @@ def default_population():
         'mix_alpha_z1'  : 0.9,
         'mix_beta_z0'   : 0.05,
         'mix_beta_z1'   : 0.,
-        'mix'           : 0.9,
         'mix_alpha'     : 0.9,
         'mix_beta'      : 0.05,
+        'mix'           : 0.9,
 
         'amp'           : 0.1,
         'freq'          : 0.,
         'zt'            : 0.5,
         'delta_zt'      : 50.,
+
+        'skew_j'        : 0.8,
+        'sharp_j'       : 1.,
+        'peak_j'        : 5.5,
+        'scale_j'       : 0.3,
+        'mmin_j'        : 3.,
+        'mmax_j'        : 9.,
 
         'c1'            : 10.,
         'c2'            : 10.,
@@ -293,18 +307,32 @@ def default_population():
         'beta'          : 4.,
         'mu_q'          : 0.8,
         'sigma_q'       : 0.1,
+        'alpha_q'       : 1.2,
+
+        'low_b'         : 1.,
+        'high_b'        : 10.,
+        'start_b'       : 0.,
+        'scale_b'       : 5.,
+
+        'a_gamma'       : 5.,
+        'theta'         : 0.5,
 
         # Rate evolution
         'gamma'         : 0.,
         'kappa'         : 0.,
         'zp'            : 3.,
         'R0'            : 20.,
+        'mu_r'          : -20.,
+        'sigma_r'       : 20.,
+        'amp_r'         : 20.,
 
-        # LISA only
-        'm_b'           : 6.,
-        'delta'         : 0.1,
-        'a_gamma'       : 1.2,
-        'theta'         : 0.3,
+        'low_b_r'       : 2.,
+        'high_b_r'      : 6.,
+        'start_b_r'     : 0.25,
+        'scale_b_r'     : 15.,
+
+        'z_min'         : 0.,
+        'z_max'         : 1.,
     }
 
     return pop
@@ -328,6 +356,8 @@ usage = """
         estimate-events-number        [bool ]  Flag to set the number of generated events directly from the population rate evolution. If activated, it overwrites 'events-number'. Option used if the run-type is 'population'. Default: '0'.
         R0                            [float]  Astrophysical rate of events today [Gpc^(-3)yr^(-1)]. Used to compute the number of generated events if 'estimate-events-number' is active. Option used if the run-type is 'population'. Default: 25.
         observation-time              [float]  Time of observation [yr]. Used to compute the number of generated events if 'estimate-events-number' is active. Is overwritten by official IGWN observing-run duration if a negative value is given. Option used if the run-type is 'population'. Default: 1.
+        drawing-method                [str  ]  Method used to draw samples from the target population distribution. Options: 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'. Default: 'rejection-sampling'.
+        seed                          [int  ]  Seed for the random number generator. Default: 42.
         save-strain                   [bool ]  Flag to save strain data when generating a population. Default: False
 
         injections-number             [int  ]  Number of detected injections to draw from the popoulation. Option used if the run-type is 'injections'. Default: 1000.

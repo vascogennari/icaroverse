@@ -25,6 +25,7 @@ def InitialiseOptions(Config):
         'PE-prior-distance'           : 'dL3',
         'PE-prior-masses'             : 'm1-m2',
         'true-data'                   : False,
+        'ignore-selection-effects'    : False,
 
         # Model
         'model-primary'               : 'PowerLaw-Gaussian',
@@ -43,6 +44,7 @@ def InitialiseOptions(Config):
         'scale-free'                  : False,
         'single-mass'                 : False,
         'zmax'                        : 20.,
+        'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
 
         'splines-number'              : 10,
         'spacing'                     : 'uniform',
@@ -66,6 +68,7 @@ def InitialiseOptions(Config):
         'threads'                     : 1,
         'nparallel'                   : 1,
         'npool'                       : 10,
+        'nessai-plot'                 : False,
 
         # Plots
         'N-points'                    : 500,
@@ -75,7 +78,7 @@ def InitialiseOptions(Config):
         'bounds-q'                    : [0, 1],
         'bounds-dL'                   : [0, 10000],
         'bounds-z'                    : [1e-5, 0.8],
-        'm1-logscale'                 : True,
+        'log10-PDF'                   : False,  
         'true-values'                 : {},
         'selection-effects'           : False,
         'plot-prior'                  : True,
@@ -102,7 +105,7 @@ def InitialiseOptions(Config):
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'real-data') or (key == 'real-noise-injections') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data'):
+        if (key == 'real-data') or (key == 'real-noise-injections') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'ignore-selection-effects'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
@@ -119,7 +122,7 @@ def InitialiseOptions(Config):
         if (key == 'zmax'):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
-        if (key == 'priors'):
+        if (key == 'priors') or (key == 'ref-cosmology'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
         if (key == 'splines-number'):
@@ -136,6 +139,9 @@ def InitialiseOptions(Config):
         if (key == 'loglike-var'):
             try: input_pars[key] = Config.getfloat('sampler', key)
             except: pass
+        if (key == 'nessai-plot'):
+            try: input_pars[key] = Config.getboolean('sampler', key)
+            except: pass
 
         # Plots
         if (key == 'estimate-observed-method') or (key == 'estimate-observed-method-m1'):
@@ -147,7 +153,7 @@ def InitialiseOptions(Config):
         if (key == 'true-values') or (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z')  or (key == 'percentiles'):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if (key == 'selection-effects') or (key == 'plot-prior') or (key == 'm1-logscale'):
+        if (key == 'selection-effects') or (key == 'plot-prior') or (key == 'log10-PDF'):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
         if (key == 'downsample-postprocessing') or (key == 'KDE-bandwidth-scale') or (key == 'KDE-bandwidth-scale-m1'):
@@ -200,6 +206,10 @@ def default_priors():
         'alpha_d'       : [  -4.  ,  20.  ],
         'break_p'       : [   0.  ,   1.  ],
         'm_b'           : [   5.  ,   7.  ],
+        'm_b_z0'        : [   5.  ,   7.  ],
+        'm_b_z10'       : [   5.  ,   7.  ],
+        'm_b_zt'        : [   1.  ,   5.  ],
+        'm_b_delta_zt'  : [   0.  ,   5.  ],
 
         'alpha_a_z0'    : [  -4.  , 120.  ],
         'alpha_b_z0'    : [  -4.  , 120.  ],
@@ -261,18 +271,18 @@ def default_priors():
         'sigma_z2'      : [   0.  ,  20.  ],
         'mmin_g'        : [   2.  ,  50.  ],
 
-        'mu_z0_a'       : [   1.  , 100.  ],
-        'mu_z0_b'       : [   1.  , 100.  ],
-        'mu_z0_c'       : [   1.  , 100.  ],
-        'mu_z1_a'       : [-100.  , 100.  ],
-        'mu_z1_b'       : [-100.  , 100.  ],
-        'mu_z1_c'       : [-100.  , 100.  ],
-        'sigma_z0_a'    : [   1.  ,  50.  ],
-        'sigma_z0_b'    : [   1.  ,  50.  ],
-        'sigma_z0_c'    : [   1.  ,  50.  ],
-        'sigma_z1_a'    : [   0.  , 100.  ],
-        'sigma_z1_b'    : [   0.  , 100.  ],
-        'sigma_z1_c'    : [   0.  , 100.  ],
+        'mu_a_z0'       : [   1.  , 100.  ],
+        'mu_b_z0'       : [   1.  , 100.  ],
+        'mu_c_z0'       : [   1.  , 100.  ],
+        'mu_a_z1'       : [-100.  , 100.  ],
+        'mu_b_z1'       : [-100.  , 100.  ],
+        'mu_c_z1'       : [-100.  , 100.  ],
+        'sigma_a_z0'    : [   1.  ,  50.  ],
+        'sigma_b_z0'    : [   1.  ,  50.  ],
+        'sigma_c_z0'    : [   1.  ,  50.  ],
+        'sigma_a_z1'    : [   0.  , 100.  ],
+        'sigma_b_z1'    : [   0.  , 100.  ],
+        'sigma_c_z1'    : [   0.  , 100.  ],
 
         'lambda_peak'   : [   0.  ,   1.  ],
         'lambda_g'      : [   0.  ,   1.  ],
@@ -294,6 +304,13 @@ def default_priors():
         'freq'          : [ -20.  ,  20.  ],
         'zt'            : [   0.  ,   1.  ],
         'delta_zt'      : [   1.  , 100.  ],
+
+        'skew_j'        : [ -10.  ,  10.  ],
+        'sharp_j'       : [   0.  ,  10.  ],
+        'peak_j'        : [   1.  ,  10.  ],
+        'scale_j'       : [   0.  ,  10.  ],
+        'mmin_j'        : 2.,
+        'mmax_j'        : 9.,
 
         'c1'            : [   0.  ,   1.  ],
         'c2'            : [   0.  ,   1.  ],
@@ -322,10 +339,10 @@ def default_priors():
         'sigma_q'       : [   0.01,   0.9 ],
         'alpha_q'       : [ -20.  ,  20.  ],
 
-        'a_beta'        : [   0.1 ,   3.  ],
-        'b_beta'        : [   1.  ,  10.  ],
-        'loc_beta'      : 0.,
-        'scale_beta'    : [   1.  ,  10.  ],
+        'low_b'         : [   1.  ,  20.  ],
+        'high_b'        : [   1.  ,  20.  ],
+        'start_b'       : 0.,
+        'scale_b'       : 5.,
 
         'a_gamma'       : [   1.  ,  10.  ],
         'theta'         : [   0.01,   1.  ],
@@ -338,6 +355,14 @@ def default_priors():
         'mu_r'          : [-100.  ,   0.  ],
         'sigma_r'       : [   1.  , 100.  ],
         'amp_r'         : [   1.  , 200.  ],
+
+        'low_b_r'       : [   1.  ,  10.  ],
+        'high_b_r'      : [   1.  ,  20.  ],
+        'start_b_r'     : [   0.  ,  10.  ],
+        'scale_b_r'     : [   1.  ,  20.  ],
+
+        'z_min'         : [   0.  ,   0.5 ],
+        'z_max'         : [   0.5 ,   1.  ],
     }
 
     return prior
@@ -369,6 +394,7 @@ usage = """
         PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in detected volume), 'UniformSourceFrame' (uniform in source frame), 'per-run' (for real data analyses only: dL3 for <= O3, UniformSourceFrame for O4). Default: 'dL3'.
         PE-prior-masses             [str  ]  Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
         true-data                   [bool ]  Flag to only use the true values for the events in the analysis instead of full posteriors. This is equivalent to use one PE sample for each event. Default: 0.
+        ignore-selection-effects    [bool ]  Flag to select a hierarchical likelihood without selection effects included. Default: 0.
     
     # ----- #
     # model #
@@ -392,6 +418,7 @@ usage = """
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
+        ref-cosmology               [dict ]  Reference cosmology values used to compute the luminosity distance from redshift for injections and true values. Keys: 'H0' (Hubble constant in km/s/Mpc), 'Om0' (matter density parameter at z=0). Default: {'H0': 67.7, 'Om0': 0.308}.
 
         splines-number              [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
         spacing                     [str  ]  Spacing of the spline knots. Options: 'uniform', 'log'. The option only applies to models including splines. Default: 'uniform'.
@@ -410,7 +437,7 @@ usage = """
         print-method                [str  ]  Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
         sample                      [str  ]  Methods to perform the MCMC evolution to find a new point with a nested sampler. Option only available for Nested Samplers. More information on the different methods can be found in the related Bilby documentation (https://bilby-dev.github.io/bilby/dynesty-guide.html). Options: 'act-walk', 'acceptance-walk', 'rwalk'. Default: 'acceptance-walk'.
         npool                       [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). If running on a cluster, must match the number of . Default: 1.
-        # queue-size                  [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). It corresponds to the number of threads used. Default: 1.
+        nessai-plot                 [bool ]  Option to save nessai sampler diagnostic plots. Option only available for Nessai sampler. Default: 0.
 
         naccept                     [int  ]  The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
         nwalkers                    [int  ]  Number of parallel chains (walkers) running in the MCMC ensemble. Option only available for MCMC samplers. Default: 64.
@@ -430,7 +457,6 @@ usage = """
         bounds-q                    [list ]  Bounds used to reconstruct the mass ratio distribution. Default: [0, 1].
         bounds-dL                   [list ]  Bounds used to reconstruct the distribution in luminosity distance. Default: [0, 10000].
         bounds-z                    [list ]  Bounds used to reconstruct the distribution in redshift and the rate evolution. Default: [1e-5, 0.8].
-        m1-logscale                 [bool ]  Option to plot the primary mass distribution in log-scale. Default: 1.
         true-values                 [bool ]  Option to plot the true values of the events population. Default: {}.
         selection-effects           [bool ]  Option to show on the primary mass plot the 90% CI of the injections used to compute selection effects, qulitatively corresponding to the detector sensitivity. Default: 0.
         plot-prior                  [bool ]  Option to plot reconstructed distributions from samples drawn from the analysis priors. Default: 1.

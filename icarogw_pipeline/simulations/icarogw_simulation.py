@@ -6,6 +6,7 @@ from scipy.integrate import simpson
 from tqdm import tqdm
 from multiprocessing import Process, Value, Lock, Manager
 import json, re, time, datetime
+import astropy
 from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
 # Internal imports
@@ -64,10 +65,17 @@ def main():
     # Generate population or injections #
     # --------------------------------- #
 
+    # Set additional input parameters for icarogw_runner.
+    input_pars['zmax'] = input_pars['icarogw-sim-z-max']
+    input_pars['ref-cosmology'] = {'H0': input_pars['truths']['H0'], 'Om0': input_pars['truths']['Om0']}
+
     # Initialise the model wrappers.
     tmp = icarorun.Wrappers(input_pars)
     m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw, 'ref-cosmo': ref_cosmo}
+
+    # Initilialise the cosmology.
+    cw.cosmology.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = input_pars['truths']['H0'], Om0 = input_pars['truths']['Om0']))
 
     # Save and print true parameters.
     population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters
@@ -604,6 +612,12 @@ def estimate_events_number(pars):
     print('\n * Drawing {} events from the population.'.format(events_number))
     return events_number
 
+def clean_nans_in_pdf(pdf):
+
+    if not np.all(np.isfinite(pdf)):
+        pdf = np.nan_to_num(pdf, nan=0.0, posinf=0.0, neginf=0.0)
+    return pdf
+
 def get_distribution_samples(pars):
     '''
         Draw samples from the selected sitribution.
@@ -625,6 +639,13 @@ def get_distribution_samples(pars):
     m2_array = np.linspace(pars['bounds-m2'][0], pars['bounds-m2'][1], pars['N-points'])
     q_array  = np.linspace(pars['bounds-q' ][0], pars['bounds-q' ][1], pars['N-points'])
     z_array  = np.linspace(pars['bounds-z' ][0], pars['bounds-z' ][1], pars['N-points'])
+    dL_array = np.linspace(pars['bounds-dL'][0], pars['bounds-dL'][1], pars['N-points'])
+
+    # Set the sampler to draw events.
+    if   pars['drawing-method'] == 'rejection-sampling'             : _sampler = rejection_sampling_1D
+    elif pars['drawing-method'] == 'inverse-transform'              : _sampler = draw_samples_CDF_1D
+    elif pars['drawing-method'] == 'deterministic-inverse-transform': _sampler = draw_stratified_samples_CDF_1D
+    else: raise ValueError("Unknown drawing-method. Please choose between 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'.")
 
     # Set the sampler to draw events.
     if   pars['drawing-method'] == 'rejection-sampling'             : _sampler = rejection_sampling_1D
@@ -634,14 +655,24 @@ def get_distribution_samples(pars):
 
     # Rate evolution.
     update_weights(pars['wrappers']['rw'], pars['truths'])
-    tmp = pars['wrappers']['rw'].rate.evaluate(z_array)
-    if not 'RedshiftProbability' in pars['model-rate']:
-        tmp *= pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
-        zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
-        if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+    if not 'LuminosityProbability' in pars['model-rate']:
+        tmp = pars['wrappers']['rw'].rate.evaluate(z_array)
+        tmp = clean_nans_in_pdf(tmp)
+        if not 'RedshiftProbability' in pars['model-rate']:
+            tmp *= pars['wrappers']['ref-cosmo'].dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
+            zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
+            if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
+        else:
+            zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
+            if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
+        pdf_z_array = tmp
     else:
-        zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
+        tmp = pars['wrappers']['rw'].rate.evaluate(dL_array)
+        tmp = clean_nans_in_pdf(tmp)
+        dL, pdf_dL = _sampler(dL_array, tmp, N_events, 1)
+        zs = pars['wrappers']['cw'].cosmology.dl2z(dL)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'redshift_distribution', rate_evolution = 1, z_samps = zs)
+        pdf_z_array = tmp
 
     # Primary mass.
     update_weights(pars['wrappers']['m1w'], pars['truths'])
@@ -650,27 +681,33 @@ def get_distribution_samples(pars):
         pdf_m1 = np.zeros(N_events)
         for i,z in tqdm(enumerate(zs),  total = len(zs)):
             tmp = pars['wrappers']['m1w'].pdf(m1_array, z)
+            tmp = clean_nans_in_pdf(tmp)
             if not pars['drawing-method'] == 'deterministic-inverse-transform':
                 # For redshift evolving distributions, we use the redshift samples to draw the masses.
-                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp, 1, 2)
+                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp,        1, seed = pars['seed'])
             else:
-                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp, N_events, 2, quantile_index = i)
+                m1s[i], pdf_m1[i] = _sampler(m1_array, tmp, N_events, seed = pars['seed'], quantile_index = i)
         if pars['plot-astrophysical']: plot_injected_distribution(pars, m1_array, pars['wrappers']['m1w'], 'm1z_redshift', redshift = True)
     else:
         tmp = pars['wrappers']['m1w'].pdf(m1_array)
+        tmp = clean_nans_in_pdf(tmp)
         m1s, pdf_m1 = _sampler(m1_array, tmp, N_events, 2)
+    pdf_m1_array = tmp
 
     # If required, remove the log10 contribution.
     if pars['log10-PDF']:
         m1s = np.power(10., m1s)
         pdf_m1 *= np.log10(np.e) / m1s   # Compute the Jacobian: |J_(log10(m1s))->(m1s)| = log10(e) / m1s.
 
+    pdf_q_array = np.zeros(pars['N-points'])
     # Secondary mass.
     if not pars['single-mass']:
         if 'MassRatio' in pars['model-secondary']:
             update_weights(pars['wrappers']['m2w'], pars['truths'])
             tmp = pars['wrappers']['m2w'].pdf(q_array)
+            tmp = clean_nans_in_pdf(tmp)
             qs, pdf_q = _sampler(q_array, tmp, N_events, 3)
+            pdf_q_array = tmp
 
             # If required, remove the log10 contribution.
             if pars['log10-PDF']:
@@ -700,19 +737,28 @@ def get_distribution_samples(pars):
     # Get detector frame quantities.
     m1d = m1s * (1 + zs)
     m2d = m2s * (1 + zs)
-    dL  = pars['wrappers']['ref-cosmo'].z2dl(zs)
+    if not 'LuminosityProbability' in pars['model-rate']:
+        dL = pars['wrappers']['cw'].cosmology.z2dl(zs)
 
     if not pars['single-mass']:
         # Transform the prior from source to detector frame: |J_(m1s,m2s,z)->(m1d,m2d,dL)| = 1/ [(1+z)**2 * ddL/dz].
         prior = (pdf_m1m2 * pdf_z) / ((1 + zs)**2 * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
     else:
-        # Transform the prior from source to detector frame: |J_(m1s,z)->(m1d,dL)| = 1/ [(1+z) * ddL/dz].
-        prior = (pdf_m1   * pdf_z) / ((1 + zs)    * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+        if not 'LuminosityProbability' in pars['model-rate']:
+            # Transform the prior from source to detector frame: |J_(m1s,z)->(m1d,dL)| = 1/ [(1+z) * ddL/dz].
+            prior = (pdf_m1 * pdf_z) / ((1 + zs)  * pars['wrappers']['ref-cosmo'].ddl_by_dz_at_z(zs))
+        else:
+            # Transform the prior from source to detector frame: |J_(m1s,dL)->(m1d,dL)| = 1/ (1+z).
+            prior = (pdf_m1 * pdf_dL) / ((1 + zs))
+
+    # Save injected population.
+    data = np.column_stack((m1_array, q_array, z_array, pdf_m1_array, pdf_q_array, pdf_z_array))
+    np.savetxt(os.path.join(pars['output'], 'true_population.txt'), data, delimiter="\t", header="m1s\tq\tz\tpdf_m1s\tpdf_q\tpdf_z")
 
     return m1s, m2s, zs, m1d, m2d, dL, prior
 
 
-def rejection_sampling_1D(x, PDF, N, _, quantile_index = None):
+def rejection_sampling_1D(x, PDF, N, seed = None, quantile_index = None):
     '''
         Draw N samples from a distribution that follows the array PDF,
         using a rejection sampling algorithm.
@@ -740,7 +786,7 @@ def rejection_sampling_1D(x, PDF, N, _, quantile_index = None):
     return samples, pdf_samples
 
 
-def draw_samples_CDF_1D(x, PDF, N, _, quantile_index = None):
+def draw_samples_CDF_1D(x, PDF, N, seed = None, quantile_index = None):
     '''
         Draw N samples from a distribution that follows the array PDF.
 
@@ -764,7 +810,7 @@ def draw_samples_CDF_1D(x, PDF, N, _, quantile_index = None):
     return samps, pdf_s
 
 
-def draw_stratified_samples_CDF_1D(x, PDF, N, seed, quantile_index = None):
+def draw_stratified_samples_CDF_1D(x, PDF, N, seed = 1, quantile_index = None):
     '''
     Generate N deterministic samples from a given 1D discrete PDF using stratified quantiles.
     
@@ -989,7 +1035,7 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
         print('\n * Computing the SNR with lisabeta')
 
         try:
-            SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL)
+            SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL, Tobs = pars['observation-time'])
             idx_detected = snr_computation.cut_SNR(SNR)
             idx_softcut  = snr_computation.cut_SNR(SNR, snr_thr=pars['SNR-soft-cut'])
             additional_parameters = {}
@@ -1025,6 +1071,8 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     if not pars['log10-PDF']:
         if pars['plot-astrophysical']: plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(samps_dict_observed[     'm1s'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+        plt.yscale('log')
+        plt.ylim(1e-5, 1)
     else:
         if pars['plot-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1s']), density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(np.log10(samps_dict_observed[     'm1s']), density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
@@ -1035,9 +1083,6 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
         plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array), c = '#153B60', label = 'Injected')
     plt.title(title)
     plt.xlabel('m1')
-    if not pars['log10-PDF']:
-        plt.yscale('log')
-        plt.ylim(1e-5, 1)
     plt.legend()
     plt.savefig('{}.pdf'.format(figname))
     plt.close()
@@ -1046,10 +1091,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
         if pars['plot-astrophysical']: plt.hist(samps_dict_astrophysical['m1d'], bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
-        plt.hist(samps_dict_observed[     'm1d'], bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+        plt.hist(                               samps_dict_observed[     'm1d'], bins = nbins, color = colors[1], alpha = alpha, label = 'Observed')
     else:
         if pars['plot-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1d']), bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
-        plt.hist(np.log10(samps_dict_observed[     'm1d']), bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+        plt.hist(                               np.log10(samps_dict_observed[     'm1d']), bins = nbins, color = colors[1], alpha = alpha, label = 'Observed')
     plt.title(title)
     plt.xlabel('m1')
     plt.legend()
@@ -1060,10 +1105,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
         if pars['plot-astrophysical']: plt.scatter(samps_dict_astrophysical['m1s'], samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
-        plt.scatter(samps_dict_observed[     'm1s'], samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
+        plt.scatter(                               samps_dict_observed[     'm1s'], samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     else:
         if pars['plot-astrophysical']: plt.scatter(np.log10(samps_dict_astrophysical['m1s']), samps_dict_astrophysical['z'], s = 0.1, c = colors[0], label = 'Astrophysical')
-        plt.scatter(np.log10(samps_dict_observed[     'm1s']), samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
+        plt.scatter(                               np.log10(samps_dict_observed[     'm1s']), samps_dict_observed[     'z'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
     plt.ylabel('z')
@@ -1075,10 +1120,10 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     figname = os.path.join(pars['output'], 'plots', title)
     if not pars['log10-PDF']:
         if pars['plot-astrophysical']: plt.scatter(samps_dict_astrophysical['m1d'], samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
-        plt.scatter(samps_dict_observed[     'm1d'], samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
+        plt.scatter(                               samps_dict_observed[     'm1d'], samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     else:
         if pars['plot-astrophysical']: plt.scatter(np.log10(samps_dict_astrophysical['m1d']), samps_dict_astrophysical['dL'], s = 0.1, c = colors[0], label = 'Astrophysical')
-        plt.scatter(np.log10(samps_dict_observed[     'm1d']), samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
+        plt.scatter(                               np.log10(samps_dict_observed[     'm1d']), samps_dict_observed[     'dL'], s = 4.0, c = colors[1], label = 'Observed', alpha = alpha)
     plt.title(title)
     plt.xlabel('m1')
     plt.ylabel('dL')
@@ -1089,7 +1134,7 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     title = 'z_distribution'
     figname = os.path.join(pars['output'], 'plots', title)
     if pars['plot-astrophysical']: plt.hist(samps_dict_astrophysical['z'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
-    plt.hist(samps_dict_observed[     'z'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+    plt.hist(                               samps_dict_observed[     'z'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
     plt.xlabel('$z$')
     plt.ylabel('$p(z)$')
     plt.legend()
@@ -1099,8 +1144,7 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
 
     return 0
 
-
-def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, rate_evolution = 0, q_samps = 0):
+def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, rate_evolution = 0, q_samps = 0, z_samps = 0):
 
     if redshift:
         N_z = 10
@@ -1117,8 +1161,8 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
             ax[0].plot(x_array, pdf+z, color = colors[zi])
             ax[1].plot(x_array, pdf,   color = colors[zi])
 
-        ax[0].set_xlabel('$m_1\ [M_{\odot}]$')
-        ax[1].set_xlabel('$m_1\ [M_{\odot}]$')
+        ax[0].set_xlabel(r'$m_1\ [M_{\odot}]$')
+        ax[1].set_xlabel(r'$m_1\ [M_{\odot}]$')
         ax[0].set_ylabel('$z$')
         ax[1].set_ylabel('$p(m_1)$')
         ax[1].set_xlim(0, 100)
@@ -1150,16 +1194,27 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
 
         else:
             if not pars['use-icarogw-sim-inj']:
-                figname = os.path.join(pars['output'], 'plots', 'rate_evolution')
-                pdf = wrapper.rate.log_evaluate(x_array)
-                plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
-                plt.xlabel('$z$')
-                plt.ylabel('$R(z)/R0$')
-                plt.legend()
-                plt.tight_layout()
-                plt.savefig('{}.pdf'.format(figname), transparent = True)
-                plt.close()
-
+                if not 'RedshiftProbability' in pars['model-rate']:
+                    figname = os.path.join(pars['output'], 'plots', 'rate_evolution')
+                    pdf = wrapper.rate.log_evaluate(x_array)
+                    plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
+                    plt.xlabel('$z$')
+                    plt.ylabel('$R(z)/R0$')
+                    plt.legend()
+                    plt.tight_layout()
+                    plt.savefig('{}.pdf'.format(figname), transparent = True)
+                    plt.close()
+                else:
+                    figname = os.path.join(pars['output'], 'plots', 'redshift_distribution')
+                    pdf = wrapper.rate.evaluate(x_array)
+                    plt.hist(z_samps, density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+                    plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
+                    plt.xlabel('$z$')
+                    plt.ylabel('$p(z)$')
+                    plt.legend()
+                    plt.tight_layout()
+                    plt.savefig('{}.pdf'.format(figname), transparent = True)
+                    plt.close()
     return 0
 
 

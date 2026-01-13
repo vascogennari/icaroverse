@@ -471,22 +471,30 @@ class BilbyDetectionPipeline():
 try:
     import lisabeta.lisa.lisa as lisa
 
-    def SNR_lisabeta(m1s, q, dL):
+    def SNR_lisabeta(m1d, q, dL, Tobs = 4.):
 
         SNR = []
+        N = len(m1d)
+
         # Randomize the remaining parameters
-        # FIXME: Check that these priors are consistent with the lisabeta PE
-        chi1   = np.random.uniform(-1., 1., len(m1s))
-        chi2   = np.random.uniform(-1., 1., len(m1s))
-        Deltat = np.random.uniform(2432.322951048043, 243232.29510480427, len(m1s))
-        inc    = np.random.uniform(-1., 1., len(m1s))
-        phi    = np.random.uniform(0., 2 * np.pi, len(m1s))
-        lambd  = np.random.uniform(0., 2 * np.pi, len(m1s))
-        beta   = np.random.uniform(0.,     np.pi, len(m1s))
-        psi    = np.random.uniform(0., 2 * np.pi, len(m1s))
+        t0     = np.random.uniform(0., Tobs, N)
+        inc    = np.random.uniform(0., np.pi, N)
+        phi    = np.random.uniform(0., 2 * np.pi, N)
+        lambd  = np.random.uniform(0., 2 * np.pi, N)
+        beta   = np.random.uniform(np.pi/2, np.pi/2, N)
+        psi    = np.random.uniform(0., 2 * np.pi, N)
+
+        # Draw spin orientations unifrormly on a unit sphere
+        # Keep only the aligned components for the SNR computation
+        a_1    = np.random.uniform(0., 1., N)
+        a_2    = np.random.uniform(0., 1., N)
+        tilt_1 = np.arccos(np.random.uniform(-1., 1., N))
+        tilt_2 = np.arccos(np.random.uniform(-1., 1., N))
+        chi1 = a_1 * np.cos(tilt_1)
+        chi2 = a_2 * np.cos(tilt_2)
 
         i = 0
-        for mi, qi, di in zip(m1s, q, dL):
+        for mi, qi, di in zip(m1d, q, dL):
             
             M = mi + mi / qi
 
@@ -494,26 +502,26 @@ try:
                 'M':      M,         # Total *redshifted* mass M=m1+m2 [M_odot]
                 'q':      qi,        # Mass ratio q=m1/m2
                 'dist':   di,        # Luminosity distance [Mpc]
-                
                 'chi1':   chi1[i],   # Dimensionless spin 1 component along orbital momentum
                 'chi2':   chi2[i],   # Dimensionless spin 2 component along orbital momentum
-                'Deltat': Deltat[i], # Time shift of coalescence, s -- coalescence is at t0*yr + Deltat*s, t0 in waveform_params
                 'inc':    inc[i],    # Inclination, observer's colatitude in source-frame
                 'phi':    phi[i],    # Phase, observer's longitude in source-frame
                 'lambda': lambd[i],  # Longitude in the sky
                 'beta':   beta[i],   # Latitude in the sky
                 'psi':    psi[i],    # Polarization angle
+
+                'Deltat': 0.,        # Time shift of coalescence, s -- coalescence is at t0*yr + Deltat*s, t0 in waveform_params
                 'Lframe': True       # Flag indicating whether angles and Deltat pertain to the L-frame or SSB-frame
             }
             
             waveform_params = {
                 
                 # Frequency range
-                'minf':                  1e-5,
+                'minf':                  1e-10,
                 'maxf':                  0.5,
                 
-                't0':                    0.0,    # Reference epoch of coalescence, yr -- coalescence is at t0*yr + Deltat*s, Deltat in params
-                'timetomerger_max':      1.0,    # Always cut signals timetomerger_max*yr before merger -- to avoid needlessly long signals using minf
+                't0':                    t0[i],  # Reference epoch of coalescence, yr -- coalescence is at t0*yr + Deltat*s, Deltat in params
+                'timetomerger_max':      Tobs,   # Always cut signals timetomerger_max*yr before merger -- to avoid needlessly long signals using minf
                 'DeltatL_cut':           None,   # Option to cut the signal pre-merger -- must be in L-frame
                 
                 # Further options to cut signals
@@ -526,8 +534,8 @@ try:
                 'fref_for_phiref':       0.0,
                 'tref':                  0.0,
                 'fref_for_tref':         0.0,
-                'force_phiref_fref':     True,
                 'toffset':               0.0,
+                'force_phiref_fref':     True,
                 
                 # TDI channels to generate
                 'TDI':                   'TDIAET',
@@ -537,7 +545,7 @@ try:
                 'order_fresnel_stencil': 0,
 
                 # Waveform approximant and set of harmonics to use
-                'approximant':           'IMRPhenomHM',
+                'approximant':           'IMRPhenomXHM',
                 'modes':                 None,
 
                 # LISA response options
@@ -549,8 +557,8 @@ try:
                 # Noise options -- can also be given as a numpy array for interpolation
                 'LISAnoise': {
                     'InstrumentalNoise':       'SciRDv1',
-                    'WDbackground':            False,
-                    'WDduration' :             0.0,
+                    'WDbackground':            True,
+                    'WDduration' :             Tobs,
                     'lowf_add_pm_noise_f0':    0.0,
                     'lowf_add_pm_noise_alpha': 2.0
                 }

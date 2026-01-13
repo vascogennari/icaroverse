@@ -158,7 +158,7 @@ class PlotDistributions:
 
         if hasattr(curves_prior, "__len__"):
             ax.fill_between(pl_dct['x'], curves[pl_dct['perc']['ll']], curves[pl_dct['perc']['hh']], color = '#AB7C41', alpha = 0.15)
-            ax.fill_between(pl_dct['x'], curves[pl_dct['perc']['l' ]], curves[pl_dct['perc']['h' ]], color = '#AB7C41', alpha = 0.25, label = '$\mathrm{Prior}$')
+            ax.fill_between(pl_dct['x'], curves[pl_dct['perc']['l' ]], curves[pl_dct['perc']['h' ]], color = '#AB7C41', alpha = 0.25, label = r'$\mathrm{Prior}$')
 
         ax.fill_between(pl_dct['x'], curves[pl_dct['perc']['ll']], curves[pl_dct['perc']['hh']],   color = pl_dct['color'], alpha = 0.25)
         ax.fill_between(pl_dct['x'], curves[pl_dct['perc']['l' ]], curves[pl_dct['perc']['h' ]],   color = pl_dct['color'], alpha = 0.5, label = pl_dct['label'])
@@ -174,7 +174,6 @@ class PlotDistributions:
         plt.xlim(  pl_dct['x_min'], pl_dct['x_max'])
         plt.xlabel(pl_dct['x_label'])
         plt.ylabel(pl_dct['y_label'])
-        if pl_dct['figname'] == 'RateEvolutionDistribution_Probability': plt.ylim(-5, 7)
 
         plt.grid(linestyle='dotted')
         plt.legend()
@@ -216,7 +215,7 @@ class PlotDistributions:
         plt.close()
 
 
-    def plot_curves_redshift_log(curves, pl_dct, truth = {}, curves_prior = 0):
+    def plot_curves_redshift_log(curves, pl_dct, truth = {}, curves_prior = 0, logscale = True):
 
         nz = np.shape(pl_dct['z_grid'])[0]
         fig, ax = plt.subplots(nz, 1, figsize=(5, 2 * nz), sharex = True, constrained_layout = True)
@@ -227,7 +226,7 @@ class PlotDistributions:
                 z = z_array[0]
                 zi_inv = nz-1 - zi
                 ax[zi_inv].fill_between(pl_dct['x'], curves_prior[zi][5] , curves_prior[zi][95], color = '#AB7C41', alpha = 0.05)
-                ax[zi_inv].fill_between(pl_dct['x'], curves_prior[zi][16], curves_prior[zi][84], color = '#AB7C41', alpha = 0.15, label = '$\mathrm{Prior}$')       
+                ax[zi_inv].fill_between(pl_dct['x'], curves_prior[zi][16], curves_prior[zi][84], color = '#AB7C41', alpha = 0.15, label = r'$\mathrm{Prior}$')       
     
         for zi, z_array in enumerate(pl_dct['z_grid']):
             z = z_array[0]
@@ -238,13 +237,15 @@ class PlotDistributions:
         
             if not truth == {}:
                 ax[zi_inv].plot(    pl_dct['x'], truth[zi][50],  lw = 0.3,       color = '#494949')
+            if logscale:
+                ax[zi_inv].set_yscale('log')
+                ax[zi_inv].set_ylim(1e-5, 0.5)
         
             ax[zi_inv].set_xlim(pl_dct['x_min'], pl_dct['x_max'])
-            ax[zi_inv].set_yscale('log')
-            ax[zi_inv].set_ylim(1e-5, 0.5)
             ax[zi_inv].set_ylabel(pl_dct['y_label_R'])
             ax[zi_inv].grid(linestyle = 'dotted', linewidth = 0.3)
             ax[zi_inv].legend(loc = 'best')
+
         ax[-1].set_xlabel(pl_dct['x_label'])
 
         fig.savefig('{}/{}.pdf'.format(pl_dct['output'], pl_dct['figname'] + '_logscale'), transparent = True)
@@ -296,8 +297,8 @@ class ReconstructDistributions:
                 if not (np.isnan(pdf).any()): curves[idx] = pdf
                 else: pass
 
-                if not 'DoublePowerlaw' in pars['model-primary']: label = '$m_1\ [M_{\odot}]$'
-                else:                                             label = '$log_{10}(m_1/M_{\odot})$'
+                if not 'DoublePowerlaw' in pars['model-primary']: label = r'$m_1\ [M_{\odot}]$'
+                else:                                             label = r'$log_{10}(m_1/M_{\odot})$'
 
             for perc in percentiles: curves_z[zi][perc] = np.percentile(curves, perc, axis = 0)
             zi += 1
@@ -330,7 +331,7 @@ class ReconstructDistributions:
             elif 'PowerLaw'  in pars['model-secondary']: pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
             curves[idx] = pdf
 
-        if not 'MassRatio-Gamma' in pars['model-secondary']: label = '$m_2\ [M_{\odot}]$'
+        if not 'MassRatio-Gamma' in pars['model-secondary']: label = r'$m_2\ [M_{\odot}]$'
         else:                                                label = '$log_{10}(q)$'
         curves_CI = get_curves_percentiles(curves, pars)
         plot_dict = get_plot_parameters(pars, m_array, pars[bound][0], pars[bound][1], 'SecondaryMassDistribution', '#2A4D00', label, '$p(m_2)$', pars['model-secondary'])
@@ -338,7 +339,7 @@ class ReconstructDistributions:
         return curves_CI, plot_dict
 
 
-    def RateEvolutionFunction(df, w, p_dct, pars, prior = False):
+    def RateEvolutionFunction(df, w, cw, p_dct, pars, prior = False):
 
         if prior:
             tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
@@ -352,10 +353,12 @@ class ReconstructDistributions:
             samp_filt = {key: samp[key] for key in w.population_parameters}
             w.update(**samp_filt)        
             func = w.rate.log_evaluate(z_array)
+            if 'RedshiftProbability' in pars['model-rate']:
+                func -= cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Get the rate from p(z).
             curves[idx] = func
 
         curves_CI = get_curves_percentiles(curves, pars)
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionFunction', '#825310', '$z$', '$ln[\Psi(z)/R_0]$', pars['model-rate'])
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionFunction', '#825310', '$z$', r'$ln[\Psi(z)/R_0]$', pars['model-rate'])
 
         return curves_CI, plot_dict
 
@@ -376,13 +379,12 @@ class ReconstructDistributions:
             # Comoving volume and redshift (1/(1+z)*dV/dz).
             samp_filt = {key: samp[key] for key in cw.population_parameters}
             cw.update(**samp_filt)
-            func = cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array)
-            curves[idx] *= func
-            curves[idx] = np.log(curves[idx])
-            curves[idx] -= 7
+            if not 'RedshiftProbability' in pars['model-rate']: curves[idx] *= cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Get p(z) from the rate.
+            #curves[idx] = np.log(curves[idx])
+            curves[idx] = curves[idx]
 
         curves_CI = get_curves_percentiles(curves, pars)
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', '$\propto ln[p(z)]$', pars['model-rate'])
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', r'$\propto ln[p(z)]$', pars['model-rate'])
 
         return curves_CI, plot_dict
 
@@ -406,7 +408,7 @@ class ReconstructDistributions:
             elif pars['redshift-transition'] == 'sinusoid': curves[idx] = icarogw.priors._mixed_linear_sinusoid_function(z_array, samp['mix_z0'], samp['mix_z1'], samp['amp'], samp['freq'])
 
         curves_CI = get_curves_percentiles(curves, pars)
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RedshiftTransitionFunction', '#212121', '$z$', '$\\sigma(z)$', pars['model-primary'])
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RedshiftTransitionFunction', '#212121', '$z$', r'$\sigma(z)$', pars['model-primary'])
         
         return curves_CI, plot_dict
 
@@ -470,6 +472,10 @@ class ReconstructDistributions:
             except:
                 m1d[idx,:] = np.full(N_samps_KDE_GMM, np.nan)
                 dL[idx,:]  = np.full(N_samps_KDE_GMM, np.nan)
+
+        if pars['log10-PDF']:
+            m1d = np.log10(m1d)
+            m2d = np.log10(m2d)
 
         # Compute KDE/GMM of the distribution for each PE sample.
         for i in tqdm.tqdm(range(N_samps), desc = 'Computing {} detector frame distributions'.format(pars['estimate-observed-method'])):
@@ -557,14 +563,14 @@ class ReconstructDistributions:
             'curves-z' :    get_curves_percentiles(curves_z,   pars),
         }
         colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
-        if pars['m1-logscale']:
-            plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] *         (1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'  ])
+        if not pars['log10-PDF']:
+            plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] *         (1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', r'$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'  ])
         else:
-            plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] * np.log10(1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', '$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'  ])
-        plots_inputs[    'plot-dict-m2d'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                                   'SecondaryMassDistribution_DetectorFrame',       '#6A8820', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
-        plots_inputs[    'plot-dict-dL' ] = get_plot_parameters(pars, dL_array,   pars['bounds-dL'][0], pars['bounds-dL'][1],                                   'LuminosityDistranceDistribution_DetectorFrame', '#7E375B', '$d_L\ [Mpc]$',       '$p(d_L)$', pars['model-rate'     ])
-        plots_inputs[    'plot-dict-m1s'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1],                                   'PrimaryMassDistribution_NoSelectionEffects',    '#000000', '$m_1\ [M_{\odot}]$', '$z$'     , pars['model-primary'  ], colors = colors, z_grid = z_grid, y_label_R = '$p(m_1)$')
-        plots_inputs[    'plot-dict-m2s'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                                   'SecondaryMassDistribution_NoSelectionEffects',  '#1F5623', '$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
+            plots_inputs['plot-dict-m1d'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1] * np.log10(1+pars['bounds-z'][1]), 'PrimaryMassDistribution_DetectorFrame',         '#0A4F8A', r'$m_1\ [M_{\odot}]$', '$p(m_1)$', pars['model-primary'  ])
+        plots_inputs[    'plot-dict-m2d'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                                   'SecondaryMassDistribution_DetectorFrame',       '#6A8820', r'$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
+        plots_inputs[    'plot-dict-dL' ] = get_plot_parameters(pars, dL_array,   pars['bounds-dL'][0], pars['bounds-dL'][1],                                   'LuminosityDistranceDistribution_DetectorFrame', '#7E375B', r'$d_L\ [Mpc]$',       '$p(d_L)$', pars['model-rate'     ])
+        plots_inputs[    'plot-dict-m1s'] = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1],                                   'PrimaryMassDistribution_NoSelectionEffects',    '#000000', r'$m_1\ [M_{\odot}]$', '$z$'     , pars['model-primary'  ], colors = colors, z_grid = z_grid, y_label_R = '$p(m_1)$')
+        plots_inputs[    'plot-dict-m2s'] = get_plot_parameters(pars, m2_array,   pars['bounds-m2'][0], pars['bounds-m2'][1],                                   'SecondaryMassDistribution_NoSelectionEffects',  '#1F5623', r'$m_2\ [M_{\odot}]$', '$p(m_2)$', pars['model-secondary'])
         plots_inputs[    'plot-dict-z'  ] = get_plot_parameters(pars, z_array,    pars['bounds-z' ][0], pars['bounds-z' ][1],                                   'RedshiftDistribution_NoSelectionEffects',       '#86042A', '$z$',                '$p(z)$'  , pars['model-rate'     ])
 
         return plots_inputs
@@ -619,7 +625,7 @@ class ReconstructDistributions:
             plt.contourf(X, Y, p_grid[idx], alpha = 0.1, cmap = 'Blues')
         plt.xlim(0, 100)
         plt.ylim(0, pars['bounds-z'][1])
-        plt.xlabel('$m_1\ [M_{\odot}]$')
+        plt.xlabel(r'$m_1\ [M_{\odot}]$')
         plt.ylabel('$z$')
         plt.savefig('{}/{}.pdf'.format(pars['output'], 'MassRedshift_Joint', transparent = True))
 
@@ -630,7 +636,7 @@ class ReconstructDistributions:
                 curves[zi][perc] /= max * 10
 
         colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
-        plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'MassRedshift_JointDistribution_rescaled', '#000000', '$m_1\ [M_{\odot}]$', '$z$', pars['model-primary'], colors = colors, z_grid = zY, y_label_L = '$z$', y_label_R = '$p(m_1)$')
+        plot_dict = get_plot_parameters(pars, mass_array, pars['bounds-m1'][0], pars['bounds-m1'][1], 'MassRedshift_JointDistribution_rescaled', '#000000', r'$m_1\ [M_{\odot}]$', '$z$', pars['model-primary'], colors = colors, z_grid = zY, y_label_L = '$z$', y_label_R = '$p(m_1)$')
 
         return curves, plot_dict
 
@@ -692,18 +698,21 @@ class Plots:
 
     def PrimaryMass(self):
 
+        if self.pars['log10-PDF']: logscale = False
+        else:                      logscale = True
+
         curves_prior = 0
         if self.pars['plot-prior']:
             curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
         curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'], z = np.linspace(self.pars['bounds-z'][0], self.pars['bounds-z'][1], self.pars['N-z-slices']))
         if self.pars['true-values'] == {}:
-            self.plots.plot_curves_redshift_log(curves, plot_dict, curves_prior = curves_prior)
+            self.plots.plot_curves_redshift_log(curves, plot_dict, curves_prior = curves_prior, logscale = logscale)
             if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo)
             else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, selection_effects = self.inj.injections_data)                    
         else:
             curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
-            self.plots.plot_curves_redshift_log( curves, plot_dict, curves_prior = curves_prior, truth = curve_true)
+            self.plots.plot_curves_redshift_log( curves, plot_dict, curves_prior = curves_prior, truth = curve_true, logscale = logscale)
             if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true)
             else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true, selection_effects = self.inj.injections_data)
 
@@ -724,13 +733,13 @@ class Plots:
 
         curves_prior = 0
         if self.pars['plot-prior']:
-            curves_prior, _ = self.distributions.RateEvolutionFunction(self.df, self.rw, self.priors, self.pars, prior = True)
-        curves, plot_dict   = self.distributions.RateEvolutionFunction(self.df, self.rw, self.priors, self.pars)
+            curves_prior, _ = self.distributions.RateEvolutionFunction(self.df, self.rw, self.cw, self.priors, self.pars, prior = True)
+        curves, plot_dict   = self.distributions.RateEvolutionFunction(self.df, self.rw, self.cw, self.priors, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'])
         if self.pars['true-values'] == {}:
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior)
         else:
-            curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.priors, self.pars)
+            curve_true, _ = self.distributions.RateEvolutionFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.rw, self.cw, self.priors, self.pars)
             self.plots.plot_curves(curves, plot_dict, curves_prior = curves_prior, truth = curve_true[50])
 
     def RateEvolutionProbability(self):
@@ -758,6 +767,9 @@ class Plots:
 
     def NoSelectionEffects(self):
 
+        if self.pars['log10-PDF']: logscale = False
+        else:                      logscale = True
+
         plots_inputs   = self.distributions.RemoveSelectionEffects(self.df, self.pars, self.rate_w, self.ref_cosmo, self.inj)
         
         add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1d']['x'], plots_inputs['curves-m1d'  ], plots_inputs['plot-dict-m1d']['figname'])
@@ -774,7 +786,7 @@ class Plots:
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2d'  ], plots_inputs['plot-dict-m2d'])
             self.plots.plot_curves(              plots_inputs['curves-dL'   ], plots_inputs['plot-dict-dL' ])
-            self.plots.plot_curves_redshift_log( plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'])
+            self.plots.plot_curves_redshift_log( plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], logscale = logscale)
             self.plots.plot_curves_evolving(     plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo)
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2s'  ], plots_inputs['plot-dict-m2s'])
@@ -786,7 +798,7 @@ class Plots:
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2d'  ], plots_inputs['plot-dict-m2d'],                 truth = inputs_true['curves-m2d'  ][50])
             self.plots.plot_curves(              plots_inputs['curves-dL'   ], plots_inputs['plot-dict-dL' ],                 truth = inputs_true['curves-dL'   ][50])
-            self.plots.plot_curves_redshift_log( plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'],                 truth = inputs_true['curves-z-m1s'])
+            self.plots.plot_curves_redshift_log( plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'],                 truth = inputs_true['curves-z-m1s'], logscale = logscale)
             self.plots.plot_curves_evolving(     plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo, truth = inputs_true['curves-z-m1s'])
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2s'  ], plots_inputs['plot-dict-m2s'],                 truth = inputs_true['curves-m2s'  ][50])
