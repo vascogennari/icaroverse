@@ -178,6 +178,7 @@ def default_population():
         'delta_m_a'     : 5.,
         'delta_m_b'     : 5.,
         'delta_m_c'     : 5.,
+        'delta'         : 0.1,
 
         'alpha'         : 4.,
         'alpha_z0'      : 4.,
@@ -188,6 +189,11 @@ def default_population():
         'alpha_b'       : 10.,
         'alpha_c'       : 10.,
         'break_p'       : 0.5,
+        'm_b'           : 6.,
+        'm_b_z0'        : 6.,
+        'm_b_z10'       : 6.,
+        'm_b_zt'        : 3.,
+        'm_b_delta_zt'  : 3.,
 
         'alpha_a_z0'    : 50.,
         'alpha_b_z0'    : 10.,
@@ -257,9 +263,9 @@ def default_population():
         'mix_alpha_z1'  : 0.9,
         'mix_beta_z0'   : 0.05,
         'mix_beta_z1'   : 0.,
-        'mix'           : 0.9,
         'mix_alpha'     : 0.9,
         'mix_beta'      : 0.05,
+        'mix'           : 0.9,
 
         'amp'           : 0.1,
         'freq'          : 0.,
@@ -284,18 +290,25 @@ def default_population():
         'start_b'       : 0.,
         'scale_b'       : 5.,
 
+        'a_gamma'       : 5.,
+        'theta'         : 0.5,
+
         # Rate evolution
         'gamma'         : 0.,
         'kappa'         : 0.,
         'zp'            : 3.,
         'R0'            : 20.,
-        'z_min'         : 0.,
-        'z_max'         : 1.,
+        'mu_r'          : -20.,
+        'sigma_r'       : 20.,
+        'amp_r'         : 20.,
 
         'low_b_r'       : 2.,
         'high_b_r'      : 6.,
         'start_b_r'     : 0.25,
         'scale_b_r'     : 15.,
+
+        'z_min'         : 0.,
+        'z_max'         : 1.,
     }
 
     return pop
