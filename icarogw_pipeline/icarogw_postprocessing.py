@@ -284,7 +284,7 @@ class ReconstructDistributions:
         zy         = np.linspace(pars['bounds-z'][0], pars['bounds-z'][1], pars['N-z-slices'])
         _, z_grid  = np.meshgrid(zx, zy)
 
-        colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])   # 'RdBu_r'
+        colors = sns.color_palette('blend:#0A4F8A,#9F0C0C', pars['N-z-slices'])
         zi = 0
 
         for z_array in tqdm.tqdm(z_grid, desc = 'Reconstructing primary distribution'):

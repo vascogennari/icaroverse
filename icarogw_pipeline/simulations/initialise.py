@@ -75,6 +75,10 @@ def InitialiseOptions(Config):
         'log10-PDF'                     : False,
         'inverse-mass-ratio'            : False,
 
+        'splines-number'                : 10,
+        'splines-order'                 : 3,
+        'spacing'                       : 'log',
+
         # Plots
         'N-points'                      : 10000,
         'bounds-m1'                     : [0, 200],
@@ -103,7 +107,7 @@ def InitialiseOptions(Config):
             except: pass
 
         # SNR-options
-        if (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL'): 
+        if (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL') or (key == 'spacing'): 
             try: input_pars[key] = Config.get('snr-options', key)
             except: pass
         if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'snr-proxy-fgw-cut') or (key == 'icarogw-sim-z-max'):
@@ -131,6 +135,9 @@ def InitialiseOptions(Config):
             except: pass
         if (key == 'truths'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
+            except: pass
+        if (key == 'splines-number') or (key == 'splines-order'):
+            try: input_pars[key] = Config.getint('snr-options', key)
             except: pass
 
         # Plots
@@ -279,6 +286,23 @@ def default_population():
         'mmin_j'        : 3.,
         'mmax_j'        : 9.,
 
+        'c1'            : 10.,
+        'c2'            : 10.,
+        'c3'            : 10.,
+        'c4'            : 10.,
+        'c5'            : 10.,
+        'c6'            : 10.,
+        'c7'            : 10.,
+        'c8'            : 10.,
+        'c9'            : 10.,
+        'c10'           : 10.,
+        'c11'           : 10.,
+        'c12'           : 10.,
+        'c13'           : 10.,
+        'c14'           : 10.,
+        'c15'           : 10.,
+        'c16'           : 10.,
+
         # Secondary mass distribution
         'beta'          : 4.,
         'mu_q'          : 0.8,
@@ -391,8 +415,13 @@ usage = """
         low-smoothing                 [bool ]  Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
         single-mass                   [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         truths                        [dict ]  Dictionary with the true values of the population parameters. Default: {}.
+        zmax                          [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
         log10-PDF                     [bool ]  Flag to use distributions defined in log10 scale. Default: 0.
         inverse-mass-ratio            [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
+
+        splines-number                [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
+        splines-order                 [int  ]  Order of the splines used for the spline models. The option only applies to models including splines. Default: 3.
+        spacing                       [str  ]  Spacing of the spline knots. Options: 'linear', 'log'. The option only applies to models including splines. Default: 'log'.
 
     # ----- #
     # plots #
