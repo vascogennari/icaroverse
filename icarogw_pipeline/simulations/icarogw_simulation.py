@@ -172,7 +172,8 @@ def generate_population(pars):
     m2d_det = m2d[idx_detected]
     dL_det  = dL[ idx_detected]
     SNR_det = SNR[idx_detected]
-    strain_records_det = strain_records[idx_detected]
+    if pars['save-strain']: strain_records_det = strain_records[idx_detected]
+    else: strain_records_det = None
     additional_parameters_det = {key: val[idx_detected] for key, val in additional_parameters.items()}
     
     # Save the population.
