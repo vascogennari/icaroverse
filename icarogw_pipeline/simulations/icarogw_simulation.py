@@ -846,10 +846,6 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_param
     -------
     bilby: 
         Full matched filter SNR with bilby's Interferometer objects.
-    pycbc:
-        Optimal SNR with pycbc PSD and waveform objects.
-        Optional: add unit centered gaussian fluctuation to mimic 
-        matched filter SNR if pars['snr-pycbc-method']=='mf-fast'.
     proxy:
         Approximate SNR from inspiral leading order scaling with Mc and dL.
     flat-PSD:
@@ -868,11 +864,11 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_param
     zs:  (m,) shape array-like
         redshift (used for proxy, flat-psd methods).
     m1d: (m,) shape array-like
-        detector frame primary mass (used for bilby, pycbc, lisabeta methods)
+        detector frame primary mass (used for bilby, lisabeta methods)
     m2d: (m,) shape array-like
-        detector frame secondary mass (used for bilby, pycbc, lisabeta methods)
+        detector frame secondary mass (used for bilby, lisabeta methods)
     dL:  (m,) shape array-like
-        luminosity distance (for bilby, pycbc, lisabeta methods)
+        luminosity distance (for bilby, lisabeta methods)
     save_strain:  bool
         Flag to save the strain (noise) data for each of the events.
 
@@ -964,44 +960,6 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_param
         additional_parameters = pd.DataFrame(additional_parameters).to_dict(orient="list")
         for key in additional_parameters: additional_parameters[key] = np.array(additional_parameters[key])
         strain_records = np.array(strain_records)
-
-    # Use the full waveform to compute the optimal SNR with bilby
-    elif pars['SNR-method'] == 'pycbc':
-
-        tmp_str = " approximate MF"*(pars['snr-pycbc-method']=='mf-fast') + " optimal"*(pars['snr-pycbc-method']=='opt')
-        print(f'\n * Computing the{tmp_str} SNR with the full waveform using pycbc')
-
-        SNR = np.zeros(N_events)
-
-        try:
-            detector_network = snr_computation.DetectorNetwork(
-                observing_run = pars['observing-run'          ], 
-                flow          = pars['snr-pycbc-f-low'        ], 
-                delta_f       = pars['snr-pycbc-delta-f'      ],
-                sample_rate   = pars['snr-pycbc-sampling-rate'],
-                network       = pars['snr-pycbc-detectors'    ],
-                psd_directory = pars['PSD-path'               ],
-            )
-        except AttributeError:
-            raise ImportError("Please make sure PyCBC is properly installed if you wish to use it for SNR computation. (See https://pycbc.org/)")
-        
-        detector_network.load_psds()
-
-        if   pars['run-type'] == 'population': iterator = tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d), desc="Opt SNR pycbc")
-        elif pars['run-type'] == 'injections': iterator = enumerate(zip(m1d, m2d, dL))
-
-        for i, (_m1, _m2, _dL) in iterator:
-            SNR[i] = detector_network.hit_network(
-                m1=_m1, m2=_m2, dL=_dL,
-                t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), # GW190425 trigtime. FIXME: Improve this.
-                approximant = pars['snr-pycbc-waveform'  ],
-                precessing  = pars['snr-pycbc-precession'],
-                snr_method  = pars['snr-pycbc-method'    ],
-            )
-
-        idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
-        idx_softcut  = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-soft-cut'])
-        additional_parameters = {}
 
 
     # Use the quadrupole inspiral approximation to compute the SNR.
