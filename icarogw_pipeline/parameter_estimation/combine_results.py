@@ -55,40 +55,44 @@ def rename(par):
 
 
 def check_format(event_dirname, n):
-    search = re.search(r"event_[0-9]{"+str(n)+r"}(?P<extension>_?\w*)", event_dirname)
+    search = re.search(rf"event_[0-9]{{{n}}}(?P<extension>_?\w*)", event_dirname)
     return search.group('extension') == ''
 
 
+def save_combined(combined_results, batch, args):
 
-def main():
+    if args.snr_restriction: snr_part = f"_snr{args.snr_threshold:.0f}"
+    else: snr_part = ""
 
-    parser = ArgumentParser()
-    parser.add_argument('-d', '--pop_dir', type=str, default = None)
-    parser.add_argument('-n', '--ev_filename_format', type=int, default = 4)
-    parser.add_argument('-s', '--snr_restriction', action="store_true", dest='snr_restriction', default = False)
-    parser.add_argument('-t', '--snr_threshold', type=float, default = 12.)
-    parser.add_argument('-p', '--parameters', nargs='+', default = 'all', help="Options: mass, distance, spin, skyloc, sampling, detector, other (options are stackable), all (equivalent to all of the previous ones stacked), minimal (saves only m1d, m2d, dL)")
-    args = parser.parse_args()
+    if 'all' in args.parameters:       pars_part = "_all"
+    elif 'minimal' in args.parameters: pars_part = "_minimal" 
+    else:                              pars_part = "_"+"-".join(list(args.parameters))
+    
+    combined_filename = f"combined-PE_batch-{batch:>02}{snr_part}{pars_part}.pickle"
+    combined_filepath = os.path.join(args.out_dir, combined_filename)
+    with open(combined_filepath, 'wb') as f:
+        pickle.dump(combined_results, f, protocol = pickle.HIGHEST_PROTOCOL)
 
-    pop_dirname = os.path.basename(args.pop_dir)
+    print(f"\n * Saved batch {batch}, with {len(combined_results[list(combined_results.keys())[0]])} events")
 
-    pe_dirpath = os.path.join(args.pop_dir, "parameter_estimation")
+
+def fill_combined(combined_results, batch, pop_dirpath, pars_to_keep, args):
+
+    pe_dirpath = os.path.join(pop_dirpath, "parameter_estimation")
     event_dirname_list = [event_dirname for event_dirname in os.listdir(pe_dirpath) if 'event' in event_dirname and check_format(event_dirname, args.ev_filename_format)]
     N_events = len(event_dirname_list)
 
-    print(f"\n * Combining PE results of the {N_events} events from population directory {pop_dirname}")
+    print(f"\n * Combining PE results of {N_events} events from {pop_dirpath}")
 
     if args.snr_restriction:
-        injected_filepath = os.path.join(args.pop_dir, "population_observed.pickle")
+        injected_filepath = os.path.join(pop_dirpath, "population_observed.pickle")
         with open(injected_filepath, 'rb') as f:
             snr_arr = pickle.load(f)['snr']
     else:
         snr_arr = np.full(N_events, np.inf)
     
-    pars_to_keep = pars_to_keep_fun(*args.parameters)
-    print("\n * Only the value of the following parameters for each PE sample will be saved in the resulting file:\n\n\t"+"\n\t".join(sorted(list(pars_to_keep)))+"\n")
+    batch_size = args.batch_size if args.batch_size is not None else np.inf
 
-    combined_results = {}
     for i, event_dirname in tqdm(enumerate(sorted(event_dirname_list)), desc="Looping over events", unit=" event", total=N_events):
 
         ev_idx = int(re.search("event_(?P<id>[0-9]+)", event_dirname).group('id'))
@@ -99,7 +103,6 @@ def main():
             event_result_filepath = os.path.join(pe_dirpath, event_dirname, "sampler/label_result.json")
             with open(event_result_filepath, 'r') as f:
                 event_posterior_samples_dict = json.load(f)['posterior']['content']
-            
 
             for par in (set(event_posterior_samples_dict.keys()) & pars_to_keep):
 
@@ -107,23 +110,52 @@ def main():
                     combined_results[rename(par)] = {i: np.array(event_posterior_samples_dict[par])}
                 else:
                     combined_results[rename(par)][i] = np.array(event_posterior_samples_dict[par])
+
         except FileNotFoundError:
             print(f"{event_dirname} has no available result.")
             continue
+
+        if len(combined_results) > 0 and len(combined_results[list(combined_results.keys())[0]]) >= batch_size:
+
+            save_combined(combined_results, batch, args)
+
+            combined_results = {}
+            batch += 1
     
-    snr_part = f"_snr{args.snr_threshold:.0f}" if args.snr_restriction else ""
-    if 'all' in args.parameters:       pars_part = "_all"
-    elif 'minimal' in args.parameters: pars_part = "_minimal" 
-    else:                              pars_part = "_"+"-".join(list(args.parameters))
-    combined_filename = f"combined_PE_samples_{pop_dirname}{snr_part}{pars_part}.pickle"
-    combined_filepath = os.path.join(args.pop_dir, combined_filename)
-    with open(combined_filepath, 'wb') as f:
-        pickle.dump(combined_results, f, protocol = pickle.HIGHEST_PROTOCOL)
-
-    print(f"\n * Finished ! \n")
+    return combined_results, batch
 
 
-# Execute the main function.
+def main():
+
+    parser = ArgumentParser()
+    parser.add_argument('-d', '--pop_dirs', nargs='+', default = [])
+    parser.add_argument('-o', '--out_dir', type=str, default = None)
+    parser.add_argument(      '--ev_filename_format', type=int, default = 4)
+    parser.add_argument('-n', '--batch_size', type=int, default = None)
+    parser.add_argument('-s', '--snr_restriction', action="store_true", dest='snr_restriction', default = False)
+    parser.add_argument('-t', '--snr_threshold', type=float, default = 12.)
+    parser.add_argument('-p', '--parameters', nargs='+', default = 'all', help="Options: mass, distance, spin, skyloc, sampling, detector, other (options are stackable), all (equivalent to all of the previous ones stacked), minimal (saves only m1d, m2d, dL)")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.out_dir): os.makedirs(args.out_dir)
+    print(f"\n * Saving results in {args.out_dir}")
+
+    pars_to_keep = pars_to_keep_fun(*args.parameters)
+    print("\n * Only the value of the following parameters for each PE sample will be saved in the resulting file:\n\n\t"+"\n\t".join(sorted(list(pars_to_keep)))+"\n")
+
+    combined_results = {}
+    batch = 1
+    for pop_dirpath in args.pop_dirs:
+        combined_results, batch = fill_combined(
+            combined_results=combined_results, 
+            batch=batch, 
+            pop_dirpath=pop_dirpath, 
+            pars_to_keep=pars_to_keep, 
+            args=args, 
+        )
+    if args.batch_size is None: save_combined(combined_results, batch, args)
+
+
 # Execute the main function.
 if __name__=='__main__': 
     main()

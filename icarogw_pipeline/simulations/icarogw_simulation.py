@@ -48,13 +48,22 @@ def main():
     if not os.path.exists(os.path.join(input_pars['output'], 'plots')): os.makedirs(os.path.join(input_pars['output'], 'plots'))
 
     # Copy config file to output.
-    shutil.copyfile(config_file, os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file))))
+    dest = os.path.join(input_pars['output'], os.path.basename(os.path.normpath(config_file)))
+    if os.path.abspath(config_file) != os.path.abspath(dest):
+        shutil.copyfile(config_file, dest)
+    else:
+        pass
 
     # Deviate stdout and stderr to file.
     if not input_pars['screen-output']:
         sys.stdout = open(os.path.join(input_pars['output'], 'stdout_icarogw.txt'), 'w')
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
+
+    if input_pars['run-type'] == 'injections' and input_pars['parallel']:
+        import warnings
+        warnings.filterwarnings("ignore")
+
     print('\n\n Starting  i c a r o g w  simulation\n\n')
 
     # Print run parameters.
@@ -97,24 +106,34 @@ def main():
     # Generate new data.
     else:
         print('\n * Generating new {}.'.format(input_pars['run-type']))
-        save_settings_pretty_json(input_pars['output'], input_pars)
-        
+        filename = os.path.join(input_pars['output'], 'analysis_settings.json')
+        analysis_settings = input_pars.copy()
+        analysis_settings.pop("wrappers")
+        with open(filename, 'w') as f: json.dump(analysis_settings, f, indent=4)
+
         # Generate either a synthetic population or a set of injections for selection effects.
         if   input_pars['run-type'] == 'population':                            samps_dict_astrophysical, samps_dict_observed, strain_records = generate_population(input_pars)
-        elif input_pars['run-type'] == 'injections' and input_pars['parallel']: samps_dict_astrophysical, samps_dict_observed = generate_injections_parallel(input_pars)
-        elif input_pars['run-type'] == 'injections':                            samps_dict_astrophysical, samps_dict_observed = generate_injections(input_pars)
+        elif input_pars['run-type'] == 'injections' and input_pars['parallel']: samps_dict_astrophysical, samps_dict_observed                 = generate_injections_parallel(input_pars)
+        elif input_pars['run-type'] == 'injections':                            samps_dict_astrophysical, samps_dict_observed                 = generate_injections(input_pars)
+        elif input_pars['run-type'] == 'noise':                                                           samps_dict_observed, strain_records = generate_noise(input_pars)
         else: raise ValueError('Invalid type of run. Please either select "population" or "injections".')
 
-        with open(os.path.join(input_pars['output'], '{}_observed.pickle'     ).format(input_pars['run-type']), 'wb') as handle:
+        # Saving observed events
+        run_type = "population" if input_pars['run-type'] == "noise" else input_pars['run-type']
+        with open(os.path.join(input_pars['output'], '{}_observed.pickle'     ).format(run_type), 'wb') as handle:
             pickle.dump(samps_dict_observed,      handle, protocol = pickle.HIGHEST_PROTOCOL)
-        with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
-            pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
-        if input_pars['run-type'] == 'population' and input_pars['save-strain']:
-            with open(os.path.join(input_pars['output'], 'strain_records.pickle').format(input_pars['run-type']), 'wb') as handle:
+        # Saving astrophysical (genereated) events
+        if (input_pars['run-type'] != 'noise'):
+            with open(os.path.join(input_pars['output'], '{}_astrophysical.pickle').format(input_pars['run-type']), 'wb') as handle:
+                pickle.dump(samps_dict_astrophysical, handle, protocol = pickle.HIGHEST_PROTOCOL)
+        # Saving strain data
+        if (input_pars['run-type'] == 'population' or input_pars['run-type'] == 'noise') and input_pars['save-strain']:
+            with open(os.path.join(input_pars['output'], 'strain_records.pickle'), 'wb') as handle:
                 pickle.dump(strain_records, handle, protocol = pickle.HIGHEST_PROTOCOL)
 
     # Plots section.
-    plot_population(input_pars, samps_dict_astrophysical, samps_dict_observed)
+    if input_pars['run-type'] != 'noise':
+        plot_population(input_pars, samps_dict_astrophysical, samps_dict_observed)
     print(' * Finished.\n')
 
 
@@ -153,7 +172,8 @@ def generate_population(pars):
     m2d_det = m2d[idx_detected]
     dL_det  = dL[ idx_detected]
     SNR_det = SNR[idx_detected]
-    strain_records_det = strain_records[idx_detected]
+    if pars['save-strain']: strain_records_det = strain_records[idx_detected]
+    else: strain_records_det = None
     additional_parameters_det = {key: val[idx_detected] for key, val in additional_parameters.items()}
     
     # Save the population.
@@ -480,6 +500,28 @@ def worker_generate_injection_parallel(lock, pid, inj_number, n_batches, samps_d
             print(f"Task {pid}: already reached desired number of injections {pars['injections-number']}. No update.")
 
 
+def generate_noise(pars):
+
+    try:
+        filepath = os.path.join(pars['output'], 'population_observed.pickle')
+        samps_dict_observed = pd.read_pickle(filepath)
+        print('\n * Reading existing population.\n')
+    except: 
+        raise FileNotFoundError('Existing population file {} not found. Exiting...\n'.format(filepath))
+        
+    m1d, m2d, dL = samps_dict_observed["m1d"], samps_dict_observed["m2d"], samps_dict_observed["dL"] 
+    other_parameters = {par for par in {'geocent_time', 'dec', 'ra', 'theta_jn', 'psi', 'phase', 'a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl', 'ifos_on'} if par in samps_dict_observed}
+    other_parameters = {par: samps_dict_observed[par] for par in other_parameters}
+
+    SNR, _, _, additional_parameters, strain_records = compute_SNR(pars, None, None, None, m1d, m2d, dL, save_strain=True, other_parameters=other_parameters)
+
+    samps_dict_observed.update({'snr': SNR})
+    print(samps_dict_observed.keys())
+    print(samps_dict_observed['snr'])
+
+    return samps_dict_observed, strain_records
+
+
 def load_checkpoint_parallel(pars):
     
     try:
@@ -531,67 +573,13 @@ def read_truths(path):
     return res
 
 
-def save_settings_pretty_json(path, dictionary):
-    """Pretty JSON settings saving"""
-
-    class NoIndent(object):
-        """ Value wrapper."""
-        def __init__(self, value):
-            if not isinstance(value, (list, tuple, dict, np.ndarray)):
-                raise TypeError('Only lists, tuples, dict, numpy.ndarray can be wrapped')
-            self.value = value
-
-    class MyEncoder(json.JSONEncoder):
-        """
-        Custom JSON encoder, only 1st level indented
-        See https://stackoverflow.com/questions/42710879/write-two-dimensional-list-to-json-file
-        """
-
-        FORMAT_SPEC = '@@{}@@'  # Unique string pattern of NoIndent object ids.
-        regex = re.compile(FORMAT_SPEC.format(r'(\d+)'))  # compile(r'@@(\d+)@@')
-
-        def __init__(self, **kwargs):
-            # Keyword arguments to ignore when encoding NoIndent wrapped values.
-            ignore = {'cls', 'indent'}
-            # Save copy of any keyword argument values needed for use here.
-            self._kwargs = {k: v for k, v in kwargs.items() if k not in ignore}
-            super(MyEncoder, self).__init__(**kwargs)
-
-        def default(self, obj):
-            return (self.FORMAT_SPEC.format(id(obj)) if isinstance(obj, NoIndent)
-                        else super(MyEncoder, self).default(obj))
-        
-        def iterencode(self, obj, **kwargs):
-            format_spec = self.FORMAT_SPEC  # Local var to expedite access.
-            # Replace any marked-up NoIndent wrapped values in the JSON repr
-            # with the json.dumps() of the corresponding wrapped Python object.
-            for encoded in super(MyEncoder, self).iterencode(obj, **kwargs):
-                match = self.regex.search(encoded)
-                if match:
-                    id = int(match.group(1))
-                    no_indent = PyObj_FromPtr(id)
-                    json_repr = json.dumps(no_indent.value, **self._kwargs)
-                    # Replace the matched id string with json formatted representation
-                    # of the corresponding Python object.
-                    encoded = encoded.replace(
-                                '"{}"'.format(format_spec.format(id)), json_repr)
-                yield encoded
-
-    dictionary_tosave = {}
-    for key, value in dictionary.items():
-        if   key != 'wrappers' and isinstance(value, (list, tuple, dict, np.ndarray)): dictionary_tosave[key] = NoIndent(value)
-        elif key != 'wrappers':                                                        dictionary_tosave[key] = value
-        else: pass # the wrapper entry in the input_pars 
-    filename = os.path.join(path, 'analysis_settings.json')
-    with open(filename, 'w') as f: json.dump(dictionary_tosave, f, indent=4, cls=MyEncoder)
-
-
 def build_filter_subsample(N_evs, N_subset):
 
     filt = np.full(N_evs, False, dtype = bool)
     idxs = np.random.choice(filt.shape[0], N_subset, replace = False)
     for idx in idxs: filt[idx] = True
     return filt
+
 
 def estimate_events_number(pars):
 
@@ -850,7 +838,7 @@ def draw_deterministic_samples_CDF_1D(x, PDF, N, seed = 1, quantile_index = None
 #      SNR utils      #
 #######################
 
-def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
+def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_parameters=None):
     '''
     Compute the SNR with various methods for the input events
 
@@ -858,10 +846,6 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
     -------
     bilby: 
         Full matched filter SNR with bilby's Interferometer objects.
-    pycbc:
-        Optimal SNR with pycbc PSD and waveform objects.
-        Optional: add unit centered gaussian fluctuation to mimic 
-        matched filter SNR if pars['snr-pycbc-method']=='mf-fast'.
     proxy:
         Approximate SNR from inspiral leading order scaling with Mc and dL.
     flat-PSD:
@@ -880,11 +864,11 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
     zs:  (m,) shape array-like
         redshift (used for proxy, flat-psd methods).
     m1d: (m,) shape array-like
-        detector frame primary mass (used for bilby, pycbc, lisabeta methods)
+        detector frame primary mass (used for bilby, lisabeta methods)
     m2d: (m,) shape array-like
-        detector frame secondary mass (used for bilby, pycbc, lisabeta methods)
+        detector frame secondary mass (used for bilby, lisabeta methods)
     dL:  (m,) shape array-like
-        luminosity distance (for bilby, pycbc, lisabeta methods)
+        luminosity distance (for bilby, lisabeta methods)
     save_strain:  bool
         Flag to save the strain (noise) data for each of the events.
 
@@ -898,10 +882,15 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
         dictionary with arrays of additional parameters
     '''
     # Extract the number of events to generate, distinguishing between population and injections simulations
-    if   pars['run-type'] == 'population': N_events = pars['events-number'         ]
-    elif pars['run-type'] == 'injections': N_events = pars['injections-number-bank']
+    if   pars['run-type'] == 'population' or pars['run-type'] == 'noise': N_events = pars['events-number']
+    elif pars['run-type'] == 'injections':                                N_events = pars['injections-number-bank']
     else: raise ValueError("Unknown run-type. Please choose between 'population' and 'injections'.")
     strain_records = None
+
+    if save_strain and not pars['SNR-method'] == 'bilby': 
+        raise ValueError("The only SNR-method compatible with strain data saving is 'bilby'.")
+    else: 
+        pass
 
     # Use the full waveform to compute the SNR.
     if   pars['SNR-method'] == 'bilby':
@@ -922,17 +911,26 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
             precessing_apx      = pars['snr-bilby-precessing-wf'      ],
         )
  
-        if   pars['run-type'] == 'population': iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby", miniters=int(pars['events-number'])//200)
-        elif pars['run-type'] == 'injections': iterator = zip(m1d, m2d, dL)
+        if   pars['run-type'] == 'population': 
+            iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby", miniters=int(pars['events-number'])//200)
+        elif pars['run-type'] == 'injections': 
+            iterator = zip(m1d, m2d, dL)
+        elif pars['run-type'] == 'noise': 
+            iterator = tqdm(zip(m1d, m2d, dL), total=len(m1d), desc="MF SNR bilby")
+        else:
+            raise KeyError("Unknown run-type. Please choose from population, injections, noise.")
 
-        for _m1, _m2, _dL in iterator:
+        for i, (_m1, _m2, _dL) in enumerate(iterator):
+            init_dict = {
+                'mass_1':              _m1,
+                'mass_2':              _m2,
+                'luminosity_distance': _dL,
+            }
+            if other_parameters is not None:
+                init_dict.update({par: other_parameters[par][i] for par in other_parameters})
             bdp.set_event_dict(
-                {
-                    'mass_1':              _m1,
-                    'mass_2':              _m2,
-                    'luminosity_distance': _dL,
-                },
-                set_duration_and_start_time=True
+                init_dict,
+                flag_set_duration_and_start_time=True
             )
             try: 
                 bdp.set_ifos_list()
@@ -962,44 +960,6 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False):
         additional_parameters = pd.DataFrame(additional_parameters).to_dict(orient="list")
         for key in additional_parameters: additional_parameters[key] = np.array(additional_parameters[key])
         strain_records = np.array(strain_records)
-
-    # Use the full waveform to compute the optimal SNR with bilby
-    elif pars['SNR-method'] == 'pycbc':
-
-        tmp_str = " approximate MF"*(pars['snr-pycbc-method']=='mf-fast') + " optimal"*(pars['snr-pycbc-method']=='opt')
-        print(f'\n * Computing the{tmp_str} SNR with the full waveform using pycbc')
-
-        SNR = np.zeros(N_events)
-
-        try:
-            detector_network = snr_computation.DetectorNetwork(
-                observing_run = pars['observing-run'          ], 
-                flow          = pars['snr-pycbc-f-low'        ], 
-                delta_f       = pars['snr-pycbc-delta-f'      ],
-                sample_rate   = pars['snr-pycbc-sampling-rate'],
-                network       = pars['snr-pycbc-detectors'    ],
-                psd_directory = pars['PSD-path'               ],
-            )
-        except AttributeError:
-            raise ImportError("Please make sure PyCBC is properly installed if you wish to use it for SNR computation. (See https://pycbc.org/)")
-        
-        detector_network.load_psds()
-
-        if   pars['run-type'] == 'population': iterator = tqdm(enumerate(zip(m1d, m2d, dL)), total=len(m1d), desc="Opt SNR pycbc")
-        elif pars['run-type'] == 'injections': iterator = enumerate(zip(m1d, m2d, dL))
-
-        for i, (_m1, _m2, _dL) in iterator:
-            SNR[i] = detector_network.hit_network(
-                m1=_m1, m2=_m2, dL=_dL,
-                t_gps       = np.random.uniform(1240215503.0, 1240215503.0+3e7), # GW190425 trigtime. FIXME: Improve this.
-                approximant = pars['snr-pycbc-waveform'  ],
-                precessing  = pars['snr-pycbc-precession'],
-                snr_method  = pars['snr-pycbc-method'    ],
-            )
-
-        idx_detected = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-cut'])
-        idx_softcut  = icarosim.snr_cut_flat(SNR, snrthr = pars['SNR-soft-cut'])
-        additional_parameters = {}
 
 
     # Use the quadrupole inspiral approximation to compute the SNR.
@@ -1161,8 +1121,8 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
             ax[0].plot(x_array, pdf+z, color = colors[zi])
             ax[1].plot(x_array, pdf,   color = colors[zi])
 
-        ax[0].set_xlabel(r'$m_1\ [M_{\odot}]$')
-        ax[1].set_xlabel(r'$m_1\ [M_{\odot}]$')
+        ax[0].set_xlabel(r'$m_1 ~\rm [M_{\odot}]$')
+        ax[1].set_xlabel(r'$m_1 ~\rm [M_{\odot}]$')
         ax[0].set_ylabel('$z$')
         ax[1].set_ylabel('$p(m_1)$')
         ax[1].set_xlim(0, 100)

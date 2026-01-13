@@ -38,14 +38,6 @@ def InitialiseOptions(Config):
         'snr-bilby-reference-frequency' : 20.,
         'snr-bilby-sampling-frequency'  : 2048.,
 
-        'snr-pycbc-detectors'           : ['H1', 'L1', 'V1'],
-        'snr-pycbc-sampling-rate'       : 2048.,
-        'snr-pycbc-delta-f'             : 1./128.,
-        'snr-pycbc-f-low'               : 16.,
-        'snr-pycbc-waveform'            : 'IMRPhenomXHM',
-        'snr-pycbc-method'              : 'mf_fast',
-        'snr-pycbc-precession'          : False,
-
         'snr-proxy-N-detectors'         : 2,
         'snr-proxy-fgw-cut'             : 15.,
         'snr-proxy-SNR-reference'       : 9.,
@@ -65,6 +57,7 @@ def InitialiseOptions(Config):
         'model-cosmology'               : 'FlatLambdaCDM',
         'model-bkg-cosmo'               : 'FlatLambdaCDM',
 
+        'zmax'                          : 20.,
         'redshift-transition'           : 'linear',
         'redshift-mixture'              : True,
         'low-smoothing'                 : False,
@@ -107,19 +100,16 @@ def InitialiseOptions(Config):
             except: pass
 
         # SNR-options
-        if (key == 'snr-bilby-waveform') or (key == 'snr-pycbc-waveform') or (key == 'snr-pycbc-method') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL') or (key == 'spacing'): 
+        if (key == 'snr-bilby-waveform') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL') or (key == 'spacing'): 
             try: input_pars[key] = Config.get('snr-options', key)
             except: pass
-        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-pycbc-sampling-rate') or (key == 'snr-pycbc-delta-f') or (key == 'snr-pycbc-f-low') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'snr-proxy-fgw-cut') or (key == 'icarogw-sim-z-max'):
+        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'snr-proxy-fgw-cut') or (key == 'icarogw-sim-z-max'):
             try: input_pars[key] = Config.getfloat('snr-options', key)
             except: pass
         if (key == 'snr-proxy-N-detectors'):
             try: input_pars[key] = Config.getint('snr-options', key)
             except: pass
-        if (key == 'snr-pycbc-detectors'):
-            try: input_pars[key] = ast.literal_eval(Config.get('input', key))
-            except: pass
-        if (key == 'use-icarogw-sim-inj') or (key == 'snr-pycbc-precession') or (key == 'snr-bilby-precessing-wf'):
+        if (key == 'use-icarogw-sim-inj') or (key == 'snr-bilby-precessing-wf'):
             try: input_pars[key] = Config.getboolean('snr-options', key)
             except: pass
 
@@ -347,7 +337,7 @@ usage = """
     # ----- #
 
         output                        [str  ]  Path where the output is saved. Default: 'icarogw_population'.
-        run-type                      [str  ]  Type of simulation to run. Options: 'population', 'injections'. Default: 'population'.
+        run-type                      [str  ]  Type of simulation to run. Options: 'population', 'injections', 'noise'. Default: 'population'.
         screen-output                 [bool ]  Flag to deviate the standard output to screen. Default: '0'.
         postprocessing                [bool ]  Flag to only postprocess an existing simulation. Default: '0'.
         drawing-method                [str  ]  Method used to draw samples from the target population distribution. Options: 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'. Default: 'rejection-sampling'.
@@ -369,9 +359,9 @@ usage = """
         selection-effects-cut         [str  ]  Method to evaluate events detectability. Options: 'snr'. Default: 'snr'.
         SNR-cut                       [float]  SNR threshold to label an event as detectable. Default: 12.
         SNR-soft-cut                  [float]  SNR threshold to label an event as worth saving (should in principle be less than SNR-cut). Option used for injections generation only (NB: all the events are kept in case of a population generation). Default: -1. (i.e. keeps everything)
-        SNR-method                    [str  ]  Method to compute the SNR. Options: 'bilby', 'pycbc', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
-        observing-run                 [str  ]  IGWN observing run. Further defines the detectors sensitivity for SNR computation (with PyCBC and Bilby) and PE (with Bilby), as well as observation-time (if a negative value is given). Options: 'O3', 'O4', 'O5'. Default: 'O3'.
-        PSD-path                      [str  ]  Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'pycbc'. Default: ''.
+        SNR-method                    [str  ]  Method to compute the SNR. Options: 'bilby', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
+        observing-run                 [str  ]  IGWN observing run. Further defines the detectors sensitivity for SNR computation (with Bilby) and PE (with Bilby), as well as observation-time (if a negative value is given). Options: 'O3', 'O4', 'O5'. Default: 'O3'.
+        PSD-path                      [str  ]  Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'bilby'. Default: ''.
 
     # ----------- #
     # snr-options #
@@ -380,14 +370,6 @@ usage = """
         snr-bilby-waveform            [str  ]  Waveform model used to compute the SNR with Bilby. Default: 'IMRPhenomXHM'.
         snr-bilby-reference-frequency [float]  Reference frequency [Hz] used by Bilby to compute the duration of the signal injected in detectors (Bilby's time to merger is defined as the duration from the time the signal is at reference-frequency, to the time of the merger. See https://lscsoft.docs.ligo.org/bilby/api/bilby.gw.utils.calculate_time_to_merger.html#bilby.gw.utils.calculate_time_to_merger). Default: 20.
         snr-bilby-sampling-frequency  [float]  Sampling rate [Hz] used to generate the waveform with Bilby. Default: 2048.
-
-        snr-pycbc-detectors           [list ]  List of detectors used to compute the SNR with PyCBC. Options: 'H1', 'L1', 'V1', 'K1'. Default: ['H1', 'L1', 'V1'].
-        snr-pycbc-sampling-rate       [float]  Sampling rate used to generate the waveform with PyCBC. Default: 2048.
-        snr-pycbc-delta-f             [float]  Frequency resolution used to generate the waveform with PyCBC. Default: 1/128.
-        snr-pycbc-f-low               [float]  Lower frequency cut-off used to generate the waveform with PyCBC. Default: 16.
-        snr-pycbc-waveform            [str  ]  Waveform model used to compute the SNR with PyCBC. Default: 'IMRPhenomXHM'.
-        snr-pycbc-method              [str  ]  Method used to compute the SNR with PyCBC. Options: 'opt' (optimal SNR), 'mf_fast' (matched-filter SNR with noise contribution estimated from a unit Gaussian). Default: 'mf_fast'.
-        snr-pycbc-precession          [bool ]  Flag to specify whether or not the waveform model includes precession (should match snr-pycbc-waveform). Default: 0.
 
         snr-proxy-N-detectors         [int  ]  Number of detectors used to compute the SNR with the proxy method. Default: 2.
         snr-proxy-fgw-cut             [float]  Condition on detection additional to the SNR cut. An event is detected if its estimated frequency at ISCO is higher than this value. Default: 15.
@@ -410,6 +392,7 @@ usage = """
         model-rate                    [str  ]  Model distribution for the rate evolution. Options: 'PowerLaw', 'MadauDickinson', 'BetaDistribution', 'BetaDistribution-Line', 'MadauDickinson-GammaDistribution', 'Gaussian'. Default: 'PowerLaw'.
         model-cosmology               [str  ]  Model for cosmology. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE', 'Xi0', 'eps0', 'extraD', 'cM', 'alphalog'. Default: 'FlatLambdaCDM'
         model-bkg-cosmo               [str  ]  Model for background cosmology if model-cosmology is a modified gravity model. Options: 'FlatLambdaCDM', 'FlatwCDM', 'Flatw0waCDM', 'wIDS_linDE'. Default: 'FlatLambdaCDM'
+        zmax                          [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
         redshift-transition           [str  ]  Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture              [bool ]  Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
         low-smoothing                 [bool ]  Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.

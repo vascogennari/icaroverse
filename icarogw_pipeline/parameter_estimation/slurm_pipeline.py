@@ -2,8 +2,6 @@ import os, sys, configparser
 from optparse import OptionParser
 
 
-#SBATCH --tasks-per-node=1
-
 template = """#!/bin/sh
 
 #SBATCH --job-name={name}
@@ -117,14 +115,14 @@ def main():
 # ---------------------------------------------------------------------- #
 
 pars = {
-    'conda_env'    : 'in2_env',
+    'conda_env'    : 'icarogw',
     'user_mail'    : '',
     'slurm_nodes'  : 1,
-    'slurm_cpus'   : 12,
+    'slurm_cpus'   : 8,
     'slurm_memory' : 8,
-    'slurm_time'   : {'days': 4, 'hours': 0, 'minutes': 0},
+    'slurm_time'   : {'days': 0, 'hours': 8, 'minutes': 0},
 }
-pars['slurm_python_path']     = '/pbs/home/t/tbertheas/.conda/envs/{conda_env}/bin/python'.format(conda_env=pars['conda_env'])
+pars['slurm_python_path']     = '/sps/virgo/USERS/tbertheas/conda/envs/{conda_env}/bin/python'.format(conda_env=pars['conda_env'])
 pars['slurm_executable_file'] = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/parameter_estimation/bilby_pipeline.py'
 
 # MAIN INPUT: Set the directory where the population is stored
