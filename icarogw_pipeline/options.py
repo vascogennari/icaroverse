@@ -105,7 +105,7 @@ def InitialiseOptions(Config):
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'real-data') or (key == 'real-noise-injections') or (key == 'simulation') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'ignore-selection-effects'):
+        if (key == 'real-data') or (key == 'real-noise-injections') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'ignore-selection-effects'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
