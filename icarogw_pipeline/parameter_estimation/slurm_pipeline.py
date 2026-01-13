@@ -2,8 +2,6 @@ import os, sys, configparser
 from optparse import OptionParser
 
 
-#SBATCH --tasks-per-node=1
-
 template = """#!/bin/sh
 
 #SBATCH --job-name={name}
