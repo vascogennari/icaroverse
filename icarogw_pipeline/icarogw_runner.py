@@ -41,6 +41,8 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture, flag_powerlaw_smoothing = smoothing)
         elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear':
             return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture)
+        elif wrap_name == 'DoublePowerlawRedshift':
+            return wrap(redshift_transition = transition)
 
 def print_dictionary(dictionary):
       
@@ -103,14 +105,10 @@ class Wrappers:
         models = {
             'PowerLaw':                                                             {'wrap name': 'massprior_PowerLaw',                                                   'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian':                                                    {'wrap name': 'massprior_PowerLawPeak',                                               'z evolution': False, 'smoothing': 'global'},
-            'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                    {'wrap name': 'PowerLaw_PowerLaw',                                                    'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw':                                           {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                           'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-Gaussian':                                           {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                           'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-GaussianRedshiftLinear':                                      {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                      'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftQuadratic':                                   {'wrap name': 'PowerLaw_GaussianRedshiftQuadratic',                                   'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftPowerLaw':                                    {'wrap name': 'PowerLaw_GaussianRedshiftPowerLaw',                                    'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftSigmoid':                                     {'wrap name': 'PowerLaw_GaussianRedshiftSigmoid',                                     'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawBroken-GaussianRedshiftLinear':                                {'wrap name': 'PowerLawBroken_GaussianRedshiftLinear',                                'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               {'wrap name': 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               'z evolution': True,  'smoothing': 'component-wise'},
@@ -118,7 +116,12 @@ class Wrappers:
             'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
-            'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': True},
+            'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': True,  'smoothing': 'component-wise'},
+            'Uniform':                                                              {'wrap name': 'Uniform',                                                              'z evolution': False, 'smoothing': 'included'},
+            'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'included'},
+            'DoublePowerlaw-Gaussian':                                              {'wrap name': 'DoublePowerlaw_Gaussian',                                              'z evolution': False, 'smoothing': 'included'},
+            'DoublePowerlawRedshift':                                               {'wrap name': 'DoublePowerlawRedshift',                                               'z evolution': True,  'smoothing': 'included'},
+            'Johnson':                                                              {'wrap name': 'Johnson',                                                              'z evolution': False, 'smoothing': 'included'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -135,9 +138,13 @@ class Wrappers:
                 if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
             elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
                 w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing)
+            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
+                w = get_wrapper(models[mp]['wrap name'])
             # Evolving models.
             elif (    models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
                 w = get_wrapper(models[mp]['wrap name'],                        order = order,                                                 )
+            elif (    models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
+                w = get_wrapper(models[mp]['wrap name'],                                       transition = z_transition                       )
             elif (    models[mp]['z evolution']):
                 w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
         # Unknown model
@@ -156,6 +163,7 @@ class Wrappers:
             'MassRatio-Gaussian': {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
             'MassRatio-PowerLaw': {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
             'MassRatio-Gamma':    {'wrap name': 'Gamma',                     'var': 'q' }, 
+            'MassRatio-Beta':     {'wrap name': 'Beta',                      'var': 'q' },
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -182,6 +190,10 @@ class Wrappers:
             'MadauDickinson-GammaDistribution': {'wrap name': 'rateevolution_Madau_gamma'},
             'PowerLaw':                         {'wrap name': 'rateevolution_PowerLaw'},
             'Gaussian':                         {'wrap name': 'rateevolution_Gaussian'},
+            'RedshiftProbability-Beta':         {'wrap name': 'rateevolution_beta_redshift_probability'},
+            'RedshiftProbability-Uniform':      {'wrap name': 'rateevolution_uniform_redshift_probability'},
+            'RedshiftProbability-PowerLaw':     {'wrap name': 'rateevolution_powerlaw_redshift_probability'},
+            'LuminosityProbability-Beta':       {'wrap name': 'rateevolution_beta_redshift_probability'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -223,9 +235,9 @@ class Wrappers:
         return w
 
     def ReferenceCosmology(self):
-          
-        w = icarogw.cosmology.astropycosmology(10)
-        w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = 67.7, Om0 = 0.308))
+        
+        w = icarogw.cosmology.astropycosmology(self.pars['zmax'])
+        w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = self.pars['ref-cosmology']['H0'], Om0 = self.pars['ref-cosmology']['Om0']))
         return w
 
     def return_Wrappers(self):
@@ -245,23 +257,38 @@ class Rate():
     def __init__(self, pars, m1w, m2w, rw, cw):
 
         if not pars['single-mass']:
-            if  (not 'Redshift' in pars['model-primary']) and (not 'MassRatio' in pars['model-secondary']):
-                self.w = icarogw.rates.CBC_vanilla_rate(             cw,      m2w, rw, scale_free = pars['scale-free'])
+            if   not 'Redshift' in pars['model-primary'] and not 'MassRatio'  in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_vanilla_rate(                  cw,      m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_vanilla_rate'))
-            elif not  'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary']:
-                self.w = icarogw.rates.MBH_rate(                     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+            elif not 'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.MBH_rate(                          cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('MBH_rate'))
-            elif not  'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_q(                cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+            elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.MBH_redshift_rate(                 cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('MBH_redshift_rate'))
+            elif 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.MBH_redshift_rate_given_redshift(  cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('MBH_redshift_rate_given_redshift'))
+            elif not 'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_q(                     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_q'))
-            elif      'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+            elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
-            elif      'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_q( cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+            elif     'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(      cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
         else:
-            self.w = icarogw.rates.CBC_rate_m_given_redshift(        cw, m1w,      rw, scale_free = pars['scale-free'])
+            if not 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.CBC_rate_m_given_redshift(         cw, m1w,      rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('CBC_rate_m_given_redshift'))
+            else:
+                if not 'Luminosity' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+                else:
+                    self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
+                    print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
@@ -502,12 +529,18 @@ class LikelihoodPrior:
 
         if self.pars['loglike-var'] == 0: self.pars['loglike-var'] = None
         
-        res = icarogw.likelihood.hierarchical_likelihood(
-                        data, injections, wrapper,
-                        nparallel               = self.pars['nparallel'],
-                        neffPE                  = self.pars['neffPE'],
-                        neffINJ                 = self.pars['neffINJ'],
-                        likelihood_variance_thr = self.pars['loglike-var'])
+        if not self.pars['ignore-selection-effects']:
+            res = icarogw.likelihood.hierarchical_likelihood(
+                            data, injections, wrapper,
+                            nparallel               = self.pars['nparallel'],
+                            neffPE                  = self.pars['neffPE'],
+                            neffINJ                 = self.pars['neffINJ'],
+                            likelihood_variance_thr = self.pars['loglike-var'])
+        else: # Use the likeliood without selection effects.
+            res = icarogw.likelihood.hierarchical_likelihood_no_selection_effects(
+                            data, wrapper,
+                            nparallel               = self.pars['nparallel'],
+                            neffPE                  = self.pars['neffPE'])
         return res
 
     def Prior(self, pars, w):
@@ -650,8 +683,11 @@ def main():
     wrapper = tmp.return_Rate()
 
     # Read injections for selection effects.
-    tmp = SelectionEffects(input_pars, ref_cosmo)
-    injections = tmp.return_SelectionEffects()
+    if not input_pars['ignore-selection-effects']:
+        tmp = SelectionEffects(input_pars, ref_cosmo)
+        injections = tmp.return_SelectionEffects()
+    else:
+        injections = None
 
     # Read events data.
     tmp = Data(input_pars, ref_cosmo)
@@ -670,8 +706,9 @@ def main():
     #     pass
     #     print("\t...failed. Carry on...\n")
 
-    # Control the effective number of injections on the injected model.
-    check_effective_number_injections(input_pars, likelihood, data.n_ev)
+    if not input_pars['ignore-selection-effects']:
+        # Control the effective number of injections on the injected model.
+        check_effective_number_injections(input_pars, likelihood, data.n_ev)
 
     # ----------------------------------------------- #
     # Start the sampler and run hierarchical analysis #
@@ -695,6 +732,9 @@ def main():
         print_dictionary(sampler_pars)
     else:
         raise ValueError('Sampler not available.')
+
+    if input_pars['sampler'] == 'nessai':
+        if not input_pars['nessai-plot']: sampler_pars.update(dict(nessai_plot = False))
 
     # Start Bilby sampler.
     print('\n * Starting the sampler.\n')
@@ -724,7 +764,10 @@ def main():
     print('\n * Computing effective number of injections.')
     maxL_index  = int(xp.argmax(xp.array(df['log_likelihood'])))
     maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
-    check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
+    if not input_pars['ignore-selection-effects']:
+        # Control the effective number of injections on the maximum likelihood model.
+        print('\n * Computing effective number of injections.')
+        check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
     print('\n * Maximum likelihood values.\n')
     print_dictionary(maxL_values)
 
