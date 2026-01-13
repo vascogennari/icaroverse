@@ -891,6 +891,11 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_param
     else: raise ValueError("Unknown run-type. Please choose between 'population' and 'injections'.")
     strain_records = None
 
+    if save_strain and not pars['SNR-method'] == 'bilby': 
+        raise ValueError("The only SNR-method compatible with strain data saving is 'bilby'.")
+    else: 
+        pass
+
     # Use the full waveform to compute the SNR.
     if   pars['SNR-method'] == 'bilby':
 
