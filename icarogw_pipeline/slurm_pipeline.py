@@ -1,5 +1,5 @@
 import os, sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 
 #SBATCH --tasks-per-node=1
 
@@ -55,24 +55,34 @@ def activate_slurm_submit(config_name):
     os.system('sbatch {}'.format(subfile))
 
 parser = ArgumentParser()
-parser.add_argument("-g", "--gpu", nargs="?", const='v100', default=None, type=str, help="If provided, will request a GPU job, with specified GPU model (available : v100, h100). Otherwise, will request a classical CPU job")
+parser.add_argument("-g", "--gpu", nargs="?", const='any', default=None, type=str, help="If provided, will request a GPU job, with specified GPU model (available : v100, h100). Otherwise, will request a classical CPU job")
 args = parser.parse_args()
 
 # ---------------------------------------------------------------------- #
-conda_env    = 'icarogw_gpu'
-user_mail    = 'tom.bertheas@l2it.in2p3.fr'
+conda_env    = ''
+user_mail    = ''
 slurm_nodes  = 1
 slurm_cpus   = 4
+slurm_gpus   = 1
 slurm_memory = 8
 slurm_time   = {'days': 7, 'hours': 0, 'minutes': 0}
-slurm_executable_path = '/sps/virgo/USERS/tbertheas/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
-slurm_executable_file = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
-if args.gpu in ['v100', 'h100']: slurm_partition    = f"gpu\n#SBATCH --gres=gpu:{args.gpu}:1"
-else:                            slurm_partition    = "htc"
+slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
+slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
+
+# Handling request of CPU / GPU jobs (CC-IN2P3)
+available = ['v100', 'h100']
+if args.gpu is None:
+    slurm_partition    = "htc"
+elif args.gpu == "any":
+    slurm_partition = f"gpu_v100,gpu_h100 \n#SBATCH --gpus={slurm_gpus}"
+elif args.gpu in available:
+    slurm_partition = f"gpu_{args.gpu} \n#SBATCH --gpus={slurm_gpus}"
+else:
+    raise ArgumentTypeError(f"Invalid GPU type: {args.gpu}. Choose from {available + ["any"]}.")
 
 # Set the specific directory for the runs
-directory    = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/config_files'
-subdirectory = 'temp'
+directory    = '/sps/virgo/USERS/vgennari/icarogw_pipeline/config_files/GWTC-4'
+subdirectory = 'splines'
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')

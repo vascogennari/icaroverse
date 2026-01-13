@@ -18,7 +18,7 @@ template = """#!/bin/sh
 #SBATCH --mail-type=ALL
 
 module load conda
-conda activate icarogw_env
+conda activate icarogw_coswg_env
 {executable} {script} --config-file {config}
 """
 

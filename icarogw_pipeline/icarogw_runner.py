@@ -1,6 +1,7 @@
 import os, sys, configparser, shutil, time, re
 from optparse import OptionParser
 from inspect import getmembers, isclass
+import multiprocessing as mp
 
 import pickle, h5py, pandas as pd, json
 import icarogw, bilby, astropy
@@ -8,12 +9,14 @@ import icarogw, bilby, astropy
 if icarogw.cupy_pal.is_there_cupy(): import cupy  as xp
 else:                                import numpy as xp
 
+from numpy import minimum
+
 # Internal imports
 import options, icarogw_postprocessing
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, zmax = 20.):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, spacing = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -27,19 +30,25 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
     elif transition == None:
         if order == None:
             if not input_wrapper == None:
+
                 return wrap(input_wrapper)
-            elif wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
+            elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
                 return wrap(flag_powerlaw_smoothing = smoothing)
+            elif 'Spline' in wrap_name:
+                print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
+                return wrap(n_basis = n_splines, spacing = spacing)
             else:
                 return wrap()
         else:
             # GaussianRedshift-order-X model.
             return wrap(order = order)
     else:
-        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftQuadratic' or wrap_name == 'PowerLaw_GaussianRedshiftPowerLaw' or wrap_name == 'PowerLaw_GaussianRedshiftSigmoid' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear':
+        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftQuadratic' or wrap_name == 'PowerLaw_GaussianRedshiftPowerLaw' or wrap_name == 'PowerLaw_GaussianRedshiftSigmoid' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear':
             return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture, flag_powerlaw_smoothing = smoothing)
         elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear':
             return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture)
+        elif wrap_name == 'DoublePowerlawRedshift':
+            return wrap(redshift_transition = transition)
 
 def print_dictionary(dictionary):
       
@@ -54,37 +63,55 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
         _     = likelihood.log_likelihood()
         print('\n\tA single likelihood evaluation takes {0:.5f} [s].'.format(time.time() - count))
 
-    tmp_dict = None
+    reference_model_dict = None
     if maxL_values == None:
-        if pars['simulation'] and (not pars['true-values'] == {}):
-            tmp_dict = pars['true-values']
-            tmp_str  = 'injected'
+        # if (not pars['real-data']) and (not pars['true-values'] == {}):
+        if (not pars['true-values'] == {}):
+            reference_model_dict = pars['true-values']
+            reference_model_str  = 'injected'
     else:
-        tmp_dict = maxL_values
-        tmp_str  = 'maximum likelihood'
+        reference_model_dict = maxL_values
+        reference_model_str  = 'maximum likelihood'
 
-    if not tmp_dict == None:
+    if not reference_model_dict == None:
         # Set rate model parameters at true values 
-        likelihood.parameters = {key: tmp_dict[key] for key in likelihood.rate_model.population_parameters}
+        likelihood.parameters = {key: reference_model_dict[key] for key in likelihood.rate_model.population_parameters}
         # First likelihood evaluation at true values
         single_likelihood_eval()
-        if not pars['loglike-var'] == 0:
+
+        if pars['loglike-var'] is None or pars['loglike-var'] <= 0.:
             # Check effective number of injections.
             N_eff_inj = likelihood.injections.effective_injections_number()
             stability = N_eff_inj / (4 * n_events)
-            print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, tmp_str))
+            print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, reference_model_str))
             if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
             # Check effective numer of posterior samples.
             try:
                 N_eff_PE  = xp.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
-                print('\n\tThe effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, tmp_str))
+                print('\n\tThe minimum effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, reference_model_str))
             except AttributeError as err:
                 # The first likelihood evaluation at true population values gives 0 because the effective number of injections is below threshold.
                 # Consequently the initialisation of posterior samples weights is skipped.
                 raise AttributeError(err, "* The effective number of injections for the true population values is below threshold.")
+
         else:
-             loglike_var = likelihood.injections.likelihood_variance_thr()
-             print('\n\tThe variance on the log-likelihood for the {1} model is {0:.1f}.'.format(loglike_var, tmp_str))
+            try:
+                N_eff_inj = likelihood.injections.effective_injections_number()
+                stability = N_eff_inj / (4 * n_events)
+                print('\n\tThe effective number of injections for the {2} model is {0:.1f}. N_eff_inj/4*N_events is {1:.1f}.'.format(N_eff_inj, stability, reference_model_str))
+            except:
+                print('\n\tWARNING: Could not retrieve Neffinj')
+            try:
+                N_eff_PEs = likelihood.posterior_samples_dict.get_effective_number_of_PE()
+                N_eff_PE = xp.min(N_eff_PEs)
+                print('\n\tThe minimum effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, reference_model_str))
+            except:
+                print('\n\tWARNING: Could not retrieve NeffPE')
+
+            loglike_var = likelihood.likelihood_variance
+            print('\n\tThe variance on the log-likelihood for the {1} model is {0:.2e}.'.format(loglike_var, reference_model_str))
+            if likelihood.likelihood_variance_thr is not None and likelihood.likelihood_variance > likelihood.likelihood_variance_thr:
+                raise ValueError("* The variance of the log likelihood for the true population values is below threshold.")
 
 
 class Wrappers:
@@ -100,24 +127,34 @@ class Wrappers:
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         models = {
-            'PowerLaw':                                                             {'wrap name': 'massprior_PowerLaw',                                                   'z evolution': False, 'smoothing': 'global'},
-            'PowerLaw-Gaussian':                                                    {'wrap name': 'massprior_PowerLawPeak',                                               'z evolution': False, 'smoothing': 'global'},
-            'DoublePowerlaw':                                                       {'wrap name': 'DoublePowerlaw',                                                       'z evolution': False, 'smoothing': 'global'},
-            'PowerLaw-PowerLaw':                                                    {'wrap name': 'PowerLaw_PowerLaw',                                                    'z evolution': False, 'smoothing': 'component-wise'},
-            'PowerLaw-PowerLaw-PowerLaw':                                           {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                           'z evolution': False, 'smoothing': 'component-wise'},
-            'PowerLaw-PowerLaw-Gaussian':                                           {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                           'z evolution': False, 'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftLinear':                                      {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                      'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftQuadratic':                                   {'wrap name': 'PowerLaw_GaussianRedshiftQuadratic',                                   'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftPowerLaw':                                    {'wrap name': 'PowerLaw_GaussianRedshiftPowerLaw',                                    'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftSigmoid':                                     {'wrap name': 'PowerLaw_GaussianRedshiftSigmoid',                                     'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLawBroken-GaussianRedshiftLinear':                                {'wrap name': 'PowerLawBroken_GaussianRedshiftLinear',                                'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLawRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':               {'wrap name': 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',               'z evolution': True,  'smoothing': 'component-wise'},
-            'GaussianRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
-            'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
-            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
-            'GaussianRedshift-order-X':                                             {'wrap name': 'GaussianEvolving',                                                     'z evolution': True},
+            'PowerLaw':                                                                                    {'wrap name': 'PowerLaw',                                                                                    'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-PowerLaw':                                                                  {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-PowerLaw-PowerLaw':                                                         {'wrap name': 'PowerLaw_PowerLaw_PowerLaw_PowerLaw',                                                         'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-PowerLaw-Gaussian':                                                                  {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftLinear':                                                             {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                                             'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftQuadratic':                                                          {'wrap name': 'PowerLaw_GaussianRedshiftQuadratic',                                                          'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftPowerLaw':                                                           {'wrap name': 'PowerLaw_GaussianRedshiftPowerLaw',                                                           'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftSigmoid':                                                            {'wrap name': 'PowerLaw_GaussianRedshiftSigmoid',                                                            'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawBroken-GaussianRedshiftLinear':                                                       {'wrap name': 'PowerLawBroken_GaussianRedshiftLinear',                                                       'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-GaussianRedshiftLinear':                                               {'wrap name': 'PowerLawRedshiftLinear_GaussianRedshiftLinear',                                               'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':                                      {'wrap name': 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear',                                      'z evolution': True,  'smoothing': 'component-wise'},
+            'GaussianRedshiftLinear-GaussianRedshiftLinear':                                               {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear',                                               'z evolution': True,  'smoothing': 'component-wise'},
+            'GaussianRedshiftLinear-GaussianRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
+            'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
+            'Gaussian':                                                                                    {'wrap name': 'Gaussian',                                                                                    'z evolution': False, 'smoothing': 'included'},
+            'GaussianRedshift-order-X':                                                                    {'wrap name': 'GaussianEvolving',                                                                            'z evolution': True},
+            'Splines-Quadratic':                                                                           {'wrap name': 'QuadraticSpline',                                                                             'z evolution': False, 'smoothing': 'component-wise'},
+            'Splines-Cubic':                                                                               {'wrap name': 'CubicSpline',                                                                                 'z evolution': False, 'smoothing': 'component-wise'},
+            'Uniform':                                                                                     {'wrap name': 'Uniform',                                                                                     'z evolution': False, 'smoothing': 'included'},
+            'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'included'},
+            'DoublePowerlaw-Gaussian':                                                                     {'wrap name': 'DoublePowerlaw_Gaussian',                                                                     'z evolution': False, 'smoothing': 'included'},
+            'DoublePowerlawRedshift':                                                                      {'wrap name': 'DoublePowerlawRedshift',                                                                      'z evolution': True,  'smoothing': 'included'},
+            'Johnson':                                                                                     {'wrap name': 'Johnson',                                                                                     'z evolution': False, 'smoothing': 'included'},            
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -129,14 +166,20 @@ class Wrappers:
 
         if mp in icarogw_models:
             # Non-evolving models.
-            if   (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'global': 
+            if   (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'global':
                 w = get_wrapper(models[mp]['wrap name'])
                 if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
+            elif 'Splines' in mp:
+                w = get_wrapper(models[mp]['wrap name'], n_splines = pars['splines-number'], spacing = pars['spacing'])
             elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
                 w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing)
+            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
+                w = get_wrapper(models[mp]['wrap name'])
             # Evolving models.
             elif (    models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
                 w = get_wrapper(models[mp]['wrap name'],                        order = order,                                                 )
+            elif (    models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
+                w = get_wrapper(models[mp]['wrap name'],                                       transition = z_transition                       )
             elif (    models[mp]['z evolution']):
                 w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
         # Unknown model
@@ -155,6 +198,7 @@ class Wrappers:
             'MassRatio-Gaussian': {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
             'MassRatio-PowerLaw': {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
             'MassRatio-Gamma':    {'wrap name': 'Gamma',                     'var': 'q' }, 
+            'MassRatio-Beta':     {'wrap name': 'Beta',                      'var': 'q' },
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -181,6 +225,10 @@ class Wrappers:
             'MadauDickinson-GammaDistribution': {'wrap name': 'rateevolution_Madau_gamma'},
             'PowerLaw':                         {'wrap name': 'rateevolution_PowerLaw'},
             'Gaussian':                         {'wrap name': 'rateevolution_Gaussian'},
+            'RedshiftProbability-Beta':         {'wrap name': 'rateevolution_beta_redshift_probability'},
+            'RedshiftProbability-Uniform':      {'wrap name': 'rateevolution_uniform_redshift_probability'},
+            'RedshiftProbability-PowerLaw':     {'wrap name': 'rateevolution_powerlaw_redshift_probability'},
+            'LuminosityProbability-Beta':       {'wrap name': 'rateevolution_beta_redshift_probability'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -222,9 +270,9 @@ class Wrappers:
         return w
 
     def ReferenceCosmology(self):
-          
-        w = icarogw.cosmology.astropycosmology(10)
-        w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = 67.7, Om0 = 0.308))
+        
+        w = icarogw.cosmology.astropycosmology(self.pars['zmax'])
+        w.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = self.pars['ref-cosmology']['H0'], Om0 = self.pars['ref-cosmology']['Om0']))
         return w
 
     def return_Wrappers(self):
@@ -244,23 +292,38 @@ class Rate():
     def __init__(self, pars, m1w, m2w, rw, cw):
 
         if not pars['single-mass']:
-            if  (not 'Redshift' in pars['model-primary']) and (not 'MassRatio' in pars['model-secondary']):
-                self.w = icarogw.rates.CBC_vanilla_rate(             cw,      m2w, rw, scale_free = pars['scale-free'])
+            if   not 'Redshift' in pars['model-primary'] and not 'MassRatio'  in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_vanilla_rate(                  cw,      m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_vanilla_rate'))
-            elif not  'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary']:
-                self.w = icarogw.rates.MBH_rate(                     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+            elif not 'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.MBH_rate(                          cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('MBH_rate'))
-            elif not  'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_q(                cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+            elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.MBH_redshift_rate(                 cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('MBH_redshift_rate'))
+            elif 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.MBH_redshift_rate_given_redshift(  cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('MBH_redshift_rate_given_redshift'))
+            elif not 'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_q(                     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_q'))
-            elif      'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+            elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
-            elif      'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_q( cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+            elif     'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
+                self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(      cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
         else:
-            self.w = icarogw.rates.CBC_rate_m_given_redshift(        cw, m1w,      rw, scale_free = pars['scale-free'])
+            if not 'Probability' in pars['model-rate']:
+                self.w = icarogw.rates.CBC_rate_m_given_redshift(         cw, m1w,      rw, scale_free = pars['scale-free'])
+                print('\t{}'.format('CBC_rate_m_given_redshift'))
+            else:
+                if not 'Luminosity' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+                else:
+                    self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
+                    print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
@@ -275,58 +338,97 @@ class SelectionEffects:
         
     def __init__(self, pars, ref_cosmo):
 
-        # Load file with the injections used to compute selection effects.
-        print('\n * Loading injections for selection effects.\n\n\t{}'.format(pars['injections-path']))
-        try:
-            if   '.hdf5'   in pars['injections-path']:
-                data_inj = h5py.File(pars['injections-path'])
-            elif '.pickle' in pars['injections-path']:
-                with open(pars['injections-path'], 'rb') as f: data_inj = pickle.load(f)
+        print('\n * Loading injections for selection effects.')
+
+        # Use IGWN real-noise injections from IGWN.
+        if pars['real-noise-injections']:
+
+            print('\n\tUsing IGWN sensitivity estimates in real noise to evaluate selection effects.')
+
+            from IGWN_pointers import sensitivity_estimates
+            path = sensitivity_estimates[pars['catalog']].replace("~IGWN_injections_path", pars['injections-path'])
+            try: data_inj = h5py.File(path)
+            except: raise ValueError('Could not open the file containing the injections for selection effects. Please verify that you have downloaded the IGWN sensitivity estimates and that the path is correct:\n{}'.format(sensitivity_estimates[pars['catalog']]))
+            print('\n\t{}'.format(path))
+
+            # FIXME: Add control to make sure that the injections used correspond to the correct catalog.
+            if   pars['catalog'] == 'GWTC-3':   obs_time = None # FIXME: Where can this value be found?
+            elif pars['catalog'] == 'GWTC-4.0': obs_time = data_inj.attrs['total_analysis_time'] / 31557600.0
+            elif pars['catalog'] == 'O3':       obs_time = (28519200 / 86400) / 365 # FIXME: Where is this read from and why is it hardcoded?
+            elif pars['catalog'] == 'O4a':      obs_time = None # FIXME: Where can this value be found?
             else:
-                raise ValueError('Unknown format for the file containing the injections for selection effects. Please make sure the file is correct:\n{}'.format(pars['injections-path']))
-        except:
-            raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
+                raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, O3 or O4a.')
 
-        # O3 Cosmology paper injections
-        if   pars['O3-cosmology']:
-
-            obs_time = (28519200 / 86400) / 365
             pars['injections-number'] = data_inj.attrs['total_generated']
-            prior  = xp.array(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
-            # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m1s,m2s,z)->(m1d,m2d,dL).
-            prior *= icarogw.conversions.source2detector_jacobian(xp.array(data_inj['injections/redshift'][()]), ref_cosmo)
 
-            tmp = xp.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
-            ifarmax = xp.max(tmp, axis = 0)
-            mass_1 = 'injections/mass1'
-            mass_2 = 'injections/mass2'
-            dist   = 'injections/distance'
+            if   pars['catalog'] == 'O3':
 
-            inj_dict = {
-                'mass_1':              xp.array(data_inj[mass_1][()]),
-                'mass_2':              xp.array(data_inj[mass_2][()]),
-                'luminosity_distance': xp.array(data_inj[dist][()])}
+                prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
+                # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m1s,m2s,z)->(m1d,m2d,dL).
+                prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
+
+                tmp = xp.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
+                ifarmax = xp.max(tmp, axis = 0)
+
+                inj_dict = {
+                    'mass_1':              xp.array(data_inj['injections/mass1'][()]),
+                    'mass_2':              xp.array(data_inj['injections/mass2'][()]),
+                    'luminosity_distance': xp.array(data_inj['injections/distance'][()])}
+
+            elif pars['catalog'] == 'GWTC-4.0':
+
+                pars['injections-number'] = data_inj.attrs['total_generated']
+                events = data_inj['events'][:]
+                ifarmax = 1 / xp.min(xp.array([events[search + '_far'] for search in data_inj.attrs['searches']]), axis = 0)
+                if   pars['selection-effects-cut'] == 'snr' : real_noise_condition = ifarmax >= pars['snr-cut']
+                elif pars['selection-effects-cut'] == 'ifar': real_noise_condition = ifarmax >= pars['ifar-cut']
+                else:
+                    raise ValueError('Unknown option to compute the selection effects cut.')
+                selected_filt = (real_noise_condition) | (xp.array(events['semianalytic_observed_phase_maximized_snr_net']) >= pars['snr-cut-analytic'])
+
+                lnprior = xp.array(events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle'])
+                lnprior -= xp.log(xp.sin(xp.array(events['spin2_polar_angle'])) * xp.sin(xp.array(events['spin1_polar_angle']))) # Accounts from implied Jacobian from t->cost.
+                lnprior += xp.log(4 * xp.pi * xp.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
+                lnprior -= xp.log(xp.array(events['weights'])) # Weights for different observing runs.
+                lnprior -= xp.log(xp.array(events['dluminosity_distance_dredshift']) * xp.power(1+xp.array(events['redshift']),2.))
+                prior = xp.exp(lnprior)
+
+                inj_dict = {
+                    'mass_1': xp.array(xp.array(events['mass1_source']) * (1 + xp.array(events['redshift']))),
+                    'mass_2': xp.array(xp.array(events['mass2_source']) * (1 + xp.array(events['redshift']))),
+                    'luminosity_distance': xp.array(events['luminosity_distance'])}
             
+            else:
+                raise ValueError('Catalog option not yet implemented. Please choose GWTC-4.0 or O3.')
+
             # If using the mass ratio, correct the prior with the Jacobian m2->q.
             if 'MassRatio' in pars['model-secondary']:
                 inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / inj_dict['mass_1']
                 prior *= inj_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
 
-        # Internal simulations
-        elif pars['simulation']:
+        # Use simulated injections.
+        else:
 
+            print('\n\tUsing simulated injections to evaluate selection effects.')
+            print('\n\t{}'.format(pars['injections-path']))
+
+            try:
+                if '.pickle' in pars['injections-path']:
+                    with open(pars['injections-path'], 'rb') as f: data_inj = pickle.load(f)
+                else:
+                    raise ValueError('Only pickle files are currently supported for custom injections:\n{}'.format(pars['injections-path']))
+            except:
+                raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
+            
             # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
             # Whatever distribution and variables used to generate the injections, please make sure it follows such conventions.
             prior = xp.array(data_inj['prior'])
             obs_time = 1
-            mass_1 = 'm1d'
-            mass_2 = 'm2d'
-            dist   = 'dL'
 
             inj_dict = {
-                'mass_1':              xp.array(data_inj[mass_1]),
-                'mass_2':              xp.array(data_inj[mass_2]),
-                'luminosity_distance': xp.array(data_inj[dist])}
+                'mass_1':              xp.array(data_inj['m1d']),
+                'mass_2':              xp.array(data_inj['m2d']),
+                'luminosity_distance': xp.array(data_inj['dL'])}
             
             if not pars['single-mass']:
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
@@ -342,19 +444,15 @@ class SelectionEffects:
                 # This operation depends on the injection prior used to generate the injections.
                 prior *= (1 + ref_cosmo.dl2z(inj_dict['luminosity_distance']))
                 inj_dict.pop('mass_2')
-        else:
-            raise ValueError('Unknown option to compute selection effects.')
-
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
-        if   pars['selection-effects-cut'] == 'snr' : 
-            print(f"\n\tApplying selection cut based on SNR, at a value of {pars['snr-cut']}.")
-            self.injections.update_cut(xp.array(data_inj['snr']) >= pars['snr-cut' ])
-        elif pars['selection-effects-cut'] == 'ifar': 
-            print(f"\n\tApplying selection cut based on IFAR, at a value of {pars['ifar-cut']}.")
-            self.injections.update_cut(ifarmax                                 >= pars['ifar-cut'])
+        if not pars['catalog'] == 'GWTC-4.0':
+            if   pars['selection-effects-cut'] == 'snr' : self.injections.update_cut(data_inj['snr'] >= pars['snr-cut' ])
+            elif pars['selection-effects-cut'] == 'ifar': self.injections.update_cut(ifarmax         >= pars['ifar-cut'])
+            else:
+                raise ValueError('Unknown option to compute the selection effects cut.')
         else:
-            raise ValueError('Unknown option to compute the selection effects cut.')
+            self.injections.update_cut(selected_filt)
 
         print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data['mass_1']), len(self.injections.injections_data_original['mass_1'])))
 
@@ -365,12 +463,15 @@ class SelectionEffects:
 
 class Data:
        
-    def __init__(self, pars, ref_cosmo):
+    def __init__(self, pars):
         
         print('\n * Loading data.\n\n\t{}'.format(pars['data-path']))
+    
         if not pars['true-data']:
             if   pars['PE-prior-distance'] == 'dL'   :     print('\n\tUsing a prior for PE samples uniform in luminosity distance.'               )
             elif pars['PE-prior-distance'] == 'dL3'  :     print('\n\tUsing a prior for PE samples uniform in comoving volume.'                   )
+            elif pars['PE-prior-distance'] == 'UniformSourceFrame':     print('\n\tUsing a prior for PE samples uniform in source frame.'         )
+            elif pars['PE-prior-distance'] == 'per-run':   print('\n\tUsing a prior for PE samples observing run-specific. See below for each event.')
             else:
                 raise ValueError('Unknown option for PE sample prior distance.')
             if   pars['PE-prior-masses'  ] == 'm1-m2':     print('\n\tUsing a prior for PE samples uniform in component masses, (m1, m2).'        )
@@ -385,22 +486,38 @@ class Data:
                 else:                              print('\n\tUsing the mass ratio for the secondary, defined as q=m1/m2.')
         else: print('\n\tUsing just the primary mass.')
         
-        # O3 Cosmology paper injections
-        if   pars['O3-cosmology']:
+        # Real GW data.
+        if pars['real-data']:
 
-            sys.path.append(pars['data-path'])
-            from analyses_dictionaries import BBHs_O3_IFAR_4
+            print('\n\tUsing IGWN catalogs of real GW events.')
+
+            # FIXME: Implement option to select events based on FAR and/or SNR.
+            # Need to add a new FAR/SNR key in the IGNW_events files.
+
+            # The PE samples are publicly available here:
+            # https://zenodo.org/records/6513631PE for O1, O2 and O3a events.
+            # https://zenodo.org/records/8177023 for O3b events.
+            # https://zenodo.org/records/17014085 for O4a events.
+
+            from IGWN_pointers import O1_O2_BBHs_FAR_1, O3_BBHs_FAR_1, O4a_BBHs_FAR_1
+
+            if   pars['catalog'] == 'GWTC-3':   catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1
+            elif pars['catalog'] == 'GWTC-4.0': catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1 | O4a_BBHs_FAR_1
+            elif pars['catalog'] == 'O3':       catalog = O3_BBHs_FAR_1
+            elif pars['catalog'] == 'O4a':      catalog = O4a_BBHs_FAR_1
+            else:
+                raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, O3 or O4a.')
 
             print('')
             samps_dict = {}
-            for ev in list(BBHs_O3_IFAR_4.keys()):
+            for ev in sorted(catalog.keys()):
                 
                 # Skip the events to be removed.
                 if ev in pars['remove-events']: continue
-                else:                           print('\t{}'.format(ev))
+                else:                           event_print = '\t{:<20}'.format(ev)
 
-                tmp = h5py.File(BBHs_O3_IFAR_4[ev]['PE'])
-                data_evs = tmp[BBHs_O3_IFAR_4[ev]['PE_waveform']]['posterior_samples']
+                tmp = h5py.File(catalog[ev]['PE'].replace("~IGNW_data_path", pars['data-path']))
+                data_evs = tmp[catalog[ev]['PE_waveform']]['posterior_samples']
 
                 pos_dict  = {
                     'mass_1'             : xp.array(data_evs['mass_1'][()]),
@@ -409,8 +526,44 @@ class Data:
 
                 # Account for PE priors. For O3 data, PE priors are uniform in component masses.
                 # Luminosity distance.
-                if   pars['PE-prior-distance'] == 'dL' : prior = xp.ones(len(pos_dict['luminosity_distance']))    # Set the prior to one.
-                elif pars['PE-prior-distance'] == 'dL3': prior = xp.power(   pos_dict['luminosity_distance'], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+                if   pars['PE-prior-distance'] == 'dL' : 
+                    prior = xp.ones(len(pos_dict['luminosity_distance']))    # Set the prior to one.
+                    event_print += " | dL prior: {:<30}".format('uniform in dL')
+
+                elif pars['PE-prior-distance'] == 'dL3': 
+                    prior = xp.power(   pos_dict['luminosity_distance'], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+                    event_print += " | dL prior: {:<30}".format('uniform in detected volume')
+
+                elif pars['PE-prior-distance'] == 'UniformSourceFrame':
+                    prior_usf = bilby.gw.prior.UniformSourceFrame(
+                        name='luminosity_distance', 
+                        minimum=0.1, 
+                        maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
+                        unit='Mpc'
+                    )
+                    prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                    event_print += " | dL prior: {:<30}".format('uniform in source frame')
+
+                elif pars['PE-prior-distance'] == 'per-run':
+                    # If the filenames for O1-O3 events have 'nocosmo', they correspond to PE samples with dL priors \propto dL^2
+                    if catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b'] and 'nocosmo' in catalog[ev]['PE']:
+                        prior = xp.power(   pos_dict['luminosity_distance'], 2.)
+                        event_print += " | dL prior: {:<30}".format('uniform in detected volume')
+                    # If the filenames for O1-O3 events doesn't have 'nocosmo', they correspond to PE samples with UniformSourceFrame dL priors
+                    elif catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b'] or catalog[ev]['run'] == 'O4a':
+                        prior_usf = bilby.gw.prior.UniformSourceFrame(
+                            name='luminosity_distance', 
+                            minimum=0.1, 
+                            maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
+                            unit='Mpc'
+                        )
+                        prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                        event_print += " | dL prior: {:<30}".format('uniform in source frame')
+                    else:
+                        raise KeyError("Unknown run for event {} in IGWN_pointers dictionary.".format(catalog[ev]['run']))
+
+                else:
+                    raise ValueError("Unknown PE-prior-distance option. Please choose from 'dL', 'dL3', 'UniformSourceFrame', 'per-run'.")
 
                 # Case of using mass ratio instead of the secondary mass.
                 if 'MassRatio' in pars['model-secondary']:
@@ -418,14 +571,19 @@ class Data:
                     prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+                print(event_print)
 
-        # Internal simulations
-        elif pars['simulation']:
+        # Internal simulations.
+        else:
+
+            print('\n\tUsing a simulated catalog of GW events.')
 
             if '.pickle' in pars['data-path']:
                 with open(pars['data-path'], 'rb') as f: data_evs = pickle.load(f)
             else:
                 raise ValueError('Unknown format for the file containing the single events samples. Please make sure the file is correct:\n{}'.format(pars['data-path']))
+
+            if pars['PE-prior-distance'] == 'per-run': raise ValueError("'per-run' PE-prior-distance option incompatible with simulated data.")
 
             samps_dict = {}
             for i in range(len(data_evs['m1d'])):
@@ -475,10 +633,6 @@ class Data:
                                 elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
-
-            
-        else:
-            raise ValueError('Unknown option to process single events data.')
         
         self.data = icarogw.posterior_samples.posterior_samples_catalog(samps_dict)
         print('\n\tUsing a population of {} events.'.format(self.data.n_ev))
@@ -501,12 +655,18 @@ class LikelihoodPrior:
 
         if self.pars['loglike-var'] == 0: self.pars['loglike-var'] = None
         
-        res = icarogw.likelihood.hierarchical_likelihood(
-                        data, injections, wrapper,
-                        nparallel               = self.pars['nparallel'],
-                        neffPE                  = self.pars['neffPE'],
-                        neffINJ                 = self.pars['neffINJ'],
-                        likelihood_variance_thr = self.pars['loglike-var'])
+        if not self.pars['ignore-selection-effects']:
+            res = icarogw.likelihood.hierarchical_likelihood(
+                            data, injections, wrapper,
+                            nparallel               = self.pars['nparallel'],
+                            neffPE                  = self.pars['neffPE'],
+                            neffINJ                 = self.pars['neffINJ'],
+                            likelihood_variance_thr = self.pars['loglike-var'])
+        else: # Use the likeliood without selection effects.
+            res = icarogw.likelihood.hierarchical_likelihood_no_selection_effects(
+                            data, wrapper,
+                            nparallel               = self.pars['nparallel'],
+                            neffPE                  = self.pars['neffPE'])
         return res
 
     def Prior(self, pars, w):
@@ -517,27 +677,43 @@ class LikelihoodPrior:
                 'Uniform',
                 'LogUniform',
             ]
+
+            # Precompute spline coefficient names safely
+            use_dirichlet = ('Spline' in pars['model-primary']) and pars['dirichlet-prior']
+            if use_dirichlet:
+                spline_coeffs = [f'c{i}' for i in range(1, pars['splines-number']+1)]
               
             for par in w.population_parameters:
 
-                if   type(dict_in[par]) == list and (len(dict_in[par]) == 2): 
+                # Dirichlet case via Gamma priors
+                if use_dirichlet and par in spline_coeffs:
+                    dict_out[par] = bilby.core.prior.Gamma(1., 1., name = par)
+
+                # Standard Uniform / LogUniform priors
+                elif isinstance(dict_in[par], list) and len(dict_in[par]) == 2:
                     dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
 
-                elif type(dict_in[par]) == list and (len(dict_in[par]) > 2):
+                elif isinstance(dict_in[par], list) and len(dict_in[par]) > 2:
                     if dict_in[par][2] in available_bilby_priors:
                         bilby_prior_class = getattr(bilby.core.prior, dict_in[par][2])
                         dict_out[par] = bilby_prior_class(dict_in[par][0], dict_in[par][1])
                     else:
                         raise KeyError("Unknown bilby prior. Available (in this pipeline):\n\t" + '\n\t'.join(available_bilby_priors))
 
-                elif type(dict_in[par]) == float: dict_out[par] = dict_in[par]
+                # Fixed value
+                elif isinstance(dict_in[par], float): dict_out[par] = dict_in[par]
 
                 else:
                     raise ValueError("Unknown type for prior on {}. Please provide either a fixed value, or a 2-list [min, max], or a 3-list [min, max, type]".format(dict_in[par]))
             
             print('\n * Using the following priors.\n')
-            print_dictionary({key: dict_in[key] for key in dict_out.keys()})
+            if use_dirichlet:
+                print_dictionary({key: dict_in[key] for key in dict_out.keys()-set(spline_coeffs)})
+                print('\n\tUsing a Dirichlet prior for the spline coefficients: {}.'.format(spline_coeffs))
+            else:
+                print_dictionary({key: dict_in[key] for key in dict_out.keys()})
 
+            print('\n\tWith constraints:')
             # Miscellaneous built-in additional constraints for some models
             constraints_dict = {
                 'MD_redundancy': {
@@ -545,20 +721,104 @@ class LikelihoodPrior:
                     'func':        (lambda x, y: x + y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0, 
                                                                maximum = xp.inf),
-                    'print':       "\n\tImplementing [ gamma + kappa > 0 ] constraint.\n",
+                    'print':       "\t[ gamma + kappa > 0 ]",
                 },
                 'w0wa_earlyMDera': {
                     'pars':        ['w0', 'wa'], 
                     'func':        (lambda x, y: x + y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = - xp.inf, 
                                                                maximum = 0),
-                    'print':       "\n\tImplementing [ w0 + wa < 0 ] constraint.\n",
+                    'print':       "\t[ w0 + wa < 0 ]",
+                },
+                'MLTP_peak_ordering': {
+                    'pars':        ['mu_g_high', 'mu_g_low'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mu_g_high > mu_g_low ]",
+                },
+                'PL2G_peak_ordering': {
+                    'pars':        ['mu_b_z0', 'mu_a_z0'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mu_b_z0 > mu_a_z0 ]",
+                },
+                'nPL_peak_ordering': {
+                    'pars':        [f'mmin_{c}' for c in "abcdefghij"], 
+                    'func':        lambda *mmins: minimum.reduce([ (mmins[i+1] - mmins[i]) for i in range(len(mmins)-1)]),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mmin_{p} < mmin_{p+1} for all peaks p ] (PL peak ordering).",
+                },
+                'nPL_minmax_ordering': {
+                    'pars':        [f'{p}_{c}' for c in "abcdefghij" for p in ['mmin', 'mmax']], 
+                    'func':        lambda *pars: minimum.reduce([ (pars[2*i+1] - pars[2*i]) for i in range(len(pars)//2)]),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 1., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mmin_{p} < mmax_{p} for peaks p ] (PL minmax ordering).",
                 },
             }
 
-            if not (pars['model-rate'] == 'MadauDickinson'   and pars['constraint_MD_redundancy']):   constraints_dict.pop('MD_redundancy')
-            if not (pars['model-cosmology'] == 'Flatw0waCDM' and pars['constraint_w0wa_earlyMDera']): constraints_dict.pop('w0wa_earlyMDera')
+            # MD redundancy constraint
+            if not (pars['model-rate'] == 'MadauDickinson' and pars['constraint_MD_redundancy']):
+                constraints_dict.pop('MD_redundancy')
+            elif pars['model-rate'] != 'MadauDickinson' and pars['constraint_MD_redundancy']:
+                raise ValueError("MD redundancy constraint is only available when using MadauDickinson rate evolution parametrization.")
+            else:
+                pass
+            # w0wa early matter domination era constraint
+            if not (pars['model-cosmology'] == 'Flatw0waCDM' and pars['constraint_w0wa_earlyMDera']):
+                constraints_dict.pop('w0wa_earlyMDera')
+            elif pars['model-cosmology'] != 'Flatw0waCDM' and pars['constraint_w0wa_earlyMDera']:
+                raise ValueError("w0wa early MD era constraint is only available when using Flatw0waCDM cosmological model.")
+            else:
+                pass
+            # peak ordering constraints
+            if pars['constraint_peak_ordering']:
+                # MLTP
+                if not pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian': 
+                    constraints_dict.pop('MLTP_peak_ordering')
+                else:
+                    pass
+                # PL2G
+                if pars['model-primary'] == 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear':
+                    # must not include redshift evolution
+                    if (
+                            (pars['redshift-mixture']) or
+                            (not (
+                                type(dict_in['mu_a_z1']) == float and
+                                type(dict_in['mu_b_z1']) == float and
+                                type(dict_in['sigma_a_z1']) == float and
+                                type(dict_in['sigma_b_z1']) == float
+                            ))
+                    ): 
+                        raise ValueError("peak ordering constraint for 'PowerLaw-GaussianRedshiftLinear-GaussianRedshiftLinear' mass model is only available with no redshift evolution.")
+                    else:
+                        pass
+                else:
+                    constraints_dict.pop('PL2G_peak_ordering')
 
+                # 2PL, 3PL, 4PL (also implements minmax ordering for all peaks)
+                if pars['model-primary'] == 'PowerLaw-PowerLaw': 
+                    constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:2]
+                    constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:2*2]
+                elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw': 
+                    constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:3]
+                    constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:3*2]
+                elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw-PowerLaw': 
+                    constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:4]
+                    constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:4*2]
+                else: 
+                    constraints_dict.pop('nPL_peak_ordering')
+                    constraints_dict.pop('nPL_minmax_ordering')
+            else:
+                constraints_dict.pop('MLTP_peak_ordering')
+                constraints_dict.pop('PL2G_peak_ordering')
+                constraints_dict.pop('nPL_peak_ordering')
+                constraints_dict.pop('nPL_minmax_ordering')
+
+            # implementing the conversion function based on all the constraints that we kept
             def constraints_conversion_function(params):
                 converted_params = params.copy()
                 for const in constraints_dict:
@@ -567,6 +827,7 @@ class LikelihoodPrior:
                     )
                 return converted_params
 
+            # Adding the constraitns as bilby objects in the prior dictionary
             for const in constraints_dict:
                 dict_out[const] = constraints_dict[const]['const_bilby']
                 print(constraints_dict[const]['print'])
@@ -611,7 +872,6 @@ def main():
     input_pars = options.InitialiseOptions(Config)
 
     # Set output directory.
-    # FIXME: Add option to control that only one of the two between 'O3-cosmology' and 'simulation' is active.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
 
     # Copy config file to output.
@@ -629,9 +889,9 @@ def main():
         sys.stdout = open(os.path.join(input_pars['output'], 'stdout_icarogw.txt'), 'w')
         sys.stderr = open(os.path.join(input_pars['output'], 'stderr_icarogw.txt'), 'w')
     else: pass
-    print('\n\n ===== Starting  i c a r o g w  runner ===== \n\n')
+    print('\n\n ===== Starting  i c a r o g w  runner ===== \n')
 
-    if icarogw.cupy_pal.is_there_cupy(): print(" * I will run with cupy on GPU.")
+    if icarogw.cupy_pal.is_there_cupy(): print(" * I will run with cupy on GPU.\n")
 
     # Print run parameters.
     print(' * I will be running with the following parameters.\n')
@@ -649,11 +909,14 @@ def main():
     wrapper = tmp.return_Rate()
 
     # Read injections for selection effects.
-    tmp = SelectionEffects(input_pars, ref_cosmo)
-    injections = tmp.return_SelectionEffects()
+    if not input_pars['ignore-selection-effects']:
+        tmp = SelectionEffects(input_pars, ref_cosmo)
+        injections = tmp.return_SelectionEffects()
+    else:
+        injections = None
 
     # Read events data.
-    tmp = Data(input_pars, ref_cosmo)
+    tmp = Data(input_pars)
     data = tmp.return_Data()
 
     # Initialise hierarchical likelihood and set the priors.
@@ -669,8 +932,9 @@ def main():
     #     pass
     #     print("\t...failed. Carry on...\n")
 
-    # Control the effective number of injections on the injected model.
-    check_effective_number_injections(input_pars, likelihood, data.n_ev)
+    if not input_pars['ignore-selection-effects']:
+        # Control the effective number of injections on the injected model.
+        check_effective_number_injections(input_pars, likelihood, data.n_ev)
 
     # ----------------------------------------------- #
     # Start the sampler and run hierarchical analysis #
@@ -686,14 +950,20 @@ def main():
         else: 
             sampler_pars['npool'] = input_pars['npool']
         print_dictionary(sampler_pars)
+
     elif input_pars['sampler'] == 'ptemcee':
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'ntemps', 'threads', 'print-method']}
         print_dictionary(sampler_pars)
+
     elif input_pars['sampler'] == 'emcee': 
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nwalkers', 'nsteps', 'npool']}
         print_dictionary(sampler_pars)
+
     else:
         raise ValueError('Sampler not available.')
+
+    if input_pars['sampler'] == 'nessai':
+        if not input_pars['nessai-plot']: sampler_pars.update(dict(nessai_plot = False))
 
     # Start Bilby sampler.
     print('\n * Starting the sampler.\n')
@@ -723,7 +993,10 @@ def main():
     print('\n * Computing effective number of injections.')
     maxL_index  = int(xp.argmax(xp.array(df['log_likelihood'])))
     maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
-    check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
+    if not input_pars['ignore-selection-effects']:
+        # Control the effective number of injections on the maximum likelihood model.
+        print('\n * Computing effective number of injections.')
+        check_effective_number_injections(input_pars, likelihood, data.n_ev, maxL_values = maxL_values)
     print('\n * Maximum likelihood values.\n')
     print_dictionary(maxL_values)
 
@@ -746,4 +1019,5 @@ def main():
     print('\n * Finished.\n')
 
 if __name__=='__main__':
+    mp.set_start_method("fork", force=True)
     main()
