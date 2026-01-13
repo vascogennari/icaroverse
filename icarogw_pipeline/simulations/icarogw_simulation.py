@@ -1070,6 +1070,8 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
     if not pars['log10-PDF']:
         if pars['plot-astrophysical']: plt.hist(samps_dict_astrophysical['m1s'], density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(samps_dict_observed[     'm1s'], density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
+        plt.yscale('log')
+        plt.ylim(1e-5, 1)
     else:
         if pars['plot-astrophysical']: plt.hist(np.log10(samps_dict_astrophysical['m1s']), density = 1, bins = nbins, color = colors[0], alpha = alpha, label = 'Astrophysical')
         plt.hist(np.log10(samps_dict_observed[     'm1s']), density = 1, bins = nbins, color = colors[1], alpha = alpha, label = 'Observed'     )
@@ -1080,9 +1082,6 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
         plt.plot(m1_array, pars['wrappers']['m1w'].pdf(m1_array), c = '#153B60', label = 'Injected')
     plt.title(title)
     plt.xlabel('m1')
-    #if not pars['log10-PDF']:
-        #plt.yscale('log')
-        #plt.ylim(1e-5, 1)
     plt.legend()
     plt.savefig('{}.pdf'.format(figname))
     plt.close()

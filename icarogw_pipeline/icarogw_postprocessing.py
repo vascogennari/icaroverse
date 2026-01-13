@@ -174,7 +174,6 @@ class PlotDistributions:
         plt.xlim(  pl_dct['x_min'], pl_dct['x_max'])
         plt.xlabel(pl_dct['x_label'])
         plt.ylabel(pl_dct['y_label'])
-        #if pl_dct['figname'] == 'RateEvolutionDistribution_Probability': plt.ylim(-5, 7)
 
         plt.grid(linestyle='dotted')
         plt.legend()
@@ -216,7 +215,7 @@ class PlotDistributions:
         plt.close()
 
 
-    def plot_curves_redshift_log(curves, pl_dct, truth = {}, curves_prior = 0):
+    def plot_curves_redshift_log(curves, pl_dct, truth = {}, curves_prior = 0, logscale = True):
 
         nz = np.shape(pl_dct['z_grid'])[0]
         fig, ax = plt.subplots(nz, 1, figsize=(5, 2 * nz), sharex = True, constrained_layout = True)
@@ -238,13 +237,15 @@ class PlotDistributions:
         
             if not truth == {}:
                 ax[zi_inv].plot(    pl_dct['x'], truth[zi][50],  lw = 0.3,       color = '#494949')
+            if logscale:
+                ax[zi_inv].set_yscale('log')
+                ax[zi_inv].set_ylim(1e-5, 0.5)
         
             ax[zi_inv].set_xlim(pl_dct['x_min'], pl_dct['x_max'])
-            ax[zi_inv].set_yscale('log')
-            ax[zi_inv].set_ylim(1e-5, 0.5)
             ax[zi_inv].set_ylabel(pl_dct['y_label_R'])
             ax[zi_inv].grid(linestyle = 'dotted', linewidth = 0.3)
             ax[zi_inv].legend(loc = 'best')
+
         ax[-1].set_xlabel(pl_dct['x_label'])
 
         fig.savefig('{}/{}.pdf'.format(pl_dct['output'], pl_dct['figname'] + '_logscale'), transparent = True)
@@ -698,18 +699,21 @@ class Plots:
 
     def PrimaryMass(self):
 
+        if self.pars['log10-PDF']: logscale = False
+        else:                      logscale = True
+
         curves_prior = 0
         if self.pars['plot-prior']:
             curves_prior, _ = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars, prior = True)
         curves, plot_dict   = self.distributions.PrimaryMassFunction(self.df, self.m1w, self.priors, self.pars)
         add_curves_to_dict(self.curves_dict, plot_dict['x'], curves, plot_dict['figname'], z = np.linspace(self.pars['bounds-z'][0], self.pars['bounds-z'][1], self.pars['N-z-slices']))
         if self.pars['true-values'] == {}:
-            self.plots.plot_curves_redshift_log(curves, plot_dict, curves_prior = curves_prior)
+            self.plots.plot_curves_redshift_log(curves, plot_dict, curves_prior = curves_prior, logscale = logscale)
             if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo)
             else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, selection_effects = self.inj.injections_data)                    
         else:
             curve_true, _ = self.distributions.PrimaryMassFunction(pd.DataFrame(self.pars['true-values'], index = [0]), self.m1w, self.priors, self.pars)
-            self.plots.plot_curves_redshift_log( curves, plot_dict, curves_prior = curves_prior, truth = curve_true)
+            self.plots.plot_curves_redshift_log( curves, plot_dict, curves_prior = curves_prior, truth = curve_true, logscale = logscale)
             if not self.pars['selection-effects']: self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true)
             else:                                  self.plots.plot_curves_evolving(curves, plot_dict, self.ref_cosmo, truth = curve_true, selection_effects = self.inj.injections_data)
 
@@ -764,6 +768,9 @@ class Plots:
 
     def NoSelectionEffects(self):
 
+        if self.pars['log10-PDF']: logscale = False
+        else:                      logscale = True
+
         plots_inputs   = self.distributions.RemoveSelectionEffects(self.df, self.pars, self.rate_w, self.ref_cosmo, self.inj)
         
         add_curves_to_dict(    self.curves_dict, plots_inputs['plot-dict-m1d']['x'], plots_inputs['curves-m1d'  ], plots_inputs['plot-dict-m1d']['figname'])
@@ -780,7 +787,7 @@ class Plots:
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2d'  ], plots_inputs['plot-dict-m2d'])
             self.plots.plot_curves(              plots_inputs['curves-dL'   ], plots_inputs['plot-dict-dL' ])
-            self.plots.plot_curves_redshift_log( plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'])
+            self.plots.plot_curves_redshift_log( plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], logscale = logscale)
             self.plots.plot_curves_evolving(     plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo)
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2s'  ], plots_inputs['plot-dict-m2s'])
@@ -792,7 +799,7 @@ class Plots:
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2d'  ], plots_inputs['plot-dict-m2d'],                 truth = inputs_true['curves-m2d'  ][50])
             self.plots.plot_curves(              plots_inputs['curves-dL'   ], plots_inputs['plot-dict-dL' ],                 truth = inputs_true['curves-dL'   ][50])
-            self.plots.plot_curves_redshift_log( plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'],                 truth = inputs_true['curves-z-m1s'])
+            self.plots.plot_curves_redshift_log( plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'],                 truth = inputs_true['curves-z-m1s'], logscale = logscale)
             self.plots.plot_curves_evolving(     plots_inputs['curves-z-m1s'], plots_inputs['plot-dict-m1s'], self.ref_cosmo, truth = inputs_true['curves-z-m1s'])
             if not self.pars['single-mass']:
                 self.plots.plot_curves(          plots_inputs['curves-m2s'  ], plots_inputs['plot-dict-m2s'],                 truth = inputs_true['curves-m2s'  ][50])
