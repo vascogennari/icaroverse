@@ -643,13 +643,13 @@ def get_distribution_samples(pars):
     # Set the sampler to draw events.
     if   pars['drawing-method'] == 'rejection-sampling'             : _sampler = rejection_sampling_1D
     elif pars['drawing-method'] == 'inverse-transform'              : _sampler = draw_samples_CDF_1D
-    elif pars['drawing-method'] == 'deterministic-inverse-transform': _sampler = draw_stratified_samples_CDF_1D
+    elif pars['drawing-method'] == 'deterministic-inverse-transform': _sampler = draw_deterministic_samples_CDF_1D
     else: raise ValueError("Unknown drawing-method. Please choose between 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'.")
 
     # Set the sampler to draw events.
     if   pars['drawing-method'] == 'rejection-sampling'             : _sampler = rejection_sampling_1D
     elif pars['drawing-method'] == 'inverse-transform'              : _sampler = draw_samples_CDF_1D
-    elif pars['drawing-method'] == 'deterministic-inverse-transform': _sampler = draw_stratified_samples_CDF_1D
+    elif pars['drawing-method'] == 'deterministic-inverse-transform': _sampler = draw_deterministic_samples_CDF_1D
     else: raise ValueError("Unknown drawing-method. Please choose between 'rejection-sampling', 'inverse-transform', 'deterministic-inverse-transform'.")
 
     # Rate evolution.
@@ -809,7 +809,7 @@ def draw_samples_CDF_1D(x, PDF, N, seed = None, quantile_index = None):
     return samps, pdf_s
 
 
-def draw_stratified_samples_CDF_1D(x, PDF, N, seed = 1, quantile_index = None):
+def draw_deterministic_samples_CDF_1D(x, PDF, N, seed = 1, quantile_index = None):
     '''
     Generate N deterministic samples from a given 1D discrete PDF using stratified quantiles.
     
