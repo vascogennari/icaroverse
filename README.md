@@ -1,11 +1,11 @@
-# icarogw pipeline
+# icaroverse
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build](https://img.shields.io/github/actions/workflow/status/your-username/icarogw-pipeline/ci.yml?branch=main)](https://github.com/your-username/icarogw-pipeline/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/your-username/icaroverse/ci.yml?branch=main)](https://github.com/your-username/icaroverse/actions)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](#-contributing)
 
-The **icarogw pipeline** is a flexible and extensible framework for automating **gravitational-wave population and cosmological inference** with [`icarogw`](https://github.com/simone-mastrogiovanni/icarogw).
+**Icaroverse** is a flexible and extensible framework for automating **gravitational-wave population and cosmological inference** with [`icarogw`](https://github.com/simone-mastrogiovanni/icarogw).
 
 It provides an end-to-end workflow to:  
 - Initialize the **population model** and hierarchical likelihood  
