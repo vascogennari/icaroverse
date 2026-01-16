@@ -67,7 +67,7 @@ slurm_gpus   = 1
 slurm_memory = 8
 slurm_time   = {'days': 7, 'hours': 0, 'minutes': 0}
 slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
-slurm_executable_file = '/sps/virgo/USERS/vgennari/icaroverse/icaroverse/icarogw_runner.py'
+slurm_executable_file = '/sps/virgo/USERS/vgennari/icaroverse/icaroverse/icaroverse_runner.py'
 
 # Handling request of CPU / GPU jobs (CC-IN2P3)
 available = ['v100', 'h100']
