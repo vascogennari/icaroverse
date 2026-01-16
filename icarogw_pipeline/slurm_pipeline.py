@@ -67,7 +67,7 @@ slurm_gpus   = 1
 slurm_memory = 8
 slurm_time   = {'days': 7, 'hours': 0, 'minutes': 0}
 slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
-slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
+slurm_executable_file = '/sps/virgo/USERS/vgennari/icaroverse/icaroverse/icarogw_runner.py'
 
 # Handling request of CPU / GPU jobs (CC-IN2P3)
 available = ['v100', 'h100']
@@ -81,7 +81,7 @@ else:
     raise ArgumentTypeError(f"Invalid GPU type: {args.gpu}. Choose from {available + ["any"]}.")
 
 # Set the specific directory for the runs
-directory    = '/sps/virgo/USERS/vgennari/icarogw_pipeline/config_files/GWTC-4'
+directory    = '/sps/virgo/USERS/vgennari/icaroverse/config_files/GWTC-4'
 subdirectory = 'splines'
 # ---------------------------------------------------------------------- #
 

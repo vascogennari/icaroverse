@@ -50,10 +50,10 @@ slurm_cpus   = 10
 slurm_memory = 5
 slurm_time   = {'days': 1, 'hours': 0, 'minutes': 0}
 slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/icarogw_coswg_env/bin/python'
-slurm_executable_file = '/sps/virgo/USERS/vgennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
+slurm_executable_file = '/sps/virgo/USERS/vgennari/icaroverse/icaroverse/icarogw_runner.py'
 
 # Set the specific directory for the runs
-directory    = '/sps/virgo/USERS/vgennari/icarogw_pipeline/config_files'
+directory    = '/sps/virgo/USERS/vgennari/icaroverse/config_files'
 subdirectory = 'LISA_CosWG_EXP2'
 # ---------------------------------------------------------------------- #
 

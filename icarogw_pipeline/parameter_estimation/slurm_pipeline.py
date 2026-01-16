@@ -123,7 +123,7 @@ pars = {
     'slurm_time'   : {'days': 0, 'hours': 8, 'minutes': 0},
 }
 pars['slurm_python_path']     = '/sps/virgo/USERS/tbertheas/conda/envs/{conda_env}/bin/python'.format(conda_env=pars['conda_env'])
-pars['slurm_executable_file'] = '/sps/virgo/USERS/tbertheas/icarogw_pipeline/icarogw_pipeline/parameter_estimation/bilby_pipeline.py'
+pars['slurm_executable_file'] = '/sps/virgo/USERS/tbertheas/icaroverse/icaroverse/parameter_estimation/bilby_pipeline.py'
 
 # MAIN INPUT: Set the directory where the population is stored
 pars['population_dir_path']   = 'path_to_population_directory'
