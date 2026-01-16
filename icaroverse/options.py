@@ -416,7 +416,7 @@ usage = """
         redshift-transition         [str  ]  Model function for the redshift evolution of the mixture functions. The option only applies to primary mass redshift evolving models. Options: 'linear', 'sigmoid'. Default: 'linear'.
         redshift-mixture            [bool ]  Flag to allow for the mixture functions to evolve in redshift. If zero, the mixture functions are stationary in redshift. The option only applies to primary mass redshift evolving models. Default: 1.
         low-smoothing               [bool ]  Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
-        priors                      [dict ]  Dictionary of the prior bounds for the population parameters. Default values are set in 'icarogw_pipeline.options.default_priors'.
+        priors                      [dict ]  Dictionary of the prior bounds for the population parameters. Default values are set in 'icaroverse.options.default_priors'.
         scale-free                  [bool ]  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.

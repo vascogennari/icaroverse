@@ -11,7 +11,7 @@ from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/35
 
 # Internal imports
 sys.path.append('../')
-import initialise, icarogw_runner as icarorun, snr_computation
+import initialise, icaroverse_runner as icarorun, snr_computation
 import icarogw.simulation as icarosim
 import icarogw.wrappers as icarowrap
 

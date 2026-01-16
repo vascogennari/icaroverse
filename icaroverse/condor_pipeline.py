@@ -41,10 +41,10 @@ condor_memory  = 5
 condor_disk    = 1
 condor_threads = 10
 condor_executable_path = '/home/vasco.gennari/.conda/envs/icarogw_env/bin/python'
-condor_executable_file = '/home/vasco.gennari/icarogw_pipeline/icarogw_pipeline/icarogw_runner.py'
+condor_executable_file = '/home/vasco.gennari/icaroverse/icaroverse/icaroverse_runner.py'
 
 # Set the specific directory for the runs
-directory    = '/home/vasco.gennari/icarogw_pipeline/config_files'
+directory    = '/home/vasco.gennari/icaroverse/config_files'
 subdirectory = 'tmp'
 # ---------------------------------------------------------------------- #
 

@@ -8,7 +8,7 @@ from generate_configs import chirp_mass
 sys.path.append('../simulations')
 import snr_computation as snr
 sys.path.append('../')
-import icarogw_runner as icarorun
+import icaroverse_runner as icarorun
 
 latex_labels = {
     'mass_1': r"$m_1$", 
