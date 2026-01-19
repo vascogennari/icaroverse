@@ -31,6 +31,7 @@ def InitialiseOptions(Config):
         'PSD-path'                      : '',
         'SNR-cut'                       : 12.,
         'SNR-soft-cut'                  : -1.,
+        'zmax-simulations'              : 2.0,
 
         # SNR-options
         'snr-bilby-waveform'            : 'IMRPhenomXHM',
@@ -48,7 +49,6 @@ def InitialiseOptions(Config):
         'use-icarogw-sim-inj'           : False,
         'icarogw-sim-mass-model'        : 'PowerLawPeak',
         'icarogw-sim-draw-dL'           : 'uniform-dL',
-        'icarogw-sim-z-max'             : 1.5,
 
         # Model
         'model-primary'                 : 'PowerLaw-Gaussian',                     
@@ -89,7 +89,7 @@ def InitialiseOptions(Config):
         if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path') or (key == 'drawing-method'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if (key == 'SNR-cut') or (key == 'SNR-soft-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
+        if (key == 'SNR-cut') or (key == 'SNR-soft-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time') or (key == 'zmax-simulations'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
         if (key == 'events-number') or (key == 'injections-number') or (key == 'injections-number-bank') or (key == 'inverse-checkpoint-rate') or (key == 'n-processes') or (key == 'seed'):
@@ -103,7 +103,7 @@ def InitialiseOptions(Config):
         if (key == 'snr-bilby-waveform') or (key == 'snr-proxy-theta-path') or (key == 'icarogw-sim-mass-model') or (key == 'icarogw-sim-draw-dL') or (key == 'spacing'): 
             try: input_pars[key] = Config.get('snr-options', key)
             except: pass
-        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'snr-proxy-fgw-cut') or (key == 'icarogw-sim-z-max'):
+        if (key == 'snr-bilby-reference-frequency') or (key == 'snr-bilby-sampling-frequency') or (key == 'snr-proxy-SNR-reference') or (key == 'snr-proxy-dL-reference') or (key == 'snr-proxy-Mc-reference') or (key == 'snr-proxy-fgw-cut'):
             try: input_pars[key] = Config.getfloat('snr-options', key)
             except: pass
         if (key == 'snr-proxy-N-detectors'):
@@ -362,6 +362,7 @@ usage = """
         SNR-method                    [str  ]  Method to compute the SNR. Options: 'bilby', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
         observing-run                 [str  ]  IGWN observing run. Further defines the detectors sensitivity for SNR computation (with Bilby) and PE (with Bilby), as well as observation-time (if a negative value is given). Options: 'O3', 'O4', 'O5'. Default: 'O3'.
         PSD-path                      [str  ]  Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'bilby'. Default: ''.
+        zmax-simulations              [float]  Maximum redshift up to which events are generated. Default: 2.0
 
     # ----------- #
     # snr-options #
@@ -381,7 +382,6 @@ usage = """
         use-icarogw-sim-inj           [bool ]  Flag to use the ICAROGW simulation script to generate the injections. Default: 0.
         icarogw-sim-mass-model        [str  ]  Mass model used to generate the injections with the ICAROGW simulation script. The only mass models available with this method are: 'PowerLaw', 'PowerLawPeak', 'MultiPeak'. Default: 'PowerLawPeak'.
         icarogw-sim-draw-dL           [str  ]  Method used to draw the luminosity distance samples. Options: 'uniform-dL' (uniform in luminosity distance), 'uniform-z' (uniform in redshift), 'uniform-volume' (uniform in comoving volume). Default: 'uniform-dL'.
-        icarogw-sim-z-max             [float]  Maximum redshift used to draw the samples. Default: 1.5.
 
     # ----- #
     # model #
