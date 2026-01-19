@@ -341,9 +341,16 @@ def main():
     print("\t...finished sampling !\n")
 
     # Plot the inferred waveform superposed on the actual data.
-    print("\n * Plotting the waveforms in each detector...")
-    result.plot_waveform_posterior(n_samples = 1000)
-    print("\t...done !\n")
+    if input_pars["plot-waveform"]:
+        print("\n * Plotting the waveforms in each detector...")
+        result.plot_waveform_posterior(n_samples = 1000)
+        print("\t...done !\n")
+
+    # Plot skymap
+    if input_pars["plot-skymap"]:
+        print("\n * Plotting the skymap...")
+        result.plot_skymap(enable_multiresolution=False, maxpts = 2000)
+        print("\t...done !\n")
 
     # Make a corner plot.
     print("\n * Producing the corner plot...")

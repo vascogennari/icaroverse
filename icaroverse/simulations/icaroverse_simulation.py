@@ -75,7 +75,6 @@ def main():
     # --------------------------------- #
 
     # Set additional input parameters for icarogw_runner.
-    input_pars['zmax'] = input_pars['icarogw-sim-z-max']
     input_pars['ref-cosmology'] = {'H0': 0., 'Om0': 0.} # Placeholder required by the wrappers initialisation, never used in this script.
 
     # Initialise the model wrappers.
@@ -715,7 +714,7 @@ def get_distribution_samples(pars):
         else:
             if 'Redshift' in pars['model-primary']:
                 raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
-            pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m2w']) # Condition the secondary on the primary.
+            pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m1w']) # Condition the secondary on the primary.
             update_weights(pars['wrappers']['m2w'], pars['truths'])
             m1s, m2s = pars['wrappers']['m2w'].prior.sample(N_events)
             pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)
