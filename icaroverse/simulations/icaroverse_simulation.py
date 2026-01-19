@@ -84,7 +84,7 @@ def main():
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw}
 
     # Initilialise the cosmology.
-    cw.cosmology.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = input_pars['truths']['H0'], Om0 = input_pars['truths']['Om0']))
+    cw.cosmology.build_cosmology(astropy.cosmology.FlatLambdaCDM(H0 = input_pars['all-truths']['H0'], Om0 = input_pars['all-truths']['Om0']))
 
     # Save and print true parameters.
     population_parameters = input_pars['wrappers']['m1w'].population_parameters + input_pars['wrappers']['rw'].population_parameters + input_pars['wrappers']['cw'].population_parameters

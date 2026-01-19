@@ -32,7 +32,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             if not input_wrapper == None:
 
                 return wrap(input_wrapper)
-            elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
+            elif wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
                 return wrap(flag_powerlaw_smoothing = smoothing)
             elif 'Spline' in wrap_name:
                 print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
@@ -127,7 +127,7 @@ class Wrappers:
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         models = {
-            'PowerLaw':                                                                                    {'wrap name': 'PowerLaw',                                                                                    'z evolution': False, 'smoothing': 'component-wise'},
+            'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
