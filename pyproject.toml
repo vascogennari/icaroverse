@@ -40,3 +40,9 @@ icaroverse_runner = "icaroverse.pipeline.icaroverse_runner:main"
 [tool.setuptools_scm]
 version_file = "src/icaroverse/_version.py"
 parentdir_prefix_version = "icaroverse-"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+data = ["*.txt"]
