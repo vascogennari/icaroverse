@@ -903,7 +903,6 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_param
         if save_strain: strain_records = []
 
         bdp = snr_computation.BilbyDetectionPipeline(
-            psd_dir             = pars['PSD-path'                     ],
             observing_run       = pars['observing-run'                ],
             reference_frequency = pars['snr-bilby-reference-frequency'],
             sampling_frequency  = pars['snr-bilby-sampling-frequency' ],

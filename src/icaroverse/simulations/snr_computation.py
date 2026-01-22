@@ -2,6 +2,8 @@ import numpy as np
 import os, logging
 import time
 
+from importlib.resources import files
+
 import bilby
 from astropy.time import Time
 
@@ -173,7 +175,7 @@ def there_is_fully_parametrised_spins(event_dict):
 # Class to compute SNR & draw missing single event parameters
 class BilbyDetectionPipeline():
 
-    def __init__(self, psd_dir, observing_run, reference_frequency=20., sampling_frequency=2048., approximant='IMRPhenomXPHM', precessing_apx=True, duration=None, start_time=None):
+    def __init__(self, observing_run, reference_frequency=20., sampling_frequency=2048., approximant='IMRPhenomXPHM', precessing_apx=True, duration=None, start_time=None):
         """
         A class that initialises a simulated event with some single event parameters, 
         drawing the missing ones, and injecting the signal 
@@ -181,8 +183,6 @@ class BilbyDetectionPipeline():
 
         Parameters
         ----------
-        psd_dir: str
-            absolute path of the folder where the PSD files are stored.
         observing_run: str
             LVK observing run. Used to load the correct PSD for bilby detector objects. Choose from O3, O4, O5.
         reference_frequency: float
@@ -193,7 +193,8 @@ class BilbyDetectionPipeline():
         approximant: str
             waveform approximant (default: IMRPhenomXPHM)
         """
-        self.psd_dir = psd_dir
+        # Get location of PSD files from the package
+        self.psd_dir = files('icaroverse.data.psd')
         self.observing_run = observing_run
         self.load_psd_from_file()
         self.reference_frequency = reference_frequency

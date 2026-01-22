@@ -9,7 +9,6 @@ def InitialiseOptions(Config):
         # Input
         'output'                       : '',
         'screen-output'                : 0,
-        'PSD-path'                     : '',
         'event-from-simulation'        : 0,
 
         # model
@@ -49,7 +48,7 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if (key == 'output') or (key == 'PSD-path'):
+        if (key == 'output'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if (key == 'screen-output') or (key == 'event-from-simulation'):
@@ -181,7 +180,6 @@ usage = """
 
         output                        [str  ] Path where the event PE output is saved. Default: 'parameter_estimation'.
         screen-output                 [bool ] Flag to deviate the standard output to screen. Default: 0.
-        PSD-path                      [str  ] Path to the directory where PSD files are stored. PSD files should be named of the form '{ifo}_{observing_run}.txt'. Default: ''.
 
     # ----- #
     # model #

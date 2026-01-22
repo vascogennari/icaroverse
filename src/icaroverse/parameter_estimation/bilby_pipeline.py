@@ -258,7 +258,6 @@ def main():
 
     # Initialise the Bilby class.
     BilbyClass = snr.BilbyDetectionPipeline(
-        psd_dir             = input_pars['PSD-path'], 
         observing_run       = input_pars['observing-run'], 
         reference_frequency = input_pars['reference-frequency'], 
         sampling_frequency  = input_pars['sampling-frequency'], 

@@ -28,7 +28,6 @@ def InitialiseOptions(Config):
         'selection-effects-cut'         : 'snr',
         'SNR-method'                    : 'bilby',
         'observing-run'                 : 'O3',
-        'PSD-path'                      : '',
         'SNR-cut'                       : 12.,
         'SNR-soft-cut'                  : -1.,
 
@@ -86,7 +85,7 @@ def InitialiseOptions(Config):
     for key in input_pars.keys():
 
         # Input
-        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'PSD-path') or (key == 'drawing-method'):
+        if (key == 'output') or (key == 'run-type') or (key == 'selection-effects-cut') or (key == 'SNR-method') or (key == 'observing-run') or (key == 'drawing-method'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
         if (key == 'SNR-cut') or (key == 'SNR-soft-cut') or (key == 'frequency-cut') or (key == 'R0') or (key == 'observation-time'):
@@ -361,7 +360,6 @@ usage = """
         SNR-soft-cut                  [float]  SNR threshold to label an event as worth saving (should in principle be less than SNR-cut). Option used for injections generation only (NB: all the events are kept in case of a population generation). Default: -1. (i.e. keeps everything)
         SNR-method                    [str  ]  Method to compute the SNR. Options: 'bilby', 'proxy', 'flat-PSD', 'lisabeta'. Default: 'bilby'.
         observing-run                 [str  ]  IGWN observing run. Further defines the detectors sensitivity for SNR computation (with Bilby) and PE (with Bilby), as well as observation-time (if a negative value is given). Options: 'O3', 'O4', 'O5'. Default: 'O3'.
-        PSD-path                      [str  ]  Path to the PSD file used to compute the SNR. This is only used if SNR-method is 'bilby'. Default: ''.
 
     # ----------- #
     # snr-options #

@@ -110,7 +110,6 @@ def true_value_projected_spins(par, event_parameters, precession):
 
 config_template = """[input]
 output                        = {output}
-PSD-path                      = {psd_dir}
 screen-output                 = {screen_output}
 
 [model]
@@ -201,7 +200,6 @@ def main():
         raise FileNotFoundError("Please make sure the population directory does contain an 'analysis_settings.json' file")
     
     if population_generation_pars['SNR-method'] == 'bilby':
-        psd_dir             = population_generation_pars['PSD-path']
         observing_run       = population_generation_pars['observing-run']
         waveform            = population_generation_pars['snr-bilby-waveform']
         precession          = population_generation_pars['snr-bilby-precessing-wf']
@@ -335,7 +333,6 @@ def main():
         
         event_config_content = config_template.format(
             output                        = event_subdir,
-            psd_dir                       = psd_dir,
             screen_output                 = False,
             event_parameters              = event_parameters,
             strain_file                   = strain_record_filepath,
