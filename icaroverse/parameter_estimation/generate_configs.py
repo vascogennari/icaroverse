@@ -112,7 +112,6 @@ config_template = """[input]
 output                        = {output}
 PSD-path                      = {psd_dir}
 screen-output                 = {screen_output}
-event-from-simulation         = True
 plot-waveform                 = {plot_waveform}
 plot-skymap                   = {plot_skymap}
 

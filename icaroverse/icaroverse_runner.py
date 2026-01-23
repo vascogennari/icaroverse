@@ -32,7 +32,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             if not input_wrapper == None:
 
                 return wrap(input_wrapper)
-            elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
+            elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian' or wrap_name == 'massprior_3PL' or wrap_name == 'massprior_3PL_global_mmax' or wrap_name == 'massprior_4PL_global_mmax':
                 return wrap(flag_powerlaw_smoothing = smoothing)
             elif 'Spline' in wrap_name:
                 print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
@@ -126,12 +126,15 @@ class Wrappers:
         mp, ms = pars['model-primary'], pars['model-secondary']
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
-        models = {
+        self.m1_models = {
             'PowerLaw':                                                                                    {'wrap name': 'PowerLaw',                                                                                    'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw':                                                                  {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            '3sPL':                                                                                        {'wrap name': 'massprior_3PL',                                                                               'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_global_mmax':                                                                             {'wrap name': 'massprior_3PL_global_mmax',                                                                   'z evolution': False, 'smoothing': 'component-wise'},
+            '4PL_global_mmax':                                                                             {'wrap name': 'massprior_4PL_global_mmax',                                                                   'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw-PowerLaw':                                                         {'wrap name': 'PowerLaw_PowerLaw_PowerLaw_PowerLaw',                                                         'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-Gaussian':                                                                  {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-GaussianRedshiftLinear':                                                             {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                                             'z evolution': True,  'smoothing': 'component-wise'},
@@ -158,7 +161,7 @@ class Wrappers:
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
-        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+        icarogw_models = [m for m in self.m1_models if self.m1_models[m]['wrap name'] in available_icarogw_models]
 
         order = -1
         search = re.search("GaussianRedshift-order-(?P<order>[0-9]+)", mp)
@@ -166,22 +169,22 @@ class Wrappers:
 
         if mp in icarogw_models:
             # Non-evolving models.
-            if   (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'global':
-                w = get_wrapper(models[mp]['wrap name'])
+            if   (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'global':
+                w = get_wrapper(self.m1_models[mp]['wrap name'])
                 if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
             elif 'Splines' in mp:
-                w = get_wrapper(models[mp]['wrap name'], n_splines = pars['splines-number'], spacing = pars['spacing'])
-            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
-                w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing)
-            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
-                w = get_wrapper(models[mp]['wrap name'])
+                w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = pars['splines-number'], spacing = pars['spacing'])
+            elif (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'component-wise':
+                w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing)
+            elif (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'included':
+                w = get_wrapper(self.m1_models[mp]['wrap name'])
             # Evolving models.
-            elif (    models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
-                w = get_wrapper(models[mp]['wrap name'],                        order = order,                                                 )
-            elif (    models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
-                w = get_wrapper(models[mp]['wrap name'],                                       transition = z_transition                       )
-            elif (    models[mp]['z evolution']):
-                w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
+            elif (    self.m1_models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
+                w = get_wrapper(self.m1_models[mp]['wrap name'],                        order = order,                                                 )
+            elif (    self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'included':
+                w = get_wrapper(self.m1_models[mp]['wrap name'],                                       transition = z_transition                       )
+            elif (    self.m1_models[mp]['z evolution']):
+                w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
         # Unknown model
         else:
             raise ValueError("Unknown model for the Primary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(mp, "\n\t".join(icarogw_models)))
@@ -190,10 +193,10 @@ class Wrappers:
 
     def SecondaryMass(self, pars, m1w = None):
 
-        ms = pars['model-secondary']
+        mp, ms = pars['model-primary'], pars['model-secondary']
         single_mass, smoothing = pars['single-mass'], pars['low-smoothing']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
-        models = {
+        self.m2_models = {
             'Mass2-PowerLaw':     {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
             'MassRatio-Gaussian': {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
             'MassRatio-PowerLaw': {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
@@ -202,14 +205,17 @@ class Wrappers:
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
-        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+        icarogw_models = [m for m in self.m2_models if self.m2_models[m]['wrap name'] in available_icarogw_models]
 
         if single_mass:
             print('\t * Skipping secondary mass wrapper')
             w = None
         elif ms in icarogw_models:
-            if   models[ms]['var'] == 'm2': w = get_wrapper(models[ms]['wrap name'] + '_lowpass'*smoothing, input_wrapper = m1w)
-            elif models[ms]['var'] == 'q':  w = get_wrapper(models[ms]['wrap name']                                            )
+            if   self.m2_models[ms]['var'] == 'm2': 
+                smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
+                w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
+            elif self.m2_models[ms]['var'] == 'q':  
+                w = get_wrapper(self.m2_models[ms]['wrap name']                                            )
         else:
             raise ValueError("Unknown model for the Secondary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
         return w
