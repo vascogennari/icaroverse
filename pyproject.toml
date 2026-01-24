@@ -1,6 +1,13 @@
+[build-system]
+requires = [
+    "setuptools >= 80",
+    "setuptools-scm>=8"
+]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "icaroverse"
-version = "0.0.1"
+dynamic = ["version"]
 
 description = "A flexible and extensible framework for automating gravitational-wave population and cosmological inference with icarogw"
 
@@ -30,6 +37,6 @@ combine_results = "icaroverse.parameter_estimation.combine_results:main"
 generate_configs = "icaroverse.parameter_estimation.generate_configs:main"
 icaroverse_runner = "icaroverse.pipeline.icaroverse_runner:main"
 
-[build-system]
-requires = ["setuptools >= 77.0.3"]
-build-backend = "setuptools.build_meta"
+[tool.setuptools_scm]
+version_file = "src/icaroverse/_version.py"
+parentdir_prefix_version = "icaroverse-"

@@ -1,3 +1,14 @@
+#
+# Specific files
+#
+
+# setuptools-scm version file
+src/icaroverse/_version.py
+
+#
+# Standard python files from https://github.com/github/gitignore/blob/main/Python.gitignore
+#
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
