@@ -192,6 +192,7 @@ def default_priors():
 
         # Primary mass distribution
         'delta_m'       : [   0.  ,  10.  ],
+        'delta_m1'      : [   0.  ,  10.  ],
         'delta_m_a'     : [   0.  ,  30.  ],
         'delta_m_b'     : [   0.  ,  30.  ],
         'delta_m_c'     : [   0.  ,  30.  ],
@@ -240,6 +241,7 @@ def default_priors():
         'mmax_d_z1'     : 0.,
 
         'mmin'          : [   1.  , 100.  ],
+        'm1min'         : [   1.  , 100.  ],
         'mmin_z0'       : [   1.  , 100.  ],
         'mmin_z1'       : [-100.  , 100.  ],
         'mmax'          : [  30.  , 200.  ],

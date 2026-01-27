@@ -32,9 +32,11 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             sig = signature(wrap)
             if not input_wrapper == None:
                 return wrap(input_wrapper)
-            elif "flag_powerlaw_smoothing" in sig.parameters:
             # elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian' or wrap_name == 'massprior_3PL' or wrap_name == 'massprior_3PL_global_mmax' or wrap_name == 'massprior_4PL_global_mmax' or wrap_name == 'massprior_3PL_global_mmax_dummy_mmin':
+            elif "flag_powerlaw_smoothing" in sig.parameters:
                 return wrap(flag_powerlaw_smoothing = smoothing)
+            elif "flag_smoothing" in sig.parameters:
+                return wrap(flag_smoothing = smoothing)
             elif 'Spline' in wrap_name:
                 print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
                 return wrap(n_basis = n_splines, spacing = spacing)
@@ -143,6 +145,14 @@ class Wrappers:
             '3PL_globmax_jointminmax':                                                                     {'wrap name': 'massprior_3PL_globmax_jointminmax',                                                           'z evolution': False, 'smoothing': 'component-wise'},
             '3PL_globmax_jointsmoothmax':                                                                  {'wrap name': 'massprior_3PL_globmax_jointsmoothmax',                                                        'z evolution': False, 'smoothing': 'component-wise'},
             '3PL_globmax_jointminsmoothmax':                                                               {'wrap name': 'massprior_3PL_globmax_jointminsmoothmax',                                                     'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP':                                                                                        {'wrap name': 'massprior_MLTP',                                                                              'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointmin':                                                                               {'wrap name': 'massprior_MLTP_jointmin',                                                                     'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointsmooth':                                                                            {'wrap name': 'massprior_MLTP_jointsmooth',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointmax':                                                                               {'wrap name': 'massprior_MLTP_jointmax',                                                                     'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointminsmooth':                                                                         {'wrap name': 'massprior_MLTP_jointminsmooth',                                                               'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointminmax':                                                                            {'wrap name': 'massprior_MLTP_jointminmax',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointsmoothmax':                                                                         {'wrap name': 'massprior_MLTP_jointsmoothmax',                                                               'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointminsmoothmax':                                                                      {'wrap name': 'massprior_MLTP_jointminsmoothmax',                                                            'z evolution': False, 'smoothing': 'component-wise'},
             '4PL_global_mmax':                                                                             {'wrap name': 'massprior_4PL_global_mmax',                                                                   'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw-PowerLaw':                                                         {'wrap name': 'PowerLaw_PowerLaw_PowerLaw_PowerLaw',                                                         'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-Gaussian':                                                                  {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
@@ -778,12 +788,19 @@ class LikelihoodPrior:
                                                                maximum = xp.inf),
                     'print':       "\t[ mmin_{p} < mmax_{p} for peaks p ] (PL minmax ordering).",
                 },
-                'min_min_a_ordering': {
+                'mmin_mmin_a_ordering': {
                     'pars':        ['mmin_a', 'mmin'], 
                     'func':        (lambda x, y: x - y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
                                                                maximum = xp.inf),
                     'print':       "\t[ mmin_a > mmin ]",
+                },
+                'mmin_m1min_ordering': {
+                    'pars':        ['m1min', 'mmin'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ m1min > mmin ]",
                 },
             }
 
@@ -804,7 +821,7 @@ class LikelihoodPrior:
             # peak ordering constraints
             if pars['constraint_peak_ordering']:
                 # MLTP
-                if not pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian': 
+                if not (pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian' or 'MLTP' in pars['model-primary']): 
                     constraints_dict.pop('MLTP_peak_ordering')
                 else:
                     pass
@@ -852,7 +869,9 @@ class LikelihoodPrior:
                 constraints_dict.pop('nPL_minmax_ordering')
 
             if not ('mmin_a' in w.population_parameters and 'mmin' in w.population_parameters):
-                constraints_dict.pop('min_min_a_ordering')
+                constraints_dict.pop('mmin_mmin_a_ordering')
+            if not ('m1min' in w.population_parameters and 'mmin' in w.population_parameters):
+                constraints_dict.pop('mmin_m1min_ordering')
 
             # implementing the conversion function based on all the constraints that we kept
             def constraints_conversion_function(params):
