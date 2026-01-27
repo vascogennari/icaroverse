@@ -1,6 +1,6 @@
 import os, sys, configparser, shutil, time, re
 from optparse import OptionParser
-from inspect import getmembers, isclass
+from inspect import getmembers, isclass, signature
 import multiprocessing as mp
 
 import pickle, h5py, pandas as pd, json
@@ -29,10 +29,11 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             return wrap(zmax=zmax)
     elif transition == None:
         if order == None:
+            sig = signature(wrap)
             if not input_wrapper == None:
-
                 return wrap(input_wrapper)
-            elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian' or wrap_name == 'massprior_3PL' or wrap_name == 'massprior_3PL_global_mmax' or wrap_name == 'massprior_4PL_global_mmax':
+            elif "flag_powerlaw_smoothing" in sig.parameters:
+            # elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian' or wrap_name == 'massprior_3PL' or wrap_name == 'massprior_3PL_global_mmax' or wrap_name == 'massprior_4PL_global_mmax' or wrap_name == 'massprior_3PL_global_mmax_dummy_mmin':
                 return wrap(flag_powerlaw_smoothing = smoothing)
             elif 'Spline' in wrap_name:
                 print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
@@ -132,8 +133,16 @@ class Wrappers:
             'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw':                                                                  {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
-            '3sPL':                                                                                        {'wrap name': 'massprior_3PL',                                                                               'z evolution': False, 'smoothing': 'component-wise'},
-            '3PL_global_mmax':                                                                             {'wrap name': 'massprior_3PL_global_mmax',                                                                   'z evolution': False, 'smoothing': 'component-wise'},
+            # '3sPL':                                                                                        {'wrap name': 'massprior_3PL',                                                                               'z evolution': False, 'smoothing': 'component-wise'},
+            # '3PL_global_mmax':                                                                             {'wrap name': 'massprior_3PL_global_mmax',                                                                   'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax':                                                                                 {'wrap name': 'massprior_3PL_globmax',                                                                       'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointmin':                                                                        {'wrap name': 'massprior_3PL_globmax_jointmin',                                                              'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointsmooth':                                                                     {'wrap name': 'massprior_3PL_globmax_jointsmooth',                                                           'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointmax':                                                                        {'wrap name': 'massprior_3PL_globmax_jointmax',                                                              'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointminsmooth':                                                                  {'wrap name': 'massprior_3PL_globmax_jointminsmooth',                                                        'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointminmax':                                                                     {'wrap name': 'massprior_3PL_globmax_jointminmax',                                                           'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointsmoothmax':                                                                  {'wrap name': 'massprior_3PL_globmax_jointsmoothmax',                                                        'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointminsmoothmax':                                                               {'wrap name': 'massprior_3PL_globmax_jointminsmoothmax',                                                     'z evolution': False, 'smoothing': 'component-wise'},
             '4PL_global_mmax':                                                                             {'wrap name': 'massprior_4PL_global_mmax',                                                                   'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw-PowerLaw':                                                         {'wrap name': 'PowerLaw_PowerLaw_PowerLaw_PowerLaw',                                                         'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-Gaussian':                                                                  {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
@@ -197,11 +206,12 @@ class Wrappers:
         single_mass, smoothing = pars['single-mass'], pars['low-smoothing']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m2_models = {
-            'Mass2-PowerLaw':     {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
-            'MassRatio-Gaussian': {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
-            'MassRatio-PowerLaw': {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
-            'MassRatio-Gamma':    {'wrap name': 'Gamma',                     'var': 'q' }, 
-            'MassRatio-Beta':     {'wrap name': 'Beta',                      'var': 'q' },
+            'Mass2-PowerLaw':         {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
+            'Mass2-PowerLaw-pairing': {'wrap name': 'm1m2_paired',               'var': 'm2'},
+            'MassRatio-Gaussian':     {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
+            'MassRatio-PowerLaw':     {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
+            'MassRatio-Gamma':        {'wrap name': 'Gamma',                     'var': 'q' }, 
+            'MassRatio-Beta':         {'wrap name': 'Beta',                      'var': 'q' },
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -212,7 +222,8 @@ class Wrappers:
             w = None
         elif ms in icarogw_models:
             if   self.m2_models[ms]['var'] == 'm2': 
-                smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
+                if 'pairing' in ms: smoothing_wrap_name_extension = ''
+                else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
                 w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
             elif self.m2_models[ms]['var'] == 'q':  
                 w = get_wrapper(self.m2_models[ms]['wrap name']                                            )
@@ -767,6 +778,13 @@ class LikelihoodPrior:
                                                                maximum = xp.inf),
                     'print':       "\t[ mmin_{p} < mmax_{p} for peaks p ] (PL minmax ordering).",
                 },
+                'min_min_a_ordering': {
+                    'pars':        ['mmin_a', 'mmin'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mmin_a > mmin ]",
+                },
             }
 
             # MD redundancy constraint
@@ -818,14 +836,23 @@ class LikelihoodPrior:
                 elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw-PowerLaw': 
                     constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:4]
                     constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:4*2]
+                elif '3PL_globmax' in pars['model-primary']: 
+                    constraints_dict.pop('nPL_minmax_ordering')
+                    constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:3]
+                    if 'jointmin' in pars['model-primary']:
+                        constraints_dict['nPL_peak_ordering']['pars'] = [par if par != 'mmin_a' else 'mmin' for par in constraints_dict['nPL_peak_ordering']['pars']]
                 else: 
                     constraints_dict.pop('nPL_peak_ordering')
                     constraints_dict.pop('nPL_minmax_ordering')
+
             else:
                 constraints_dict.pop('MLTP_peak_ordering')
                 constraints_dict.pop('PL2G_peak_ordering')
                 constraints_dict.pop('nPL_peak_ordering')
                 constraints_dict.pop('nPL_minmax_ordering')
+
+            if not ('mmin_a' in w.population_parameters and 'mmin' in w.population_parameters):
+                constraints_dict.pop('min_min_a_ordering')
 
             # implementing the conversion function based on all the constraints that we kept
             def constraints_conversion_function(params):
