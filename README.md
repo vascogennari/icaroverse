@@ -1,7 +1,7 @@
 # icaroverse
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build](https://img.shields.io/github/actions/workflow/status/your-username/icaroverse/ci.yml?branch=main)](https://github.com/your-username/icaroverse/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/vascogennari/icaroverse/ci.yml?branch=main)](https://github.com/vascogennari/icaroverse/actions)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](#-contributing)
 
@@ -31,6 +31,7 @@ To get started with the package, follow the steps below.
    - Run the configuration file with:
      ```bash
      icaroverse --generate-events config_file_population.ini
+     ```
    * This generates a population of ~50 observed events in ~1 minute.
 
 2. Estimate the detectors’ sensitivity
@@ -38,6 +39,7 @@ To get started with the package, follow the steps below.
    - Run the configuration file with:
      ```bash
      icaroverse --generate-injections config_file_injections.ini
+     ```
    * This generates a set of ~10⁴ detected events in ~10 minutes.
 
 3. Run the hierarchical inference with `icarogw`
@@ -45,14 +47,17 @@ To get started with the package, follow the steps below.
    - Run the configuration file with:
      ```bash
      icaroverse --runner config_file_inference.ini
+     ```
    * This step generates posterior samples for the population parameters in ~5 minutes, along with automatic diagnostic plots.
 
-Optional: Fully realistic simulations
-To make the simulation fully realistic, you can provide ICAROGW with parameter estimation results for individual events.
+### Optional: Fully realistic simulations
+
+To make the simulation fully realistic, you can provide `icarogw` with parameter estimation results for individual events.
    - Update the path in the configuration file to point to the output of Step 1.
    - Run the configuration file with:
      ```bash
      icaroverse --parameter-estimation config_file_PE.ini
+     ```
    * This generates posterior samples for the observed events using `bilby` in ~1 hour.
    - Feed these posterior samples into Step 3 and set `true-values = 0` in the configuration file.
 
@@ -94,6 +99,7 @@ If you use `icaroverse` in your research or publications, please cite the packag
   title        = {icaroverse: A toolkit for ...},
   year         = {2025},
   publisher    = {GitHub},
-  url          = {https://github.com/yourusername/icaroverse},
+  url          = {https://github.com/vascogennari/icaroverse},
   version      = {v1.0.0},
 }
+```
