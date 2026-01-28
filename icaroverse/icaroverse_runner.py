@@ -868,9 +868,9 @@ class LikelihoodPrior:
                 constraints_dict.pop('nPL_peak_ordering')
                 constraints_dict.pop('nPL_minmax_ordering')
 
-            if not ('mmin_a' in w.population_parameters and 'mmin' in w.population_parameters):
+            if not ('mmin_a' in w.population_parameters and 'mmin' in w.population_parameters and isinstance(dict_in['mmin_a'], list) and isinstance(dict_in['mmin'], list)):
                 constraints_dict.pop('mmin_mmin_a_ordering')
-            if not ('m1min' in w.population_parameters and 'mmin' in w.population_parameters):
+            if not ('m1min' in w.population_parameters and 'mmin' in w.population_parameters and isinstance(dict_in['m1min'], list) and isinstance(dict_in['mmin'], list)):
                 constraints_dict.pop('mmin_m1min_ordering')
 
             # implementing the conversion function based on all the constraints that we kept
