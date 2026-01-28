@@ -19,8 +19,15 @@ In addition, dedicated submodules support:
 
 ## Installation
 
-_Missing_
+To install the package, clone the git repository and then run:
+```
+pip install .
+```
 
+If you want to develop the package, you can do an editable installation:
+```
+pip install -e .
+```
 
 ## Usage
 
