@@ -88,6 +88,9 @@ def InitialiseOptions(Config):
         for key in input_pars['event-parameters']: input_pars['event-parameters-default'][key] = input_pars['event-parameters'][key]
     input_pars['event-parameters'] = input_pars['event-parameters-default']
 
+    if input_pars['event-parameters']['a_1'] == 0.0 or input_pars['event-parameters']['a_2'] == 0.0:
+        raise ValueError("Spin magnitudes a_1 and a_2 cannot be set to exactly 0.0. Please set them to a small non-zero value to avoid issues with waveform generation.")
+
     del input_pars['event-parameters-default']
 
     # Initialise the PE priors.
@@ -107,8 +110,8 @@ def default_event_parameters():
         'seed'               : 8848,
         'mass_1'             : 35.0,
         'mass_2'             : 30.0,
-        'a_1'                : 0.0,
-        'a_2'                : 0.0,
+        'a_1'                : 0.1,
+        'a_2'                : 0.1,
         'tilt_1'             : 0.0,
         'tilt_2'             : 0.0,
         'phi_jl'             : 0.0,
