@@ -1,5 +1,4 @@
-import os, sys, shutil, configparser, pickle
-import bilby, numpy as np
+import os, sys, shutil, configparser, pickle, bilby
 from optparse import OptionParser
 
 # Internal imports

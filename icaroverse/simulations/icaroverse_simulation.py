@@ -5,9 +5,8 @@ from optparse import OptionParser
 from scipy.integrate import simpson
 from tqdm import tqdm
 from multiprocessing import Process, Value, Lock, Manager
-import json, re, time, datetime
+import json, time, datetime
 import astropy
-from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
 # Internal imports
 sys.path.append('../')
