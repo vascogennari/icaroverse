@@ -140,8 +140,8 @@ def default_PE_priors(precession = False):
     }
 
     if precession:
-        dict['a_1']          = [0., 0.99],
-        dict['a_2']          = [0., 0.99],
+        dict['a_1']          = [0., 0.99]
+        dict['a_2']          = [0., 0.99]
         dict['tilt_1']       = [0., np.pi]
         dict['tilt_2']       = [0., np.pi]
         dict['phi_jl']       = [0., 2*np.pi]

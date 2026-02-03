@@ -211,8 +211,8 @@ def default_population():
         'mmax_b_z1'     : 0.,
         'mmax_c_z1'     : 0.,
 
-        'mmin'          : 8.,
-        'mmin_z0'       : 8.,
+        'mmin'          : 10.,
+        'mmin_z0'       : 10.,
         'mmin_z1'       : 0.,
         'mmax'          : 100.,
         'mmax_z0'       : 100.,
