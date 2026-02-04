@@ -12,7 +12,7 @@ else:                                import numpy as xp
 from numpy import minimum
 
 # Internal imports
-from . import options
+from . import initialise
 from . import postprocessing
 
 
@@ -862,7 +862,7 @@ def main():
     # Read config file and initialise input parameters #
     # ------------------------------------------------ #
 
-    parser = OptionParser(options.usage)
+    parser = OptionParser(initialise.usage)
     parser.add_option(      '--config-file', type='string', metavar = 'config_file', default = None)
     parser.add_option('-n', '--n-processes', type='int',    metavar = 'n_processes', default = -1, help="Set the number of processes for parallelized injections generation from command line, if this should match some external structure (e.g. number of CPUs allocated to the simulation on a computing cluster job.)")
     (opts, _) = parser.parse_args()
@@ -875,7 +875,7 @@ def main():
     Config.read(config_file)
 
     # Initialise input parameters dictionary.
-    input_pars = options.InitialiseOptions(Config)
+    input_pars = initialise.InitialiseOptions(Config)
 
     # Set output directory.
     if not os.path.exists(input_pars['output']): os.makedirs(input_pars['output'])
