@@ -14,7 +14,7 @@ import icarogw.wrappers as icarowrap
 # Internal imports
 from . import initialise
 from . import snr_computation
-from ..pipeline import icaroverse_runner as icarorun
+from ..hierarchical_inference import hierarchical_inference
 
 
 ######################
@@ -68,7 +68,7 @@ def main():
 
     # Print run parameters.
     print(' * I will be running with the following parameters.\n')
-    icarorun.print_dictionary(input_pars)
+    hierarchical_inference.print_dictionary(input_pars)
 
     # --------------------------------- #
     # Generate population or injections #
@@ -79,7 +79,7 @@ def main():
     input_pars['ref-cosmology'] = {'H0': 0., 'Om0': 0.} # Placeholder required by the wrappers initialisation, never used in this script.
 
     # Initialise the model wrappers.
-    tmp = icarorun.Wrappers(input_pars)
+    tmp = hierarchical_inference.Wrappers(input_pars)
     m1w, m2w, rw, cw, _ = tmp.return_Wrappers()
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw}
 

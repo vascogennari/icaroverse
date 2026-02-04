@@ -37,11 +37,11 @@ lisabeta_snr = [
 ]
 
 [project.scripts]
-icaroverse_simulation = "icaroverse.simulations.icaroverse_simulation:main"
-bilby_pipeline = "icaroverse.parameter_estimation.bilby_pipeline:main"
-combine_results = "icaroverse.parameter_estimation.combine_results:main"
-generate_configs = "icaroverse.parameter_estimation.generate_configs:main"
-icaroverse_runner = "icaroverse.pipeline.icaroverse_runner:main"
+iv_generate_events        = "icaroverse.generate_events.generate_events:main"
+iv_parameter_estimation   = "icaroverse.parameter_estimation.parameter_estimation:main"
+iv_combine_pe_posteriors  = "icaroverse.parameter_estimation.combine_pe_posteriors:main"
+iv_generate_pe_configs    = "icaroverse.parameter_estimation.generate_pe_configs:main"
+iv_hierarchical_inference = "icaroverse.hierarchical_inference.hierarchical_inference:main"
 
 [tool.setuptools_scm]
 version_file = "src/icaroverse/_version.py"

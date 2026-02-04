@@ -3,9 +3,9 @@ from optparse import OptionParser
 
 # Internal imports
 from . import initialise
-from .generate_configs import chirp_mass
-from ..simulations import snr_computation as snr
-from ..pipeline import icaroverse_runner as icarorun
+from .generate_pe_configs import chirp_mass
+from ..generate_events import snr_computation as snr
+from ..hierarchical_inference import hierarchical_inference
 
 latex_labels = {
     'mass_1': r"$m_1$", 
@@ -240,7 +240,7 @@ def main():
 
     # Print run parameters.
     print(' * I will be running with the following parameters.\n')
-    icarorun.print_dictionary(input_pars)
+    hierarchical_inference.print_dictionary(input_pars)
 
     # Read the event parameters. (We just need to rename masses and distance to match the waveform generator's syntax)
     injection_parameters = input_pars['event-parameters']
