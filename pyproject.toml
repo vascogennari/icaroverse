@@ -30,6 +30,12 @@ dependencies = [
   "seaborn",
 ]
 
+[project.optional-dependencies]
+# If you want to use lisabeta for SNR
+lisabeta_snr = [
+  "lisabeta @ git+https://gitlab.in2p3.fr/marsat/lisabeta.git"
+]
+
 [project.scripts]
 icaroverse_simulation = "icaroverse.simulations.icaroverse_simulation:main"
 bilby_pipeline = "icaroverse.parameter_estimation.bilby_pipeline:main"
