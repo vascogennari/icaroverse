@@ -33,7 +33,10 @@ def activate_slurm_submit(config_name):
     sys.stderr.write('generating {}\n'.format(subfile))
 
     with open(subfile,'w') as f:
-        if user_mail != '': email_option = email_option_template.format(user_mail=user_mail)
+        if user_mail != '':
+            email_option = email_option_template.format(user_mail=user_mail)
+        else:
+            email_option = ''
         submission_command = template.format(
             name         = config_name.split('/')[-1].split('.ini')[0].split('config_')[-1],
             slurm_path   = slurm_path,
