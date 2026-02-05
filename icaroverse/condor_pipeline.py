@@ -11,6 +11,8 @@ error = {condor_path}/{log_name}.err
 accounting_group = ligo.prod.o4.cbc.hubble.icarogw
 accounting_group_user = {user_name}
 getenv = True
+MY.flock_local = True
+MY.DESIRED_Sites = "none"
 queue"""
 
 
