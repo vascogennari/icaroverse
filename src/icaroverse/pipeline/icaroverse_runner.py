@@ -12,7 +12,8 @@ else:                                import numpy as xp
 from numpy import minimum
 
 # Internal imports
-import options, postprocessing
+from . import options
+from . import postprocessing
 
 
 
@@ -855,6 +856,8 @@ class LikelihoodPrior:
 
 def main():
 
+    mp.set_start_method("fork", force=True)
+
     # ------------------------------------------------ #
     # Read config file and initialise input parameters #
     # ------------------------------------------------ #
@@ -1020,7 +1023,3 @@ def main():
         pickle.dump(curves, f)
 
     print('\n * Finished.\n')
-
-if __name__=='__main__':
-    mp.set_start_method("fork", force=True)
-    main()

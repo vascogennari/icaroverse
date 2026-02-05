@@ -154,8 +154,3 @@ def main():
             args=args, 
         )
     if args.batch_size is None: save_combined(combined_results, batch, args)
-
-
-# Execute the main function.
-if __name__=='__main__': 
-    main()

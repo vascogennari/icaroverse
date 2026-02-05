@@ -1,0 +1,35 @@
+[project]
+name = "icaroverse"
+version = "0.0.1"
+
+description = "A flexible and extensible framework for automating gravitational-wave population and cosmological inference with icarogw"
+
+readme = "README.md"
+
+requires-python = ">= 3.12"
+
+dependencies = [
+  # Numpy and friends
+  "numpy",
+  "scipy",
+  "pandas",
+  "matplotlib",
+  # Our workhorses
+  "icarogw @ git+https://github.com/simone-mastrogiovanni/icarogw.git",
+  "nessai-bilby",
+  # Other (we should probably clean this)
+  "tqdm",
+  "scikit-learn",
+  "seaborn",
+]
+
+[project.scripts]
+icaroverse_simulation = "icaroverse.simulations.icaroverse_simulation:main"
+bilby_pipeline = "icaroverse.parameter_estimation.bilby_pipeline:main"
+combine_results = "icaroverse.parameter_estimation.combine_results:main"
+generate_configs = "icaroverse.parameter_estimation.generate_configs:main"
+icaroverse_runner = "icaroverse.pipeline.icaroverse_runner:main"
+
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"

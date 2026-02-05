@@ -8,12 +8,13 @@ from multiprocessing import Process, Value, Lock, Manager
 import json, time, datetime
 import astropy
 
-# Internal imports
-sys.path.append('../')
-import initialise, icaroverse_runner as icarorun, snr_computation
 import icarogw.simulation as icarosim
 import icarogw.wrappers as icarowrap
 
+# Internal imports
+from . import initialise
+from . import snr_computation
+from ..pipeline import icaroverse_runner as icarorun
 
 
 ######################
@@ -1175,8 +1176,3 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
                     plt.savefig('{}.pdf'.format(figname), transparent = True)
                     plt.close()
     return 0
-
-
-
-# Execute the main function.
-if __name__=='__main__': main()

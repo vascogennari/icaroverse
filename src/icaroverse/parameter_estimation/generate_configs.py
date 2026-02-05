@@ -6,7 +6,7 @@ import pickle, pandas as pd, json
 import numpy as np
 
 # Internal imports
-import initialise
+from . import initialise
 
 
 # ----------------------------------------------------------------------------------------- #
@@ -357,7 +357,3 @@ def main():
             f.write(event_config_content)
 
     print('\n * Finished.\n')
-
-
-# Execute the main function.
-if __name__=='__main__': main()

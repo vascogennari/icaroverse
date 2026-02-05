@@ -2,12 +2,10 @@ import os, sys, shutil, configparser, pickle, bilby
 from optparse import OptionParser
 
 # Internal imports
-import initialise
-from generate_configs import chirp_mass
-sys.path.append('../simulations')
-import snr_computation as snr
-sys.path.append('../')
-import icaroverse_runner as icarorun
+from . import initialise
+from .generate_configs import chirp_mass
+from ..simulations import snr_computation as snr
+from ..pipeline import icaroverse_runner as icarorun
 
 latex_labels = {
     'mass_1': r"$m_1$", 
@@ -358,8 +356,3 @@ def main():
     )
 
     print("\t...done !\n")
-
-
-
-# Execute the main function.
-if __name__=='__main__': main()
