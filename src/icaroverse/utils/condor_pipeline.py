@@ -1,8 +1,10 @@
-import os, sys
+import os
+import sys
+import shutil
 
 template = """executable = {executable}
 universe = vanilla
-arguments = "{script} --config-file {config}"
+arguments = "--config-file {config}"
 request_cpus = {cpus}
 request_memory = {memory} GB
 request_disk = {disk} GB
@@ -23,8 +25,7 @@ def activate_condor_submit(config_name):
 
     with open(subfile,'w') as f:
 
-        submission_command = template.format(executable  = condor_executable_path,
-                                             script      = condor_executable_file,
+        submission_command = template.format(executable  = executable,
                                              config      = config_name,
                                              condor_path = con_path,
                                              log_name    = config_name.split('/')[-1].split('.ini')[0].split('config_')[-1],
@@ -42,8 +43,7 @@ user_name      = 'vasco.gennari'
 condor_memory  = 5
 condor_disk    = 1
 condor_threads = 10
-condor_executable_path = '/home/vasco.gennari/.conda/envs/icarogw_env/bin/python'
-condor_executable_file = '/home/vasco.gennari/icaroverse/icaroverse/icaroverse_runner.py'
+executable = shutil.which('iv_hierarchical_inference')
 
 # Set the specific directory for the runs
 directory    = '/home/vasco.gennari/icaroverse/config_files'

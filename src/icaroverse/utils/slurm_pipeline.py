@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+import shutil
 from argparse import ArgumentParser, ArgumentTypeError
 
 #SBATCH --tasks-per-node=1
@@ -19,7 +21,7 @@ template = """#!/bin/sh
 
 module load conda
 conda activate {conda_env}
-{executable} {script} --config-file {config} -n $SLURM_CPUS_PER_TASK
+{executable} --config-file {config} -n $SLURM_CPUS_PER_TASK
 """
 
 email_option_template = """
@@ -47,8 +49,7 @@ def activate_slurm_submit(config_name):
             time         = '{}-{}:{}:00'.format(slurm_time['days'], slurm_time['hours'], slurm_time['minutes']),
             email_option = email_option,
             conda_env    = conda_env,
-            executable   = slurm_executable_path,
-            script       = slurm_executable_file,
+            executable   = executable,
             config       = config_name
         )
 
@@ -69,8 +70,7 @@ slurm_cpus   = 4
 slurm_gpus   = 1
 slurm_memory = 8
 slurm_time   = {'days': 7, 'hours': 0, 'minutes': 0}
-slurm_executable_path = '/sps/virgo/USERS/vgennari/conda/envs/{conda_env}/bin/python'.format(conda_env=conda_env)
-slurm_executable_file = '/sps/virgo/USERS/vgennari/icaroverse/icaroverse/icaroverse_runner.py'
+executable = shutil.which('iv_hierarchical_inference')
 
 # Handling request of CPU / GPU jobs (CC-IN2P3)
 available = ['v100', 'h100']

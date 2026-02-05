@@ -1,4 +1,7 @@
-import os, sys, configparser
+import os
+import sys
+import configparser
+import shutil
 from optparse import OptionParser
 
 
@@ -18,7 +21,7 @@ template = """#!/bin/sh
 
 module load conda
 conda activate {conda_env}
-{executable} {script} --config-file {config} -n $SLURM_CPUS_PER_TASK
+{executable} --config-file {config} -n $SLURM_CPUS_PER_TASK
 """
 
 email_option_template = """
@@ -45,8 +48,7 @@ def activate_slurm_submit(pars):
             time                = '{}-{}:{}:00'.format(pars['slurm_time']['days'], pars['slurm_time']['hours'], pars['slurm_time']['minutes']),
             email_option        = email_option,
             conda_env           = pars['conda_env'],
-            executable          = pars['slurm_python_path'],
-            script              = pars['slurm_executable_file'],
+            executable          = pars['executable'],
             config              = pars['config_filepath']
         )
 
@@ -122,8 +124,7 @@ pars = {
     'slurm_memory' : 8,
     'slurm_time'   : {'days': 0, 'hours': 8, 'minutes': 0},
 }
-pars['slurm_python_path']     = '/sps/virgo/USERS/tbertheas/conda/envs/{conda_env}/bin/python'.format(conda_env=pars['conda_env'])
-pars['slurm_executable_file'] = '/sps/virgo/USERS/tbertheas/icaroverse/icaroverse/parameter_estimation/bilby_pipeline.py'
+pars['executable'] = shutil.which('iv_parameter_estimation')
 
 # MAIN INPUT: Set the directory where the population is stored
 pars['population_dir_path']   = 'path_to_population_directory'
