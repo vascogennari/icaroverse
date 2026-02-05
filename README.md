@@ -32,7 +32,7 @@ To get started with the package, follow the steps below.
      ```bash
      icaroverse --generate-events config_file_population.ini
      ```
-   * This generates a population of ~50 observed events in ~1 minute.
+   * This generates a population of ~50 detected events in a few seconds.
 
 2. Estimate the detectors’ sensitivity
    - Update the PSD path in the configuration file (it should point to the package directory).
@@ -40,7 +40,7 @@ To get started with the package, follow the steps below.
      ```bash
      icaroverse --generate-injections config_file_injections.ini
      ```
-   * This generates a set of ~10⁴ detected events in ~10 minutes.
+   * This generates a set of ~$10^3$ detected events in ~2 minutes.
 
 3. Run the hierarchical inference with `icarogw`
    - Update the population and injections paths in the configuration file (using the outputs from the previous steps).
@@ -58,7 +58,7 @@ To make the simulation fully realistic, you can provide `icarogw` with parameter
      ```bash
      icaroverse --parameter-estimation config_file_PE.ini
      ```
-   * This generates posterior samples for the observed events using `bilby` in ~1 hour.
+   * This generates posterior samples for the observed events using `bilby`.
    - Feed these posterior samples into Step 3 and set `true-values = 0` in the configuration file.
 
 You can change the population model and population parameters directly in the configuration file.
