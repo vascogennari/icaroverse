@@ -1,10 +1,5 @@
 # icaroverse
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build](https://img.shields.io/github/actions/workflow/status/vascogennari/icaroverse/ci.yml?branch=main)](https://github.com/vascogennari/icaroverse/actions)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](#-contributing)
-
 **icaroverse** is a flexible and extensible framework for automating **gravitational-wave population and cosmological inference** with [`icarogw`](https://github.com/simone-mastrogiovanni/icarogw).
 
 It provides an end-to-end workflow to:  
