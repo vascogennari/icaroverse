@@ -17,7 +17,7 @@ requires-python = ">= 3.12"
 
 dependencies = [
   # Numpy and friends
-  "numpy",
+  "numpy<2.4.0",  # This is due to a bug in icarogw
   "scipy",
   "pandas",
   "matplotlib",
