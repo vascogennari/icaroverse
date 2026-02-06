@@ -112,8 +112,8 @@ If you use `icaroverse` in your research or publications, please cite the packag
 
 ```bibtex
 @software{icaroverse,
-  author       = {Your Name and Collaborators},
-  title        = {icaroverse: A toolkit for ...},
+  author       = {Gennari, Vasco and Bertheas, Tom and Dubois, Mathieu},
+  title        = {icaroverse},
   year         = {2025},
   publisher    = {GitHub},
   url          = {https://github.com/vascogennari/icaroverse},
