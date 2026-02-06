@@ -56,19 +56,26 @@ To run some example, follow the steps below:
 ### Optional: Fully realistic simulations
 
 To make the simulation fully realistic, you can provide `icarogw` with parameter estimation results for individual events.
-   - Generate the parameter estimation config file with:
+   - Generate the parameter estimation config files for each event of your simulated population with:
      ```bash
-     iv_generate_pe_configs -d output_of_step_1
+     iv_generate_pe_configs -d output_directory_of_step_1
      ```
-   - Update the path in the configuration file to point to the output of Step 1.
-   - Run the configuration file with:
+   - Run parameter estimation for each eevnt with the previously generated config files (files names are given as examples here, they should in practice depend of the name of `output_directory_of_step_1`). Note that this step has not been callibrated for example use, so running PE on the events given in example may take hours.
+     ```bash
+     iv_parameter_estimation --config output_directory_of_step_1/parameter_estimation/config_file_PE_event_0000.ini
+     iv_parameter_estimation --config output_directory_of_step_1/parameter_estimation/config_file_PE_event_0001.ini
+     ...
+     iv_parameter_estimation --config output_directory_of_step_1/parameter_estimation/config_file_PE_event_0050.ini
+     ```
+     A calibrated example for parameter estimation which runs in less than $\sim 10$ min is available by running:
      ```bash
      iv_parameter_estimation --config config_file_PE.ini
      ```
-   - Combine the results:
+   - Combine the results from as many populations you generated in a single files:
      ```bash
-     iv_combine_pe_posteriors -d output_of_step_1 -o output_of_previous_step
+     iv_combine_pe_posteriors -d output_directory_1_of_step_1 ... output_directory_N_of_step_1 -o where_to_store_the_combined_files
      ```
+     Note that in most cases, you will only pass one `output_directory_1_of_step_1`-like argument to the -d option.
    * This generates posterior samples for the observed events using `bilby`.
    - Feed these posterior samples into Step 3 and set `true-values = 0` in the configuration file.
 
