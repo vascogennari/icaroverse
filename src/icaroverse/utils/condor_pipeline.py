@@ -39,15 +39,15 @@ def activate_condor_submit(config_name):
     os.system('condor_submit -batch-name {} {}'.format(subfile.split('/')[-1].split('submit_')[-1].split('.sub')[0], subfile))
 
 # ---------------------------------------------------------------------- #
-user_name      = 'vasco.gennari'
+user_name      = 'albert.einstein'
 condor_memory  = 5
 condor_disk    = 1
 condor_threads = 10
 executable = shutil.which('iv_hierarchical_inference')
 
 # Set the specific directory for the runs
-directory    = '/home/vasco.gennari/icaroverse/config_files'
-subdirectory = 'tmp'
+directory    = 'path_to_config_files_directory'
+subdirectory = ''
 # ---------------------------------------------------------------------- #
 
 sub_path = os.path.join(directory, 'submission_files')

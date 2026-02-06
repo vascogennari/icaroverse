@@ -84,8 +84,8 @@ else:
     raise ArgumentTypeError(f"Invalid GPU type: {args.gpu}. Choose from {available + ["any"]}.")
 
 # Set the specific directory for the runs
-directory    = '/sps/virgo/USERS/vgennari/icaroverse/config_files/GWTC-4'
-subdirectory = 'splines'
+directory    = 'path_to_config_files_directory'
+subdirectory = ''
 # ---------------------------------------------------------------------- #
 
 sub_path   = os.path.join(directory, 'submission_files')
