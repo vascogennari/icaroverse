@@ -80,12 +80,11 @@ To make the simulation fully realistic, you can provide `icarogw` with parameter
    - Feed these posterior samples into Step 3 and set `true-values = 0` in the configuration file.
 
 You can change the population model and population parameters directly in the configuration file.
-All available options are documented here.
 
 
-## Documentation
+## Documentation :construction:
 
-Detailed documentation on package usage can be found here.
+The documentation is under construction. Please be patient!
 
 
 ## Contribute
