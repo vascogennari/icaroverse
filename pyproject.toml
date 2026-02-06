@@ -1,0 +1,54 @@
+[build-system]
+requires = [
+    "setuptools >= 80",
+    "setuptools-scm>=8"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "icaroverse"
+dynamic = ["version"]
+
+description = "A flexible and extensible framework for automating gravitational-wave population and cosmological inference with icarogw"
+
+readme = "README.md"
+
+requires-python = ">= 3.12"
+
+dependencies = [
+  # Numpy and friends
+  "numpy<2.4.0",  # This is due to a bug in icarogw
+  "scipy",
+  "pandas",
+  "matplotlib",
+  # Our workhorses
+  "icarogw @ git+https://github.com/simone-mastrogiovanni/icarogw.git",
+  "nessai-bilby",
+  # Other (we should probably clean this)
+  "tqdm",
+  "scikit-learn",
+  "seaborn",
+]
+
+[project.optional-dependencies]
+# If you want to use lisabeta for SNR
+lisabeta_snr = [
+  "lisabeta @ git+https://gitlab.in2p3.fr/marsat/lisabeta.git"
+]
+
+[project.scripts]
+iv_generate_events        = "icaroverse.generate_events.generate_events:main"
+iv_parameter_estimation   = "icaroverse.parameter_estimation.parameter_estimation:main"
+iv_combine_pe_posteriors  = "icaroverse.parameter_estimation.combine_pe_posteriors:main"
+iv_generate_pe_configs    = "icaroverse.parameter_estimation.generate_pe_configs:main"
+iv_hierarchical_inference = "icaroverse.hierarchical_inference.hierarchical_inference:main"
+
+[tool.setuptools_scm]
+version_file = "src/icaroverse/_version.py"
+parentdir_prefix_version = "icaroverse-"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+data = ["*.txt"]

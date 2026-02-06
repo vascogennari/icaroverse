@@ -19,26 +19,34 @@ In addition, dedicated submodules support:
 
 ## Installation
 
-_Missing_
+To install the package, clone the git repository and then run:
+```
+pip install .
+```
 
+If you want to develop the package, you can do an editable installation:
+```
+pip install -e .
+```
 
 ## Usage
 
-To get started with the package, follow the steps below.
+### Getting started
+
+The package comes with some example configuration files in folder `example_config_files/`.
+To run some example, follow the steps below:
 
 1. Generate LVK-like synthetic data
-   - Update the PSD path in the configuration file (it should point to the package directory).
    - Run the configuration file with:
      ```bash
-     icaroverse --generate-events config_file_population.ini
+     iv_generate_events --config example_config_files/config_population_Powerlaw-Gaussian.ini
      ```
    * This generates a population of $\sim 50$ detected events in a few seconds.
 
 2. Estimate the detectors’ sensitivity
-   - Update the PSD path in the configuration file (it should point to the package directory).
    - Run the configuration file with:
      ```bash
-     icaroverse --generate-injections config_file_injections.ini
+     iv_generate_events --config-file example_config_files/config_injections_Powerlaw.ini
      ```
    * This generates a set of $\sim 10^3$ detected events in $\sim 2$ minutes.
 
@@ -46,17 +54,25 @@ To get started with the package, follow the steps below.
    - Update the population and injections paths in the configuration file (using the outputs from the previous steps).
    - Run the configuration file with:
      ```bash
-     icaroverse --runner config_file_inference.ini
+     iv_hierarchical_inference --config-file example_config_files/config_Powerlaw-Gaussian.ini
      ```
    * This step generates posterior samples for the population parameters in $\sim 5$ minutes, along with automatic diagnostic plots.
 
 ### Optional: Fully realistic simulations
 
 To make the simulation fully realistic, you can provide `icarogw` with parameter estimation results for individual events.
+   - Generate the parameter estimation config file with:
+     ```bash
+     iv_generate_pe_configs -d output_of_step_1
+     ```
    - Update the path in the configuration file to point to the output of Step 1.
    - Run the configuration file with:
      ```bash
-     icaroverse --parameter-estimation config_file_PE.ini
+     iv_parameter_estimation --config config_file_PE.ini
+     ```
+   - Combine the results:
+     ```bash
+     iv_combine_pe_posteriors -d output_of_step_1 -o output_of_previous_step
      ```
    * This generates posterior samples for the observed events using `bilby`.
    - Feed these posterior samples into Step 3 and set `true-values = 0` in the configuration file.
