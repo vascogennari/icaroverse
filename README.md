@@ -106,7 +106,9 @@ Contributions are welcome and greatly appreciated! If you’d like to improve th
 We are happy to review pull requests and provide feedback. Feel free to open an issue first if you’d like to discuss an idea before implementing it.
 
 
-## Citation
+## License and Citation
+
+`icaroverse` is distributed under the EUROPEAN UNION PUBLIC LICENCE v. 1.2. See the [LICENSE file](./LICENSE).
 
 If you use `icaroverse` in your research or publications, please cite the package as follows:
 
