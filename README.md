@@ -35,7 +35,7 @@ If you want to install a different version (for instance a fork or a different b
 If you want to use [`lisabeta`](https://gitlab.in2p3.fr/marsat/lisabeta) for SNR computation, use:
 
 ```bash
-pip install .[lisabeta]
+pip install .[lisabeta_snr]
 ```
 
 Note that at this point, installation of `lisabeta` is a bit tricky.
