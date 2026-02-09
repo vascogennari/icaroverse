@@ -21,7 +21,7 @@ pip install .
 
 If you want to develop the package, you can use an editable installation:
 ```
-pip install -e .
+pip install -e '.'
 ```
 
 ### Using a different version of `icarogw`
@@ -35,7 +35,7 @@ If you want to install a different version (for instance a fork or a different b
 If you want to use [`lisabeta`](https://gitlab.in2p3.fr/marsat/lisabeta) for SNR computation, use:
 
 ```bash
-pip install .[lisabeta]
+pip install '.[lisabeta_snr]'
 ```
 
 Note that at this point, installation of `lisabeta` is a bit tricky.
