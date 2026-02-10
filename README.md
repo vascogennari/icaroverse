@@ -21,7 +21,7 @@ pip install .
 
 If you want to develop the package, you can use an editable installation:
 ```
-pip install -e '.'
+pip install -e .
 ```
 
 ### Using a different version of `icarogw`
