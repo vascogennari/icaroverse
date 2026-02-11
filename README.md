@@ -50,14 +50,14 @@ To run some example, follow the steps below:
 1. Generate LVK-like synthetic data
    - Run the configuration file with:
      ```bash
-     iv_generate_events --config example_config_files/config_population_Powerlaw-Gaussian.ini
+     iv_generate_events --config example_config_files/config_population_LVK_BBH.ini
      ```
    * This generates a population of $\sim 50$ detected events in a few seconds.
 
 2. Estimate the detectors’ sensitivity
    - Run the configuration file with:
      ```bash
-     iv_generate_events --config-file example_config_files/config_injections_Powerlaw.ini
+     iv_generate_events --config-file example_config_files/config_injections_LVK_BBH.ini
      ```
    * This generates a set of $\sim 10^3$ detected events in $\sim 2$ minutes.
 
@@ -65,7 +65,7 @@ To run some example, follow the steps below:
    - Update the population and injections paths in the configuration file (using the outputs from the previous steps).
    - Run the configuration file with:
      ```bash
-     iv_hierarchical_inference --config-file example_config_files/config_Powerlaw-Gaussian.ini
+     iv_hierarchical_inference --config-file example_config_files/config_inference_LVK_BBH.ini
      ```
    * This step generates posterior samples for the population parameters in $\sim 5$ minutes, along with automatic diagnostic plots.
 
@@ -85,7 +85,7 @@ To make the simulation fully realistic, you can provide `icarogw` with parameter
      ```
      A calibrated example for parameter estimation which runs in less than $\sim 10$ min is available by running:
      ```bash
-     iv_parameter_estimation --config config_file_PE.ini
+     iv_parameter_estimation --config config_example_PE.ini
      ```
    - Combine the results from as many populations you generated in a single files:
      ```bash
