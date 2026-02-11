@@ -2,6 +2,7 @@ import os, sys, configparser, shutil, time, re
 from optparse import OptionParser
 from inspect import getmembers, isclass, signature
 import multiprocessing as mp
+from tqdm import tqdm
 
 import pickle, h5py, pandas as pd, json
 import icarogw, bilby, astropy
@@ -1037,12 +1038,30 @@ def main():
         df  = pd.DataFrame(tmp['posterior']['content'])
         priors_dict = tmp['priors']
 
-    # Save the evidence.
+    # Compute the effective prior volume and save the evidence.
+    if input_pars['correct-BF-Nsamples']:
+        failed = 0
+        for _ in tqdm(range(input_pars['correct-BF-Nsamples']), total=input_pars['correct-BF-Nsamples']):
+            sample = prior.sample(1)
+            likelihood.parameters = {key:sample[key][0] for key in sample.keys()}
+            if likelihood.log_likelihood() == float(xp.nan_to_num(-xp.inf)):
+                failed += 1
+        eff_prior_vol_fraction = 1 - failed/input_pars['correct-BF-Nsamples']
+        print('Effective volume: ', eff_prior_vol_fraction)
+    else:
+        eff_prior_vol_fraction = xp.nan
+
     with open('{}/log_evidence.txt'.format(input_pars['output']), 'w') as f:
-        f.write('{}\n'.format('# log_Z_base_e\tlog_Z_err\tmax_log_L'))
+        f.write('# {:<15} {:<17} {:<17} {:<17} {:<17}\n'.format("log_Z_base_e", "log_Z_err", "max_log_L", "eff_prior_vol", "log_eff_prior_vol"))
         log_evidence_err = round(tmp['log_evidence_err'], 2)
         if xp.isnan(tmp['log_evidence_err']): log_evidence_err = 0.1
-        f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), log_evidence_err, round(max(df['log_likelihood']), 2)))
+        f.write('{:17.2f} {:17.2f} {:17.2f} {:17.2e} {:17.2f}'.format(
+            tmp['log_evidence'], 
+            log_evidence_err, 
+            max(df['log_likelihood']), 
+            eff_prior_vol_fraction, 
+            xp.log(eff_prior_vol_fraction), 
+        ))
 
     # Control the effective number of injections on the maximum likelihood model.
     print('\n * Computing effective number of injections.')

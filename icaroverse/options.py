@@ -69,6 +69,7 @@ def InitialiseOptions(Config):
         'nparallel'                   : 1,
         'npool'                       : 10,
         'nessai-plot'                 : False,
+        'correct-BF-Nsamples'         : 0, 
 
         # Plots
         'N-points'                    : 500,
@@ -133,7 +134,7 @@ def InitialiseOptions(Config):
         if (key == 'sampler') or (key == 'print-method'):
             try: input_pars[key] = Config.get('sampler', key)
             except: pass
-        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps') or (key == 'threads') or (key == 'npool'):
+        if (key == 'nparallel') or (key == 'neffPE') or (key == 'neffINJ') or (key == 'nlive') or (key == 'queue-size') or (key == 'nwalkers') or (key == 'nsteps') or (key == 'ntemps') or (key == 'threads') or (key == 'npool') or (key == 'correct-BF-Nsamples'):
             try: input_pars[key] = Config.getint('sampler', key)
             except: pass
         if (key == 'loglike-var'):
@@ -438,6 +439,7 @@ usage = """
         neffPE                      [float]  Threshold on the number of effective PE samples per event contributing to the numerical evaluation of the likelihood. The likelihood is set to zero for the population samples bringing neff PE lower than this threshold, to ensure numerical stability. Default: 10.
         neffINJ                     [float]  Threshold on the number of effective injections contributing to the numerical evaluation of the likelihood. The likelihood is set to zero for the population samples bringing neff INJ lower than this threshold, to ensure numerical stability. If 'None', the threshold is set to four times the number of events. Default: None.
         loglike-var                 [float]  Threshold on the log-likelihood variance for the numerical evaluation of the likelihood. The likelihood is set to zero for the population samples bringing log-likehood variance lower than this threshold, to ensure numerical stability. If set to zero, the option is deactivated, otherwise it uses the float passed. If not zero, the option superseed the Neff PE and injections. Default: 0.
+        correct-BF-Nsamples         [int  ]  Number of samples to draw from the prior to estimate the effective prior volume where the likelihood is numerically stable. If 0, nothing is computed. Default: 0.
 
         nlive                       [int  ]  Number of live points used by the nested sampler. Option only available for Nested Samplers. Default: 500.
         print-method                [str  ]  Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
