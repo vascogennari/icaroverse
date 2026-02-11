@@ -50,7 +50,7 @@ To run some example, follow the steps below:
 1. Generate LVK-like synthetic data
    - Run the configuration file with:
      ```bash
-     iv_generate_events --config example_config_files/config_population_LVK_BBH.ini
+     iv_generate_events --config-file example_config_files/config_population_LVK_BBH.ini
      ```
    * This generates a population of $\sim 50$ detected events in a few seconds.
 
