@@ -22,7 +22,7 @@ dependencies = [
   "pandas",
   "matplotlib",
   # Our workhorses
-  "icarogw @ git+https://github.com/simone-mastrogiovanni/icarogw.git",
+  "icarogw @ git+https://github.com/vascogennari/icarogw-LISA.git",
   "nessai-bilby",
   # Other (we should probably clean this)
   "tqdm",
