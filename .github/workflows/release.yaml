@@ -1,0 +1,28 @@
+# This action creates a GitHub release when pushing a tag.
+# The pattern for tags is rather large to account for pre-release tags.
+# We can't use workflow_dispatch because softprops/action-gh-release needs a tag.
+# For now we only create an asset for example config files.
+# GitHub also creates a source release (with git archive).
+name: Create Release
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checking out project
+        uses: actions/checkout@v2
+
+      - name: Create archive of config files
+        run: |
+          zip -r example_config_files example_config_files/
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            example_config_files.zip

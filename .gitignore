@@ -1,3 +1,44 @@
+#
+# Project specific files
+#
+
+# setuptools-scm version file
+src/icaroverse/_version.py
+
+#
+# Apple-specific files from https://github.com/github/gitignore/blob/main/Global/macOS.gitignore
+#
+
+# General
+.DS_Store
+__MACOSX/
+.AppleDouble
+.LSOverride
+Icon[]
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+#
+# Standard python files from https://github.com/github/gitignore/blob/main/Python.gitignore
+#
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
