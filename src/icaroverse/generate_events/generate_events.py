@@ -75,7 +75,7 @@ def main():
     # --------------------------------- #
 
     # Set maximum simulated redshift
-    input_pars['bounds-z'] = [0., input_pars['zmax-simulations']]
+    input_pars['bounds-z'][1] = input_pars['zmax-simulations']
 
     # Set additional input parameters for icarogw_runner.
     input_pars['ref-cosmology'] = {'H0': 0., 'Om0': 0.} # Placeholder required by the wrappers initialisation, never used in this script.
