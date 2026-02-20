@@ -13,6 +13,11 @@ description = "A flexible and extensible framework for automating gravitational-
 
 readme = "README.md"
 
+license = "EUPL-1.2"
+license-files = [
+  "LICENSE"
+]
+
 requires-python = ">= 3.12"
 
 dependencies = [
@@ -22,7 +27,7 @@ dependencies = [
   "pandas",
   "matplotlib",
   # Our workhorses
-  "icarogw @ git+https://github.com/simone-mastrogiovanni/icarogw.git",
+  "icarogw @ git+https://github.com/vascogennari/icarogw-LISA.git",
   "nessai-bilby",
   # Other (we should probably clean this)
   "tqdm",

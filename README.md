@@ -24,12 +24,6 @@ If you want to develop the package, you can use an editable installation:
 pip install -e .
 ```
 
-### Using a different version of `icarogw`
-
-We currently use the `master` branch of `icarogw` from https://github.com/simone-mastrogiovanni/icarogw.
-
-If you want to install a different version (for instance a fork or a different branch), you can do this by installing it **before** icaroverse (in the same environment).
-
 ### Use lisabeta
 
 If you want to use [`lisabeta`](https://gitlab.in2p3.fr/marsat/lisabeta) for SNR computation, use:
