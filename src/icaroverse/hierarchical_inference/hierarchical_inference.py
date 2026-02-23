@@ -12,6 +12,7 @@ else:                                import numpy as xp
 from numpy import minimum
 
 # Internal imports
+from . import IGWN_pointers
 from . import initialise
 from . import postprocessing
 
@@ -349,8 +350,7 @@ class SelectionEffects:
 
             print('\n\tUsing IGWN sensitivity estimates in real noise to evaluate selection effects.')
 
-            from IGWN_pointers import sensitivity_estimates
-            path = sensitivity_estimates[pars['catalog']].replace("~IGWN_injections_path", pars['injections-path'])
+            path = IGWN_pointers.sensitivity_estimates[pars['catalog']].replace("~IGWN_injections_path", pars['injections-path'])
             try: data_inj = h5py.File(path)
             except: raise ValueError('Could not open the file containing the injections for selection effects. Please verify that you have downloaded the IGWN sensitivity estimates and that the path is correct:\n{}'.format(sensitivity_estimates[pars['catalog']]))
             print('\n\t{}'.format(path))
@@ -503,12 +503,10 @@ class Data:
             # https://zenodo.org/records/8177023 for O3b events.
             # https://zenodo.org/records/17014085 for O4a events.
 
-            from IGWN_pointers import O1_O2_BBHs_FAR_1, O3_BBHs_FAR_1, O4a_BBHs_FAR_1
-
-            if   pars['catalog'] == 'GWTC-3':   catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1
-            elif pars['catalog'] == 'GWTC-4.0': catalog = O1_O2_BBHs_FAR_1 | O3_BBHs_FAR_1 | O4a_BBHs_FAR_1
-            elif pars['catalog'] == 'O3':       catalog = O3_BBHs_FAR_1
-            elif pars['catalog'] == 'O4a':      catalog = O4a_BBHs_FAR_1
+            if   pars['catalog'] == 'GWTC-3':   catalog = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1
+            elif pars['catalog'] == 'GWTC-4.0': catalog = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1 | IGWN_pointers.O4a_BBHs_FAR_1
+            elif pars['catalog'] == 'O3':       catalog = IGWN_pointers.O3_BBHs_FAR_1
+            elif pars['catalog'] == 'O4a':      catalog = IGWN_pointers.O4a_BBHs_FAR_1
             else:
                 raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, O3 or O4a.')
 
