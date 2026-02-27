@@ -38,7 +38,7 @@ dependencies = [
 [project.optional-dependencies]
 # If you want to use lisabeta for SNR
 lisabeta_snr = [
-  "lisabeta @ git+https://gitlab.in2p3.fr/marsat/lisabeta.git"
+  "lisabeta"
 ]
 
 [project.scripts]

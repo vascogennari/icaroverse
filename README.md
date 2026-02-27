@@ -32,8 +32,6 @@ If you want to use [`lisabeta`](https://gitlab.in2p3.fr/marsat/lisabeta) for SNR
 pip install '.[lisabeta_snr]'
 ```
 
-Note that at this point, installation of `lisabeta` is a bit tricky.
-
 ## Usage
 
 ### Getting started
