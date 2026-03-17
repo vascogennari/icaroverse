@@ -67,8 +67,9 @@ def save_combined(combined_results, batch, args):
     if 'all' in args.parameters:       pars_part = "_all"
     elif 'minimal' in args.parameters: pars_part = "_minimal" 
     else:                              pars_part = "_"+"-".join(list(args.parameters))
-    
-    combined_filename = f"combined-PE_batch-{batch:>02}{snr_part}{pars_part}.pickle"
+
+    size = len(combined_results[list(combined_results.keys())[0]])
+    combined_filename = f"combined-PE_batch-{size}-{batch:>02}{snr_part}{pars_part}.pickle"
     combined_filepath = os.path.join(args.out_dir, combined_filename)
     with open(combined_filepath, 'wb') as f:
         pickle.dump(combined_results, f, protocol = pickle.HIGHEST_PROTOCOL)
@@ -76,7 +77,7 @@ def save_combined(combined_results, batch, args):
     print(f"\n * Saved batch {batch}, with {len(combined_results[list(combined_results.keys())[0]])} events")
 
 
-def fill_combined(combined_results, batch, pop_dirpath, pars_to_keep, args):
+def fill_combined(combined_results, n_processed, batch, out_idx, pop_dirpath, pars_to_keep, args):
 
     pe_dirpath = os.path.join(pop_dirpath, "parameter_estimation")
     event_dirname_list = [event_dirname for event_dirname in os.listdir(pe_dirpath) if 'event' in event_dirname and check_format(event_dirname, args.ev_filename_format)]
@@ -93,36 +94,40 @@ def fill_combined(combined_results, batch, pop_dirpath, pars_to_keep, args):
     
     batch_size = args.batch_size if args.batch_size is not None else np.inf
 
+    if combined_results is None: 
+        combined_results = {rename(par): {} for par in pars_to_keep }
+
     for i, event_dirname in tqdm(enumerate(sorted(event_dirname_list)), desc="Looping over events", unit=" event", total=N_events):
 
-        ev_idx = int(re.search("event_(?P<id>[0-9]+)", event_dirname).group('id'))
-        if snr_arr[ev_idx] < args.snr_threshold:
-            continue
-
         try:
-            event_result_filepath = os.path.join(pe_dirpath, event_dirname, "sampler/label_result.json")
-            with open(event_result_filepath, 'r') as f:
-                event_posterior_samples_dict = json.load(f)['posterior']['content']
+            ev_idx = int(re.search("event_(?P<id>[0-9]+)", event_dirname).group('id'))
 
-            for par in (set(event_posterior_samples_dict.keys()) & pars_to_keep):
+            if snr_arr[ev_idx] > args.snr_threshold:
+                event_result_filepath = os.path.join(pe_dirpath, event_dirname, "sampler/label_result.json")
+            
+                with open(event_result_filepath, 'r') as f:
+                    event_posterior_samples_dict = json.load(f)['posterior']['content']
+            
+                for par in (set(event_posterior_samples_dict.keys()) & pars_to_keep):
+                    combined_results[rename(par)][out_idx] = np.array(event_posterior_samples_dict[par])
 
-                if rename(par) not in combined_results:
-                    combined_results[rename(par)] = {i: np.array(event_posterior_samples_dict[par])}
-                else:
-                    combined_results[rename(par)][i] = np.array(event_posterior_samples_dict[par])
+            n_processed += 1
 
         except FileNotFoundError:
             print(f"{event_dirname} has no available result.")
             continue
 
-        if len(combined_results) > 0 and len(combined_results[list(combined_results.keys())[0]]) >= batch_size:
+        if n_processed >= batch_size:
 
             save_combined(combined_results, batch, args)
 
-            combined_results = {}
+            combined_results = {rename(par): {} for par in pars_to_keep }
+            n_processed = 0
             batch += 1
-    
-    return combined_results, batch
+
+        out_idx += 1
+
+    return combined_results, n_processed, batch, out_idx
 
 
 def main():
@@ -131,7 +136,7 @@ def main():
     parser.add_argument('-d', '--pop_dirs', nargs='+', default = [])
     parser.add_argument('-o', '--out_dir', type=str, default = None)
     parser.add_argument(      '--ev_filename_format', type=int, default = 4)
-    parser.add_argument('-n', '--batch_size', type=int, default = None)
+    parser.add_argument('-n', '--batch_size', type=int, default = None, help="All the events in the population directories given in `pop_dirs` will be concatenated (in the same order as in `pop_dirs`) in a single list then divided into batches of size `batch_size`. Note that potential further SNR restrictions are applied afterwards within batches, so saved files may eventually contain less than `batch_size` events.")
     parser.add_argument('-s', '--snr_restriction', action="store_true", dest='snr_restriction', default = False)
     parser.add_argument('-t', '--snr_threshold', type=float, default = 12.)
     parser.add_argument('-p', '--parameters', nargs='+', default = 'all', help="Options: mass, distance, spin, skyloc, sampling, detector, other (options are stackable), all (equivalent to all of the previous ones stacked), minimal (saves only m1d, m2d, dL)")
@@ -143,12 +148,13 @@ def main():
     pars_to_keep = pars_to_keep_fun(*args.parameters)
     print("\n * Only the value of the following parameters for each PE sample will be saved in the resulting file:\n\n\t"+"\n\t".join(sorted(list(pars_to_keep)))+"\n")
 
-    combined_results = {}
-    batch = 1
+    combined_results, n_processed, batch, out_idx = None, 0, 1, 0
     for pop_dirpath in args.pop_dirs:
-        combined_results, batch = fill_combined(
+        combined_results, n_processed, batch, out_idx = fill_combined(
             combined_results=combined_results, 
+            n_processed=n_processed, 
             batch=batch, 
+            out_idx=out_idx, 
             pop_dirpath=pop_dirpath, 
             pars_to_keep=pars_to_keep, 
             args=args, 
