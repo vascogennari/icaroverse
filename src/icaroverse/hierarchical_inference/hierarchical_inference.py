@@ -32,19 +32,19 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             return wrap(zmax=zmax)
     elif transition == None:
         if order == None:
-            sig = signature(wrap)
+            # get the call signature of the (stationary) mass wrapper (in this block, one should not be asking for a redshift evolving wrapper)
+            sig = signature(wrap) 
             if not input_wrapper == None:
                 return wrap(input_wrapper)
-            # elif wrap_name == 'PowerLaw' or wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian' or wrap_name == 'massprior_3PL' or wrap_name == 'massprior_3PL_global_mmax' or wrap_name == 'massprior_4PL_global_mmax' or wrap_name == 'massprior_3PL_global_mmax_dummy_mmin':
-            elif "flag_powerlaw_smoothing" in sig.parameters:
+            elif "flag_powerlaw_smoothing" in sig.parameters: # if the wrapper needs a flag_powerlaw_smoothing arg, then we must pass it
                 return wrap(flag_powerlaw_smoothing = smoothing)
-            elif "flag_smoothing" in sig.parameters:
+            elif "flag_smoothing" in sig.parameters: # same for a flag_smoothing arg. Note that flag_powerlaw_smoothing and flag_smoothing are assumed to be mutually exclusive in the list of available wrappers: there should not be a wrapper asking for both.
                 return wrap(flag_smoothing = smoothing)
             elif 'Spline' in wrap_name:
                 print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
                 return wrap(n_basis = n_splines, spacing = spacing)
             else:
-                return wrap()
+                return wrap() # if the wrapper is a default icarogw wrapper (no arg at init), then we can simply return it.
         else:
             # GaussianRedshift-order-X model.
             return wrap(order = order)

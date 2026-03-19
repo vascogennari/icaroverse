@@ -56,7 +56,6 @@ def InitialiseOptions(Config):
         'model-cosmology'               : 'FlatLambdaCDM',
         'model-bkg-cosmo'               : 'FlatLambdaCDM',
 
-        'zmax'                          : 20.,
         'redshift-transition'           : 'linear',
         'redshift-mixture'              : True,
         'low-smoothing'                 : False,
