@@ -10,6 +10,8 @@ def InitialiseOptions(Config):
         'output'                       : '',
         'screen-output'                : 0,
         'event-from-simulation'        : 0,
+        'plot-waveform'                : False,
+        'plot-skymap'                  : False,
 
         # model
         'event-parameters'             : {},
@@ -51,7 +53,7 @@ def InitialiseOptions(Config):
         if (key == 'output'):
             try: input_pars[key] = Config.get('input', key)
             except: pass
-        if (key == 'screen-output') or (key == 'event-from-simulation'):
+        if (key == 'screen-output') or (key == 'event-from-simulation') or (key == 'plot-waveform') or (key == 'plot-skymap'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
 
@@ -180,6 +182,9 @@ usage = """
 
         output                        [str  ] Path where the event PE output is saved. Default: 'parameter_estimation'.
         screen-output                 [bool ] Flag to deviate the standard output to screen. Default: 0.
+        event-from-simulation         [bool ] True if the event was created with icaroverse simulation pipeline. If True, accepts m1d, m2d, dL entries in event-parameters dict, instead of the mass_1, mass_2, luminosity_distance normally required for bilby's waveform generator. Default: False.
+        plot-waveform                 [bool ] If True, plots the waveform in each detector at the end of the sampling procedure. Default: False
+        plot-skymap                   [bool ] If True, plots the skymap at the end of the sampling procedure. Default: False
 
     # ----- #
     # model #

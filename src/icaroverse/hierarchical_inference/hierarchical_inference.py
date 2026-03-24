@@ -1,7 +1,8 @@
 import os, sys, configparser, shutil, time, re
 from optparse import OptionParser
-from inspect import getmembers, isclass
+from inspect import getmembers, isclass, signature
 import multiprocessing as mp
+from tqdm import tqdm
 
 import pickle, h5py, pandas as pd, json
 import icarogw, bilby, astropy
@@ -31,16 +32,19 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             return wrap(zmax=zmax)
     elif transition == None:
         if order == None:
+            # get the call signature of the (stationary) mass wrapper (in this block, one should not be asking for a redshift evolving wrapper)
+            sig = signature(wrap) 
             if not input_wrapper == None:
-
                 return wrap(input_wrapper)
-            elif wrap_name == 'PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_PowerLaw_PowerLaw' or wrap_name == 'PowerLaw_PowerLaw_Gaussian':
+            elif "flag_powerlaw_smoothing" in sig.parameters: # if the wrapper needs a flag_powerlaw_smoothing arg, then we must pass it
                 return wrap(flag_powerlaw_smoothing = smoothing)
+            elif "flag_smoothing" in sig.parameters: # same for a flag_smoothing arg. Note that flag_powerlaw_smoothing and flag_smoothing are assumed to be mutually exclusive in the list of available wrappers: there should not be a wrapper asking for both.
+                return wrap(flag_smoothing = smoothing)
             elif 'Spline' in wrap_name:
                 print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
                 return wrap(n_basis = n_splines, spacing = spacing)
             else:
-                return wrap()
+                return wrap() # if the wrapper is a default icarogw wrapper (no arg at init), then we can simply return it.
         else:
             # GaussianRedshift-order-X model.
             return wrap(order = order)
@@ -128,12 +132,29 @@ class Wrappers:
         mp, ms = pars['model-primary'], pars['model-secondary']
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
-        models = {
+        self.m1_models = {
             'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw':                                                                  {'wrap name': 'PowerLaw_PowerLaw_PowerLaw',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax':                                                                                 {'wrap name': 'massprior_3PL_globmax',                                                                       'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointmin':                                                                        {'wrap name': 'massprior_3PL_globmax_jointmin',                                                              'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointsmooth':                                                                     {'wrap name': 'massprior_3PL_globmax_jointsmooth',                                                           'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointmax':                                                                        {'wrap name': 'massprior_3PL_globmax_jointmax',                                                              'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointminsmooth':                                                                  {'wrap name': 'massprior_3PL_globmax_jointminsmooth',                                                        'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointminmax':                                                                     {'wrap name': 'massprior_3PL_globmax_jointminmax',                                                           'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointsmoothmax':                                                                  {'wrap name': 'massprior_3PL_globmax_jointsmoothmax',                                                        'z evolution': False, 'smoothing': 'component-wise'},
+            '3PL_globmax_jointminsmoothmax':                                                               {'wrap name': 'massprior_3PL_globmax_jointminsmoothmax',                                                     'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP':                                                                                        {'wrap name': 'massprior_MLTP',                                                                              'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointmin':                                                                               {'wrap name': 'massprior_MLTP_jointmin',                                                                     'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointsmooth':                                                                            {'wrap name': 'massprior_MLTP_jointsmooth',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointmax':                                                                               {'wrap name': 'massprior_MLTP_jointmax',                                                                     'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointminsmooth':                                                                         {'wrap name': 'massprior_MLTP_jointminsmooth',                                                               'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointminmax':                                                                            {'wrap name': 'massprior_MLTP_jointminmax',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointsmoothmax':                                                                         {'wrap name': 'massprior_MLTP_jointsmoothmax',                                                               'z evolution': False, 'smoothing': 'component-wise'},
+            'MLTP_jointminsmoothmax':                                                                      {'wrap name': 'massprior_MLTP_jointminsmoothmax',                                                            'z evolution': False, 'smoothing': 'component-wise'},
+            '4PL_global_mmax':                                                                             {'wrap name': 'massprior_4PL_global_mmax',                                                                   'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-PowerLaw-PowerLaw':                                                         {'wrap name': 'PowerLaw_PowerLaw_PowerLaw_PowerLaw',                                                         'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-PowerLaw-Gaussian':                                                                  {'wrap name': 'PowerLaw_PowerLaw_Gaussian',                                                                  'z evolution': False, 'smoothing': 'component-wise'},
             'PowerLaw-GaussianRedshiftLinear':                                                             {'wrap name': 'PowerLaw_GaussianRedshiftLinear',                                                             'z evolution': True,  'smoothing': 'component-wise'},
@@ -160,7 +181,7 @@ class Wrappers:
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
-        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+        icarogw_models = [m for m in self.m1_models if self.m1_models[m]['wrap name'] in available_icarogw_models]
 
         order = -1
         search = re.search("GaussianRedshift-order-(?P<order>[0-9]+)", mp)
@@ -168,22 +189,22 @@ class Wrappers:
 
         if mp in icarogw_models:
             # Non-evolving models.
-            if   (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'global':
-                w = get_wrapper(models[mp]['wrap name'])
+            if   (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'global':
+                w = get_wrapper(self.m1_models[mp]['wrap name'])
                 if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
             elif 'Splines' in mp:
-                w = get_wrapper(models[mp]['wrap name'], n_splines = pars['splines-number'], spacing = pars['spacing'])
-            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'component-wise':
-                w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing)
-            elif (not models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
-                w = get_wrapper(models[mp]['wrap name'])
+                w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = pars['splines-number'], spacing = pars['spacing'])
+            elif (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'component-wise':
+                w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing)
+            elif (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'included':
+                w = get_wrapper(self.m1_models[mp]['wrap name'])
             # Evolving models.
-            elif (    models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
-                w = get_wrapper(models[mp]['wrap name'],                        order = order,                                                 )
-            elif (    models[mp]['z evolution']) and models[mp]['smoothing'] == 'included':
-                w = get_wrapper(models[mp]['wrap name'],                                       transition = z_transition                       )
-            elif (    models[mp]['z evolution']):
-                w = get_wrapper(models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
+            elif (    self.m1_models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
+                w = get_wrapper(self.m1_models[mp]['wrap name'],                        order = order,                                                 )
+            elif (    self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'included':
+                w = get_wrapper(self.m1_models[mp]['wrap name'],                                       transition = z_transition                       )
+            elif (    self.m1_models[mp]['z evolution']):
+                w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
         # Unknown model
         else:
             raise ValueError("Unknown model for the Primary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(mp, "\n\t".join(icarogw_models)))
@@ -192,26 +213,31 @@ class Wrappers:
 
     def SecondaryMass(self, pars, m1w = None):
 
-        ms = pars['model-secondary']
+        mp, ms = pars['model-primary'], pars['model-secondary']
         single_mass, smoothing = pars['single-mass'], pars['low-smoothing']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
-        models = {
-            'Mass2-PowerLaw':     {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
-            'MassRatio-Gaussian': {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
-            'MassRatio-PowerLaw': {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
-            'MassRatio-Gamma':    {'wrap name': 'Gamma',                     'var': 'q' }, 
-            'MassRatio-Beta':     {'wrap name': 'Beta',                      'var': 'q' },
+        self.m2_models = {
+            'Mass2-PowerLaw':         {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
+            'Mass2-PowerLaw-pairing': {'wrap name': 'm1m2_paired',               'var': 'm2'},
+            'MassRatio-Gaussian':     {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
+            'MassRatio-PowerLaw':     {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
+            'MassRatio-Gamma':        {'wrap name': 'Gamma',                     'var': 'q' }, 
+            'MassRatio-Beta':         {'wrap name': 'Beta',                      'var': 'q' },
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
-        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+        icarogw_models = [m for m in self.m2_models if self.m2_models[m]['wrap name'] in available_icarogw_models]
 
         if single_mass:
             print('\t * Skipping secondary mass wrapper')
             w = None
         elif ms in icarogw_models:
-            if   models[ms]['var'] == 'm2': w = get_wrapper(models[ms]['wrap name'] + '_lowpass'*smoothing, input_wrapper = m1w)
-            elif models[ms]['var'] == 'q':  w = get_wrapper(models[ms]['wrap name']                                            )
+            if   self.m2_models[ms]['var'] == 'm2': 
+                if 'pairing' in ms: smoothing_wrap_name_extension = ''
+                else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
+                w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
+            elif self.m2_models[ms]['var'] == 'q':  
+                w = get_wrapper(self.m2_models[ms]['wrap name']                                            )
         else:
             raise ValueError("Unknown model for the Secondary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
         return w
@@ -760,6 +786,20 @@ class LikelihoodPrior:
                                                                maximum = xp.inf),
                     'print':       "\t[ mmin_{p} < mmax_{p} for peaks p ] (PL minmax ordering).",
                 },
+                'mmin_mmin_a_ordering': {
+                    'pars':        ['mmin_a', 'mmin'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mmin_a > mmin ]",
+                },
+                'mmin_m1min_ordering': {
+                    'pars':        ['m1min', 'mmin'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ m1min > mmin ]",
+                },
             }
 
             # MD redundancy constraint
@@ -779,7 +819,7 @@ class LikelihoodPrior:
             # peak ordering constraints
             if pars['constraint_peak_ordering']:
                 # MLTP
-                if not pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian': 
+                if not (pars['model-primary'] == 'PowerLaw-Gaussian-Gaussian' or 'MLTP' in pars['model-primary']): 
                     constraints_dict.pop('MLTP_peak_ordering')
                 else:
                     pass
@@ -811,14 +851,25 @@ class LikelihoodPrior:
                 elif pars['model-primary'] == 'PowerLaw-PowerLaw-PowerLaw-PowerLaw': 
                     constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:4]
                     constraints_dict['nPL_minmax_ordering']['pars'] = constraints_dict['nPL_minmax_ordering']['pars'][:4*2]
+                elif '3PL_globmax' in pars['model-primary']: 
+                    constraints_dict.pop('nPL_minmax_ordering')
+                    constraints_dict['nPL_peak_ordering']['pars']   = constraints_dict['nPL_peak_ordering']['pars'][:3]
+                    if 'jointmin' in pars['model-primary']:
+                        constraints_dict['nPL_peak_ordering']['pars'] = [par if par != 'mmin_a' else 'mmin' for par in constraints_dict['nPL_peak_ordering']['pars']]
                 else: 
                     constraints_dict.pop('nPL_peak_ordering')
                     constraints_dict.pop('nPL_minmax_ordering')
+
             else:
                 constraints_dict.pop('MLTP_peak_ordering')
                 constraints_dict.pop('PL2G_peak_ordering')
                 constraints_dict.pop('nPL_peak_ordering')
                 constraints_dict.pop('nPL_minmax_ordering')
+
+            if not ('mmin_a' in w.population_parameters and 'mmin' in w.population_parameters and isinstance(dict_in['mmin_a'], list) and isinstance(dict_in['mmin'], list)):
+                constraints_dict.pop('mmin_mmin_a_ordering')
+            if not ('m1min' in w.population_parameters and 'mmin' in w.population_parameters and isinstance(dict_in['m1min'], list) and isinstance(dict_in['mmin'], list)):
+                constraints_dict.pop('mmin_m1min_ordering')
 
             # implementing the conversion function based on all the constraints that we kept
             def constraints_conversion_function(params):
@@ -986,12 +1037,30 @@ def main():
         df  = pd.DataFrame(tmp['posterior']['content'])
         priors_dict = tmp['priors']
 
-    # Save the evidence.
+    # Compute the effective prior volume and save the evidence.
+    if input_pars['correct-BF-Nsamples']:
+        failed = 0
+        for _ in tqdm(range(input_pars['correct-BF-Nsamples']), total=input_pars['correct-BF-Nsamples']):
+            sample = prior.sample(1)
+            likelihood.parameters = {key:sample[key][0] for key in sample.keys()}
+            if likelihood.log_likelihood() == float(xp.nan_to_num(-xp.inf)):
+                failed += 1
+        eff_prior_vol_fraction = 1 - failed/input_pars['correct-BF-Nsamples']
+        print('Effective volume: ', eff_prior_vol_fraction)
+    else:
+        eff_prior_vol_fraction = xp.nan
+
     with open('{}/log_evidence.txt'.format(input_pars['output']), 'w') as f:
-        f.write('{}\n'.format('# log_Z_base_e\tlog_Z_err\tmax_log_L'))
+        f.write('# {:<15} {:<17} {:<17} {:<17} {:<17}\n'.format("log_Z_base_e", "log_Z_err", "max_log_L", "eff_prior_vol", "log_eff_prior_vol"))
         log_evidence_err = round(tmp['log_evidence_err'], 2)
         if xp.isnan(tmp['log_evidence_err']): log_evidence_err = 0.1
-        f.write('{}\t{}\t\t{}'.format(round(tmp['log_evidence'], 2), log_evidence_err, round(max(df['log_likelihood']), 2)))
+        f.write('{:17.2f} {:17.2f} {:17.2f} {:17.2e} {:17.2f}'.format(
+            tmp['log_evidence'], 
+            log_evidence_err, 
+            max(df['log_likelihood']), 
+            eff_prior_vol_fraction, 
+            xp.log(eff_prior_vol_fraction), 
+        ))
 
     # Control the effective number of injections on the maximum likelihood model.
     print('\n * Computing effective number of injections.')

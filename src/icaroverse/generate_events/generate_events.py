@@ -74,8 +74,10 @@ def main():
     # Generate population or injections #
     # --------------------------------- #
 
+    # Set maximum simulated redshift
+    input_pars['bounds-z'][1] = input_pars['zmax-simulations']
+
     # Set additional input parameters for icarogw_runner.
-    input_pars['zmax'] = input_pars['icarogw-sim-z-max']
     input_pars['ref-cosmology'] = {'H0': 0., 'Om0': 0.} # Placeholder required by the wrappers initialisation, never used in this script.
 
     # Initialise the model wrappers.
@@ -226,11 +228,11 @@ def generate_injections(pars):
 
                 # Draw the luminosity distance.
                 if   pars['icarogw-sim-draw-dL'] == 'uniform-dL':
-                    dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+                    dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['zmax-simulations'])
                 elif pars['icarogw-sim-draw-dL'] == 'uniform-z':
-                    dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+                    dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['zmax-simulations'])
                 elif pars['icarogw-sim-draw-dL'] == 'uniform-volume':
-                    dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+                    dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['zmax-simulations'])
                 else:
                     raise ValueError('Unknown option for drawing the luminosity distance using icarogw.simulation. Exiting...')
 
@@ -433,11 +435,11 @@ def worker_generate_injection_parallel(lock, pid, inj_number, n_batches, samps_d
 
         # Draw the luminosity distance.
         if   pars['icarogw-sim-draw-dL'] == 'uniform-dL':
-            dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+            dL, pdf_dL = icarosim.generate_dL_inj_uniform(  Nsamp = int(pars['injections-number-bank']), zmax = pars['zmax-simulations'])
         elif pars['icarogw-sim-draw-dL'] == 'uniform-z':
-            dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+            dL, pdf_dL = icarosim.generate_dL_inj_z_uniform(Nsamp = int(pars['injections-number-bank']), zmax = pars['zmax-simulations'])
         elif pars['icarogw-sim-draw-dL'] == 'uniform-volume':
-            dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['icarogw-sim-z-max'])
+            dL, pdf_dL = icarosim.generate_dL_inj(          Nsamp = int(pars['injections-number-bank']), zmax = pars['zmax-simulations'])
         else:
             raise ValueError('Unknown option for drawing the luminosity distance using icarogw.simulation. Exiting...')
 
@@ -715,7 +717,7 @@ def get_distribution_samples(pars):
         else:
             if 'Redshift' in pars['model-primary']:
                 raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
-            pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m2w']) # Condition the secondary on the primary.
+            pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m1w']) # Condition the secondary on the primary.
             update_weights(pars['wrappers']['m2w'], pars['truths'])
             m1s, m2s = pars['wrappers']['m2w'].prior.sample(N_events)
             pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)

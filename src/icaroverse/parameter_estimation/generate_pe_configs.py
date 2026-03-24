@@ -111,6 +111,9 @@ def true_value_projected_spins(par, event_parameters, precession):
 config_template = """[input]
 output                        = {output}
 screen-output                 = {screen_output}
+plot-waveform                 = {plot_waveform}
+plot-skymap                   = {plot_skymap}
+
 
 [model]
 event-parameters              = {event_parameters}
@@ -146,6 +149,8 @@ def main():
     parser.add_argument(      '--marginalization',               type=str, default = None,              nargs="+", help="Parameters over which to marginalize the likelihood. Available: phase, time, distance, calibration (can stack multiple options). Default: None")
     parser.add_argument('-r', '--use_recorded_strain',                     default = False,             action="store_true", help="Flag to use saved strain data from detection pipeline, if there is any.")
     parser.add_argument('-f', '--fixed_parameters',              type=str, default = None,              nargs="+", help="Parameters to fix when running PE. Meta-options : all-but-mass-dist, all-but-mass-dist-incl. Default: None")
+    parser.add_argument(      '--plot_waveform',                           default = False,             action="store_true", help="Flag to plot waveform when sampling ends.")
+    parser.add_argument(      '--plot_skymap',                             default = False,             action="store_true", help="Flag to plot skymap when sampling ends.")
     # sampler
     parser.add_argument('-s', '--sampler',                       type=str, default = 'dynesty'        )
     parser.add_argument(      '--print_method',                  type=str, default = 'interval-60'    )
@@ -335,6 +340,8 @@ def main():
             output                        = event_subdir,
             screen_output                 = False,
             event_parameters              = event_parameters,
+            plot_waveform                 = args.plot_waveform,
+            plot_skymap                   = args.plot_skymap,
             strain_file                   = strain_record_filepath,
             priors                        = priors,
             mass_parameters_sampled       = args.mass_parameters_sampled,
