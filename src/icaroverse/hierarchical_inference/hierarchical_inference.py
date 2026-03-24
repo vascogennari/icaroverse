@@ -406,10 +406,16 @@ class SelectionEffects:
                 tmp = xp.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
                 ifarmax = xp.max(tmp, axis = 0)
 
+                if   pars['selection-effects-cut'] == 'snr' : selected_filt = (data_inj['snr'] >= pars['snr-cut' ])
+                elif pars['selection-effects-cut'] == 'ifar': selected_filt = (ifarmax         >= pars['ifar-cut'])
+                else:
+                    raise ValueError('Unknown option to compute the selection effects cut.')
+
                 inj_dict = {
                     'mass_1':              xp.array(data_inj['injections/mass1'][()]),
                     'mass_2':              xp.array(data_inj['injections/mass2'][()]),
-                    'luminosity_distance': xp.array(data_inj['injections/distance'][()])}
+                    'luminosity_distance': xp.array(data_inj['injections/distance'][()])
+                }
 
             elif pars['catalog'] == 'GWTC-4.0':
 
@@ -442,13 +448,14 @@ class SelectionEffects:
                 inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / inj_dict['mass_1']
                 prior *= inj_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
             elif pars['mass-parameters'] == 'Mc-q':
-                m1, m2 = inj_dict.pop('mass_2'), inj_dict.pop('mass_1')
+                m1, m2 = inj_dict.pop('mass_1'), inj_dict.pop('mass_2')
                 q = m2 / m1
                 Mc_over_m1 = xp.power(q, 3/5) * xp.power(1+q, -1/5)
                 Mc = Mc_over_m1 * m1
                 inj_dict['mass_ratio'] = q
                 inj_dict['chirp_mass'] = Mc
                 prior *= m1 / Mc_over_m1         # |J_(m1,m2)->(Mc,q)| = m1^2 / Mc, with Mc/m1 = q^3/5 / (1+q)^1/5
+
         # Use simulated injections.
         else:
 
@@ -472,7 +479,11 @@ class SelectionEffects:
                 'mass_1':              xp.array(data_inj['m1d']),
                 'mass_2':              xp.array(data_inj['m2d']),
                 'luminosity_distance': xp.array(data_inj['dL'])}
-            
+
+# =========================================================================================================
+#  T O   B E   I M P R O V E D   I S O L A T I N G   I N V E R S E   Q   v
+# =========================================================================================================
+
             if not pars['single-mass']:
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
                 if 'MassRatio' in pars['model-secondary'] and pars['mass-parameters'] != 'Mc-q':
@@ -494,6 +505,10 @@ class SelectionEffects:
                     if pars['inverse-mass-ratio']: prior *= m2 / Mc_red # |J_(m1,m2)->(Mc,q)| = m2^2 / Mc, with Mc/m2 = q^3/5 / (1+q)^1/5
                     else:                          prior *= m1 / Mc_red # |J_(m1,m2)->(Mc,q)| = m1^2 / Mc, with Mc/m1 = q^3/5 / (1+q)^1/5
 
+# =========================================================================================================
+#  T O   B E   I M P R O V E D   I S O L A T I N G   I N V E R S E   Q   ^
+# =========================================================================================================
+
             else:
                 # If only using one mass, remove the Jacobian contribution from the secondary.
                 # This operation depends on the injection prior used to generate the injections.
@@ -501,15 +516,14 @@ class SelectionEffects:
                 inj_dict.pop('mass_2')
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
-        if not pars['catalog'] == 'GWTC-4.0':
-            if   pars['selection-effects-cut'] == 'snr' : self.injections.update_cut(data_inj['snr'] >= pars['snr-cut' ])
-            elif pars['selection-effects-cut'] == 'ifar': self.injections.update_cut(ifarmax         >= pars['ifar-cut'])
-            else:
-                raise ValueError('Unknown option to compute the selection effects cut.')
-        else:
-            self.injections.update_cut(selected_filt)
+        self.injections.update_cut(selected_filt)
 
-        print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data['mass_1']), len(self.injections.injections_data_original['mass_1'])))
+        print(
+            '\n\tUsing {} injections out of {} to compute selection effects.'.format(
+                sum(selected_filt), 
+                len(selected_filt)
+            )
+        )
 
     def return_SelectionEffects(self):
         return self.injections
@@ -690,6 +704,10 @@ class Data:
 
                     if not pars['single-mass']:
 
+# =========================================================================================================
+#  T O   B E   I M P R O V E D   I S O L A T I N G   I N V E R S E   Q   v
+# =========================================================================================================
+
                         if pars['PE-prior-masses'] == 'm1-m2':
                             if (pars['mass-parameters'] != 'Mc-q') and ('MassRatio' not in pars['model-secondary']): #FIXME: handle everything with 'mass-parameters' 
                                 clean_dict(pos_dict, ['chirp_mass', 'mass_ratio'])
@@ -725,7 +743,11 @@ class Data:
                         
                         else:
                             raise ValueError("Unknown option for 'PE-prior-masses'.")
-                        
+
+# =========================================================================================================
+#  T O   B E   I M P R O V E D   I S O L A T I N G   I N V E R S E   Q   ^
+# =========================================================================================================
+
                         print("\n\t ##########################################################################")
                         print(  "\t Using PE samples with flat prior in Mc and INVERSE-q=m1/m2 NOT IMPLEMENTED")
                         print(  "\t 'PE-prior-masses' == 'Mc-q' refers to low mass ratio q=m2/m1")
