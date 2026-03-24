@@ -699,7 +699,7 @@ class Data:
                             elif (pars['mass-parameters'] != 'Mc-q'):
                                 prior *= pos_dict['mass_1'] / pos_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,qi)| = m1/qi^2, with qi = m1/m2.
                                 clean_dict(pos_dict, ['chirp_mass', 'mass_2'])
-                            else (not pars['inverse-mass-ratio']):
+                            elif (not pars['inverse-mass-ratio']):
                                 prior *= pos_dict['mass_1']**2 / pos_dict['chirp_mass'] # |J_(m1,m2)->(Mc,q)| = m1^2/Mc with q = m2/m1
                                 clean_dict(pos_dict, ['mass_1', 'mass_2'])
                             else:
