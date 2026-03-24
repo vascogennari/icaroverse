@@ -16,6 +16,7 @@ from numpy import minimum
 from . import IGWN_pointers
 from . import initialise
 from . import postprocessing
+from ..generate_events.snr_computation import clean_dict
 
 
 
@@ -686,29 +687,69 @@ class Data:
                     if pars['PE-prior-distance'] == 'dL3': 
                         prior *= data_evs['dL'][idx]**2 # PE prior uniform in comoving volume: p(dL) \propto dL^3.
 
-# ===========================================================================================================================
-#  T O   B E   M O D I F I E D    v
-# ===========================================================================================================================
 
                     if not pars['single-mass']:
-                        chirp_mass = (pos_dict['mass_1'] * pos_dict['mass_2'])**(3./5.) / (pos_dict['mass_1'] + pos_dict['mass_2'])**(1./5.)
-                        # Case of using component masses. If the prior is uniform in (m1,m2), we leave it flat.
-                        if not 'MassRatio' in pars['model-secondary']:
-                            if   pars['PE-prior-masses'] == 'Mc-q':
-                                if not pars['inverse-mass-ratio']: prior *= chirp_mass / pos_dict['mass_1']**2 # |J_(Mc,q)->(m1,m2)| = Mc/m1^2, with q = m2/m1.
-                                else:                              prior *= chirp_mass / pos_dict['mass_2']**2 # |J_(Mc,q)->(m1,m2)| = Mc/m2^2, with q = m1/m2.
 
-                        else: # Case of using mass ratio instead of the secondary mass.
-                            if not pars['inverse-mass-ratio']:
-                                if   pars['PE-prior-masses'] == 'm1-m2': prior *= pos_dict['mass_1']              # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
-                                elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1'] # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m2/m1.
+                        if pars['PE-prior-masses'] == 'm1-m2':
+                            if (pars['mass-parameters'] != 'Mc-q') and ('MassRatio' not in pars['model-secondary']): #FIXME: handle everything with 'mass-parameters' 
+                                clean_dict(pos_dict, ['chirp_mass', 'mass_ratio'])
+                            elif (pars['mass-parameters'] != 'Mc-q') and (not pars['inverse-mass-ratio']):
+                                prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+                                clean_dict(pos_dict, ['chirp_mass', 'mass_2'])
+                            elif (pars['mass-parameters'] != 'Mc-q'):
+                                prior *= pos_dict['mass_1'] / pos_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,qi)| = m1/qi^2, with qi = m1/m2.
+                                clean_dict(pos_dict, ['chirp_mass', 'mass_2'])
+                            else (not pars['inverse-mass-ratio']):
+                                prior *= pos_dict['mass_1']**2 / pos_dict['chirp_mass'] # |J_(m1,m2)->(Mc,q)| = m1^2/Mc with q = m2/m1
+                                clean_dict(pos_dict, ['mass_1', 'mass_2'])
                             else:
-                                if   pars['PE-prior-masses'] == 'm1-m2': prior *= pos_dict['mass_1'] / pos_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
-                                elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
+                                prior *= pos_dict['mass_2']**2 / pos_dict['chirp_mass'] # |J_(m1,m2)->(Mc,qi)| = m2^2/Mc with qi = m2/m1
+                                clean_dict(pos_dict, ['mass_1', 'mass_2'])
 
-# ===========================================================================================================================
-#  T O   B E   M O D I F I E D    ^
-# ===========================================================================================================================
+                        elif pars['PE-prior-masses'] == 'Mc-q':
+                            chirp_mass = xp.power(pos_dict['mass_1']*pos_dict['mass_2'], 3/5) / xp.power(pos_dict['mass_1']+pos_dict['mass_2'], 1/5)
+                            if (pars['mass-parameters'] != 'Mc-q') and ('MassRatio' not in pars['model-secondary']): #FIXME: handle everything with 'mass-parameters'
+                                prior *= chirp_mass / pos_dict['mass_1']**2 # |J_(Mc,q)->(m1,m2)| = Mc/m1^2, with q = m2/m1
+                                clean_dict(pos_dict, ['chirp_mass', 'mass_ratio'])
+                            elif (pars['mass-parameters'] != 'Mc-q') and (not pars['inverse-mass-ratio']):
+                                prior *= chirp_mass / pos_dict['mass_1'] # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m2/m1
+                                clean_dict(pos_dict, ['chirp_mass', 'mass_2'])
+                            elif (pars['mass-parameters'] != 'Mc-q'):
+                                prior *= chirp_mass / pos_dict['mass_1'] / pos_dict['mass_ratio']**2 # |J_(Mc,q)->(m1,qi)| = Mc/(m1*q^2), with q = m1/m2
+                                clean_dict(pos_dict, ['chirp_mass', 'mass_2'])
+                            elif (not pars['inverse-mass-ratio']):
+                                clean_dict(pos_dict, ['mass_1', 'mass_2'])
+                            else:
+                                prior *= 1 / pos_dict['mass_ratio']**2 # # |J_(Mc,q)->(m1,qi)| = 1/qi^2 with qi = m1/m2
+                                clean_dict(pos_dict, ['mass_1', 'mass_2'])
+                        
+                        else:
+                            raise ValueError("Unknown option for 'PE-prior-masses'.")
+                        
+                        print("\n\t ##########################################################################")
+                        print(  "\t Using PE samples with flat prior in Mc and INVERSE-q=m1/m2 NOT IMPLEMENTED")
+                        print(  "\t 'PE-prior-masses' == 'Mc-q' refers to low mass ratio q=m2/m1")
+                        print(  "\t ##########################################################################\n")
+
+                        # chirp_mass = (pos_dict['mass_1'] * pos_dict['mass_2'])**(3./5.) / (pos_dict['mass_1'] + pos_dict['mass_2'])**(1./5.)
+                        # # Case of using component masses. If the prior is uniform in (m1,m2), we leave it flat.
+                        # if not 'MassRatio' in pars['model-secondary']:
+                        #     if   pars['PE-prior-masses'] == 'Mc-q':
+                        #         if not pars['inverse-mass-ratio']: prior *= chirp_mass / pos_dict['mass_1']**2 # |J_(Mc,q)->(m1,m2)| = Mc/m1^2, with q = m2/m1.
+                        #         else:                              prior *= chirp_mass / pos_dict['mass_2']**2 # |J_(Mc,q)->(m1,m2)| = Mc/m2^2, with q = m1/m2.
+
+                        # else: # Case of using mass ratio instead of the secondary mass.
+                        #     if not pars['inverse-mass-ratio']:
+                        #         if   pars['PE-prior-masses'] == 'm1-m2': prior *= pos_dict['mass_1']              # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+                        #         elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1'] # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m2/m1.
+                        #     else:
+                        #         if   pars['PE-prior-masses'] == 'm1-m2': prior *= pos_dict['mass_1'] / pos_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
+                        #         elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
+
+                    elif pars['PE-prior-masses'] == 'Mc-q':
+                        raise ValueError("Single-mass analyses using PE generated with flat priors in Mc-q NOT IMPLEMENTED")
+                    else:
+                        pass
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
         
