@@ -443,10 +443,17 @@ class SelectionEffects:
             else:
                 raise ValueError('Catalog option not yet implemented. Please choose GWTC-4.0 or O3.')
 
+# =========================================================================================================
+#  I N C L U D E   I N V E R S E   Q   O P T I O N ?  v
+# =========================================================================================================
+
             # If using the mass ratio, correct the prior with the Jacobian m2->q.
-            if 'MassRatio' in pars['model-secondary'] and pars['mass-parameters'] != 'Mc-q':
+            if pars['inverse-mass-ratio']:
+                raise ValueError("Inference with inverse mass ratio q = m1/m2 > 1 unavailable for LVK data.")
+            elif 'MassRatio' in pars['model-secondary'] and pars['mass-parameters'] != 'Mc-q':
                 inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / inj_dict['mass_1']
                 prior *= inj_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+                clean_dict(inj_dict, ['chirp_mass', 'mass_2'])
             elif pars['mass-parameters'] == 'Mc-q':
                 m1, m2 = inj_dict.pop('mass_1'), inj_dict.pop('mass_2')
                 q = m2 / m1
@@ -455,6 +462,11 @@ class SelectionEffects:
                 inj_dict['mass_ratio'] = q
                 inj_dict['chirp_mass'] = Mc
                 prior *= m1 / Mc_over_m1         # |J_(m1,m2)->(Mc,q)| = m1^2 / Mc, with Mc/m1 = q^3/5 / (1+q)^1/5
+                clean_dict(inj_dict, ['mass_1', 'mass_2'])
+
+# =========================================================================================================
+#  I N C L U D E   I N V E R S E   Q   O P T I O N ?  ^
+# =========================================================================================================
 
         # Use simulated injections.
         else:
