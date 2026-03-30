@@ -346,6 +346,7 @@ def default_priors():
         'mu_q'          : [   0.1 ,   1.  ],
         'sigma_q'       : [   0.01,   0.9 ],
         'alpha_q'       : [ -20.  ,  20.  ],
+        'qmin'          : 0.,
 
         'low_b'         : [   1.  ,  20.  ],
         'high_b'        : [   1.  ,  20.  ],
