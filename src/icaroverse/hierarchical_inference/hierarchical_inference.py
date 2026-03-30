@@ -646,7 +646,9 @@ class Data:
                     raise ValueError("Unknown PE-prior-distance option. Please choose from 'dL', 'dL3', 'UniformSourceFrame', 'per-run'.")
 
                 # Case of using mass ratio instead of the secondary mass.
-                if pars['mass-parameters'] != 'Mc-q' and 'MassRatio' not in pars['model-secondary']:
+                if pars['inverse-mass-ratio']:
+                    raise ValueError("Inference with inverse mass ratio q = m1/m2 > 1 unavailable for LVK data.")
+                elif pars['mass-parameters'] != 'Mc-q' and 'MassRatio' not in pars['model-secondary']:
                     pos_dict['mass_1']     = xp.array(data_evs['mass_1'][()])
                     pos_dict['mass_2']     = xp.array(data_evs['mass_2'][()])
                 elif pars['mass-parameters'] != 'Mc-q':
