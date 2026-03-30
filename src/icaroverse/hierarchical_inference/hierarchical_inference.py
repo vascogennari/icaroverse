@@ -235,7 +235,8 @@ class Wrappers:
         elif ms in icarogw_models:
             if   self.m2_models[ms]['var'] == 'm2': 
                 if 'pairing' in ms: smoothing_wrap_name_extension = ''
-                else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
+                # else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
+                else: smoothing_wrap_name_extension = '_lowpass_m2'*smoothing
                 w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
             elif self.m2_models[ms]['var'] == 'q':  
                 w = get_wrapper(self.m2_models[ms]['wrap name']                                            )
