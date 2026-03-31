@@ -15,7 +15,7 @@ template = """#!/bin/sh
 #SBATCH --mem={memory}G
 #SBATCH --partition={partition}
 #SBATCH --time={time}
-#SBATCH --account=virgo
+#SBATCH --account={account}
 #SBATCH --licenses=sps
 {email_option}
 
@@ -47,6 +47,7 @@ def activate_slurm_submit(config_name):
             memory       = slurm_memory,
             partition    = slurm_partition,
             time         = '{}-{}:{}:00'.format(slurm_time['days'], slurm_time['hours'], slurm_time['minutes']),
+            account      = account,
             email_option = email_option,
             conda_env    = conda_env,
             executable   = executable,
@@ -65,6 +66,7 @@ args = parser.parse_args()
 # ---------------------------------------------------------------------- #
 conda_env    = ''
 user_mail    = ''
+account      = 'l2it'
 slurm_nodes  = 1
 slurm_cpus   = 4
 slurm_gpus   = 1

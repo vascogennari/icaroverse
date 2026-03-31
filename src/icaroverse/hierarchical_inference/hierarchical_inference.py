@@ -135,6 +135,7 @@ class Wrappers:
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m1_models = {
             'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
+            'Gaussian':                                                                                    {'wrap name': 'massprior_Gaussian',                                                                          'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-PowerLaw':                                                                           {'wrap name': 'PowerLaw_PowerLaw',                                                                           'z evolution': False, 'smoothing': 'component-wise'},
@@ -170,7 +171,6 @@ class Wrappers:
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear-PowerLawRedshiftLinear': {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear', 'z evolution': True,  'smoothing': 'component-wise'},
             'PowerLawRedshiftLinear-PowerLawRedshiftLinear-GaussianRedshiftLinear':                        {'wrap name': 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear',                        'z evolution': True,  'smoothing': 'component-wise'},
-            'Gaussian':                                                                                    {'wrap name': 'Gaussian',                                                                                    'z evolution': False, 'smoothing': 'included'},
             'GaussianRedshift-order-X':                                                                    {'wrap name': 'GaussianEvolving',                                                                            'z evolution': True},
             'Splines-Quadratic':                                                                           {'wrap name': 'QuadraticSpline',                                                                             'z evolution': False, 'smoothing': 'component-wise'},
             'Splines-Cubic':                                                                               {'wrap name': 'CubicSpline',                                                                                 'z evolution': False, 'smoothing': 'component-wise'},
@@ -183,6 +183,7 @@ class Wrappers:
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
         icarogw_models = [m for m in self.m1_models if self.m1_models[m]['wrap name'] in available_icarogw_models]
+
 
         order = -1
         search = re.search("GaussianRedshift-order-(?P<order>[0-9]+)", mp)
@@ -482,7 +483,9 @@ class SelectionEffects:
                     raise ValueError('Only pickle files are currently supported for custom injections:\n{}'.format(pars['injections-path']))
             except:
                 raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
-            
+
+            selected_filt = xp.array(data_inj['snr']) > pars['snr-cut']
+
             # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
             # Whatever distribution and variables used to generate the injections, please make sure it follows such conventions.
             prior = xp.array(data_inj['prior'])
@@ -763,11 +766,6 @@ class Data:
 #  T O   B E   I M P R O V E D   I S O L A T I N G   I N V E R S E   Q   ^
 # =========================================================================================================
 
-                        print("\n\t ##########################################################################")
-                        print(  "\t Using PE samples with flat prior in Mc and INVERSE-q=m1/m2 NOT IMPLEMENTED")
-                        print(  "\t 'PE-prior-masses' == 'Mc-q' refers to low mass ratio q=m2/m1")
-                        print(  "\t ##########################################################################\n")
-
                         # chirp_mass = (pos_dict['mass_1'] * pos_dict['mass_2'])**(3./5.) / (pos_dict['mass_1'] + pos_dict['mass_2'])**(1./5.)
                         # # Case of using component masses. If the prior is uniform in (m1,m2), we leave it flat.
                         # if not 'MassRatio' in pars['model-secondary']:
@@ -789,6 +787,11 @@ class Data:
                         pass
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
+
+            print("\n\t ##########################################################################")
+            print(  "\t Using PE samples with flat prior in Mc and INVERSE-q=m1/m2 NOT IMPLEMENTED")
+            print(  "\t 'PE-prior-masses' == 'Mc-q' refers to low mass ratio q=m2/m1")
+            print(  "\t ##########################################################################\n")
         
         self.data = icarogw.posterior_samples.posterior_samples_catalog(samps_dict)
         print('\n\tUsing a population of {} events.'.format(self.data.n_ev))
