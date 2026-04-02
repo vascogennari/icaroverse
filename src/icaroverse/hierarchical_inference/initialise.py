@@ -48,6 +48,7 @@ def InitialiseOptions(Config):
         'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
 
         'splines-number'              : 10,
+        'splines-degree'              : 2,
         'spacing'                     : 'uniform',
         'dirichlet-prior'             : True,
 
@@ -127,7 +128,7 @@ def InitialiseOptions(Config):
         if (key == 'priors') or (key == 'ref-cosmology'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
-        if (key == 'splines-number'):
+        if (key == 'splines-number') or (key == 'splines-degree'):
             try: input_pars[key] = Config.getint('model', key)
             except: pass
 
@@ -320,26 +321,26 @@ def default_priors():
         'mmin_j'        : 2.,
         'mmax_j'        : 9.,
 
-        'c1'            : [   0.  ,   1.  ],
-        'c2'            : [   0.  ,   1.  ],
-        'c3'            : [   0.  ,   1.  ],
-        'c4'            : [   0.  ,   1.  ],
-        'c5'            : [   0.  ,   1.  ],
-        'c6'            : [   0.  ,   1.  ],
-        'c7'            : [   0.  ,   1.  ],
-        'c8'            : [   0.  ,   1.  ],
-        'c9'            : [   0.  ,   1.  ],
-        'c10'           : [   0.  ,   1.  ],
-        'c11'           : [   0.  ,   1.  ],
-        'c12'           : [   0.  ,   1.  ],
-        'c13'           : [   0.  ,   1.  ],
-        'c14'           : [   0.  ,   1.  ],
-        'c15'           : [   0.  ,   1.  ],
-        'c16'           : [   0.  ,   1.  ],
-        'c17'           : [   0.  ,   1.  ],
-        'c18'           : [   0.  ,   1.  ],
-        'c19'           : [   0.  ,   1.  ],
-        'c20'           : [   0.  ,   1.  ],
+        'c1'            : [ -30.  ,  80.  ],
+        'c2'            : [ -30.  ,  80.  ],
+        'c3'            : [ -30.  ,  80.  ],
+        'c4'            : [ -30.  ,  80.  ],
+        'c5'            : [ -30.  ,  80.  ],
+        'c6'            : [ -30.  ,  80.  ],
+        'c7'            : [ -30.  ,  80.  ],
+        'c8'            : [ -30.  ,  80.  ],
+        'c9'            : [ -30.  ,  80.  ],
+        'c10'           : [ -30.  ,  80.  ],
+        'c11'           : [ -30.  ,  80.  ],
+        'c12'           : [ -30.  ,  80.  ],
+        'c13'           : [ -30.  ,  80.  ],
+        'c14'           : [ -30.  ,  80.  ],
+        'c15'           : [ -30.  ,  80.  ],
+        'c16'           : [ -30.  ,  80.  ],
+        'c17'           : [ -30.  ,  80.  ],
+        'c18'           : [ -30.  ,  80.  ],
+        'c19'           : [ -30.  ,  80.  ],
+        'c20'           : [ -30.  ,  80.  ],
 
         # Secondary mass distribution
         'beta'          : [ -20.  ,  20.  ],
@@ -431,6 +432,7 @@ usage = """
         ref-cosmology               [dict ]  Reference cosmology values used to compute the luminosity distance from redshift for injections and true values. Keys: 'H0' (Hubble constant in km/s/Mpc), 'Om0' (matter density parameter at z=0). Default: {'H0': 67.7, 'Om0': 0.308}.
 
         splines-number              [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
+        splines-degree              [int  ]  Degree of the splines used for the spline model. The option only applies to the log(pdf) spline model that uses Cox-De Boor recursion. Default: 2.
         spacing                     [str  ]  Spacing of the spline knots. Options: 'uniform', 'log'. The option only applies to models including splines. Default: 'uniform'.
         dirichlet-prior             [bool ]  Flag to use a Dirichlet prior for the spline components. This is implemented through Gamma priors on the spline coefficients, which are then normalized to form a Dirichlet distribution (i.e. uniform weights on the simplex). Default: True.
 

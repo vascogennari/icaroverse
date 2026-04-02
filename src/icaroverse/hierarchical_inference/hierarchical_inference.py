@@ -20,7 +20,7 @@ from ..generate_events.snr_computation import clean_dict
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, spacing = None, zmax = 20.):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, spacing = None, degree = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -42,8 +42,12 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             elif "flag_smoothing" in sig.parameters: # same for a flag_smoothing arg. Note that flag_powerlaw_smoothing and flag_smoothing are assumed to be mutually exclusive in the list of available wrappers: there should not be a wrapper asking for both.
                 return wrap(flag_smoothing = smoothing)
             elif 'Spline' in wrap_name:
-                print('\t\tUsing a spline model with {} basis elements. Knots spacing: {}.\n'.format(n_splines, spacing))
-                return wrap(n_basis = n_splines, spacing = spacing)
+                if 'Log' in wrap_name:
+                    print('\t\tUsing a spline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}.\n'.format(n_splines, degree, spacing))
+                    return wrap(n_basis = n_splines, spacing = spacing, degree = degree)
+                else:
+                    print('\t\tUsing an analytic spline model with {} basis elements for the pdf. Knots spacing: {}.\n'.format(n_splines, spacing))
+                    return wrap(n_basis = n_splines, spacing = spacing)
             else:
                 return wrap() # if the wrapper is a default icarogw wrapper (no arg at init), then we can simply return it.
         else:
@@ -132,6 +136,7 @@ class Wrappers:
 
         mp, ms = pars['model-primary'], pars['model-secondary']
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
+        n_splines, degree, spacing = pars['splines-number'], pars['splines-degree'], pars['spacing']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m1_models = {
             'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
@@ -174,6 +179,7 @@ class Wrappers:
             'GaussianRedshift-order-X':                                                                    {'wrap name': 'GaussianEvolving',                                                                            'z evolution': True},
             'Splines-Quadratic':                                                                           {'wrap name': 'QuadraticSpline',                                                                             'z evolution': False, 'smoothing': 'component-wise'},
             'Splines-Cubic':                                                                               {'wrap name': 'CubicSpline',                                                                                 'z evolution': False, 'smoothing': 'component-wise'},
+            'Splines-LogPDF':                                                                              {'wrap name': 'LogSplineCoxDeBoor',                                                                          'z evolution': False, 'smoothing': 'component-wise'},
             'Uniform':                                                                                     {'wrap name': 'Uniform',                                                                                     'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw-Gaussian':                                                                     {'wrap name': 'DoublePowerlaw_Gaussian',                                                                     'z evolution': False, 'smoothing': 'included'},
@@ -195,7 +201,10 @@ class Wrappers:
                 w = get_wrapper(self.m1_models[mp]['wrap name'])
                 if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
             elif 'Splines' in mp:
-                w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = pars['splines-number'], spacing = pars['spacing'])
+                if 'Log' in mp:
+                    w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree)
+                else:
+                    w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing)
             elif (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'component-wise':
                 w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing)
             elif (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'included':
@@ -838,10 +847,10 @@ class LikelihoodPrior:
             ]
 
             # Precompute spline coefficient names safely
-            use_dirichlet = ('Spline' in pars['model-primary']) and pars['dirichlet-prior']
+            use_dirichlet = ('Spline' in pars['model-primary']) and pars['dirichlet-prior'] and not ('Log' in pars['model-primary'])
             if use_dirichlet:
                 spline_coeffs = [f'c{i}' for i in range(1, pars['splines-number']+1)]
-              
+            
             for par in w.population_parameters:
 
                 # Dirichlet case via Gamma priors
