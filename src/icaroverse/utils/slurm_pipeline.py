@@ -66,7 +66,7 @@ args = parser.parse_args()
 # ---------------------------------------------------------------------- #
 conda_env    = ''
 user_mail    = ''
-account      = 'l2it'
+account      = ''
 slurm_nodes  = 1
 slurm_cpus   = 4
 slurm_gpus   = 1
