@@ -940,6 +940,13 @@ class LikelihoodPrior:
                                                                maximum = xp.inf),
                     'print':       "\t[ m1min > mmin ]",
                 },
+                'qmin_muq_ordering': {
+                    'pars':        ['mu_q', 'qmin'], 
+                    'func':        (lambda x, y: x - y),
+                    'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
+                                                               maximum = xp.inf),
+                    'print':       "\t[ mu_q > qmin ]",
+                },
             }
 
             # MD redundancy constraint
@@ -949,6 +956,7 @@ class LikelihoodPrior:
                 raise ValueError("MD redundancy constraint is only available when using MadauDickinson rate evolution parametrization.")
             else:
                 pass
+
             # w0wa early matter domination era constraint
             if not (pars['model-cosmology'] == 'Flatw0waCDM' and pars['constraint_w0wa_earlyMDera']):
                 constraints_dict.pop('w0wa_earlyMDera')
@@ -956,6 +964,15 @@ class LikelihoodPrior:
                 raise ValueError("w0wa early MD era constraint is only available when using Flatw0waCDM cosmological model.")
             else:
                 pass
+
+            # MassRatio Gaussian constraint
+            if not (pars['model-secondary'] == 'MassRatio-Gaussian' and pars['constraint_qmin_muq_ordering'] and 'mu_q' in w.population_parameters and 'qmin' in w.population_parameters and isinstance(dict_in['mu_q'], list) and isinstance(dict_in['qmin'], list)):
+                constraints_dict.pop('qmin_muq_ordering')
+            elif pars['model-secondary'] != 'MassRatio-Gaussian' and pars['constraint_qmin_muq_ordering']:
+                raise ValueError("qmin < mu_q constraint is only available when using MassRatio-Gaussian model")
+            else:
+                pass
+
             # peak ordering constraints
             if pars['constraint_peak_ordering']:
                 # MLTP
