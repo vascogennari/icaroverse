@@ -545,7 +545,7 @@ class SelectionEffects:
 
         print(
             '\n\tUsing {} injections out of {} to compute selection effects.'.format(
-                sum(selected_filt), 
+                xp.sum(selected_filt), 
                 len(selected_filt)
             )
         )
