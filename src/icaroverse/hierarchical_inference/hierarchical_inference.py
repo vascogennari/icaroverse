@@ -322,39 +322,56 @@ class Rate():
       
     def __init__(self, pars, m1w, m2w, rw, cw):
 
-        if not pars['single-mass']:
-            if   not 'Redshift' in pars['model-primary'] and not 'MassRatio'  in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_vanilla_rate(                  cw,      m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_vanilla_rate'))
-            elif not 'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_rate(                          cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_rate'))
-            elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_redshift_rate(                 cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_redshift_rate'))
-            elif 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_redshift_rate_given_redshift(  cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_redshift_rate_given_redshift'))
-            elif not 'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_q(                     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_q'))
-            elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
-            elif     'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(      cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
-        else:
-            if not 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.CBC_rate_m_given_redshift(         cw, m1w,      rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m_given_redshift'))
-            else:
-                if not 'Luminosity' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+        # IMPROVEME: This selection should be done in a more elegant way,
+        # e.g. by defining a dictionary of rate models and their required
+        # mass and cosmology wrappers, and then checking that the provided
+        # wrappers are compatible with the chosen rate model.
+
+        if not pars['log10-PDF']: # CBC sources
+
+            if not pars['single-mass']: # Using both primary and secondary mass
+                if   not 'Redshift' in pars['model-primary'] and not 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_vanilla_rate(cw, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_vanilla_rate'))
+                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_rate_m1_q(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_q'))
+                elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
+                elif     'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
+
+            else: # Using only the primary mass
+                if not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m_given_redshift'))
                 else:
-                    self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
-                    print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
+                    if not 'Luminosity' in pars['model-rate']:
+                        self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+                    else:
+                        self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
+                        print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
+        
+        else: # LISA sources
+
+            if not pars['single-mass']: # Using both primary and secondary mass
+                if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.MBH_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('MBH_rate'))
+                elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.MBH_redshift_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('MBH_redshift_rate'))
+                elif 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.MBH_redshift_rate_given_redshift(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('MBH_redshift_rate_given_redshift'))
+
+            else: # Using only the primary mass
+                if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.EMRI_rate_no_q(cw, m1w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('EMRI_rate_no_q'))
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
