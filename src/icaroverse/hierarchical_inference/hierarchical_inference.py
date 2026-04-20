@@ -140,6 +140,7 @@ class Wrappers:
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m1_models = {
             'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
+            'BrokenPowerLaw':                                                                              {'wrap name': 'massprior_BrokenPowerLaw',                                                                    'z evolution': False, 'smoothing': 'global'},
             'Gaussian':                                                                                    {'wrap name': 'massprior_Gaussian',                                                                          'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
