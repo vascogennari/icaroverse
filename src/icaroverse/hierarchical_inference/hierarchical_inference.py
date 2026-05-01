@@ -487,9 +487,6 @@ class SelectionEffects:
                         inj_dict['mass_ratio'] = inj_dict['mass_1'] / inj_dict.pop('mass_2')
                         prior *= inj_dict['mass_1'] / inj_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
             else:
-                # If only using one mass, remove the Jacobian contribution from the secondary.
-                # This operation depends on the injection prior used to generate the injections.
-                prior *= (1 + ref_cosmo.dl2z(inj_dict['luminosity_distance']))
                 inj_dict.pop('mass_2')
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
