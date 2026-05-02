@@ -319,6 +319,22 @@ def default_priors():
         'mmin_j'        : 2.,
         'mmax_j'        : 9.,
 
+        'alpha_dpl'     : [   1.  ,  20.  ],
+        'beta_dpl'      : [   1.  ,  20.  ],
+        'mmin_dpl'      : 2.,
+        'mmax_dpl'      : 9.,
+        'm_break_dpl'   : [   2.  ,   7.  ],
+        'delta_dpl'     : [   0.01,  10.  ],
+
+        'mu_g_dpl'      : [   2.  ,   9.  ],
+        'sigma_g_dpl'   : [   0.1 ,   5.  ],
+        'mix_dpl'       : [   0.  ,   1.  ],
+
+        'm_break_z0_dpl'      : 5.5,
+        'm_break_z10_dpl'     : 5.5,
+        'm_break_zt_dpl'      : 3.,
+        'm_break_delta_zt_dpl': 3.,
+
         'c1'            : [   0.  ,   1.  ],
         'c2'            : [   0.  ,   1.  ],
         'c3'            : [   0.  ,   1.  ],
@@ -351,8 +367,8 @@ def default_priors():
         'start_b'       : 0.,
         'scale_b'       : 5.,
 
-        'a_gamma'       : [   1.  ,  10.  ],
-        'theta'         : [   0.01,   1.  ],
+        'alpha_g'       : [   1.  ,  10.  ],
+        'beta_g'        : [   0.01,   1.  ],
 
         # Rate evolution
         'gamma'         : [ -50.  ,  30.  ],
