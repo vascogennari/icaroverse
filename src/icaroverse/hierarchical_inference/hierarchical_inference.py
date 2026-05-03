@@ -217,12 +217,13 @@ class Wrappers:
         single_mass, smoothing = pars['single-mass'], pars['low-smoothing']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m2_models = {
-            'Mass2-PowerLaw':         {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
-            'Mass2-PowerLaw-pairing': {'wrap name': 'm1m2_paired',               'var': 'm2'},
-            'MassRatio-Gaussian':     {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
-            'MassRatio-PowerLaw':     {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
-            'MassRatio-Gamma':        {'wrap name': 'Gamma',                     'var': 'q' }, 
-            'MassRatio-Beta':         {'wrap name': 'Beta',                      'var': 'q' },
+            'Mass2-PowerLaw':          {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
+            'Mass2-PowerLaw-pairing':  {'wrap name': 'm1m2_paired',               'var': 'm2'},
+            'Mass2-PowerLaw-Gaussian': {'wrap name': 'massprior_PowerLawPeak',    'var': 'm2'},
+            'MassRatio-Gaussian':      {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
+            'MassRatio-PowerLaw':      {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
+            'MassRatio-Gamma':         {'wrap name': 'Gamma',                     'var': 'q' }, 
+            'MassRatio-Beta':          {'wrap name': 'Beta',                      'var': 'q' },
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -232,12 +233,17 @@ class Wrappers:
             print('\t * Skipping secondary mass wrapper')
             w = None
         elif ms in icarogw_models:
-            if   self.m2_models[ms]['var'] == 'm2': 
-                if 'pairing' in ms: smoothing_wrap_name_extension = ''
-                else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
-                w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
-            elif self.m2_models[ms]['var'] == 'q':  
-                w = get_wrapper(self.m2_models[ms]['wrap name']                                            )
+            if 'm1m2' in self.m2_models[ms]['wrap name']:
+                if   self.m2_models[ms]['var'] == 'm2': 
+                    if 'pairing' in ms: smoothing_wrap_name_extension = ''
+                    else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
+                    w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
+                elif self.m2_models[ms]['var'] == 'q':  
+                    w = get_wrapper(self.m2_models[ms]['wrap name'])
+            else: # The secondary does not explicitly depend on the primary mass distribution wrapper, and can be initialised independently.
+                w = get_wrapper(self.m2_models[ms]['wrap name'])
+                if smoothing:
+                    w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
         else:
             raise ValueError("Unknown model for the Secondary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
         return w
@@ -358,15 +364,20 @@ class Rate():
         else: # LISA sources
 
             if not pars['single-mass']: # Using both primary and secondary mass
-                if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.MBH_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('MBH_rate'))
-                elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.MBH_redshift_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('MBH_redshift_rate'))
-                elif 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.MBH_redshift_rate_given_redshift(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('MBH_redshift_rate_given_redshift'))
+                if 'PowerLaw-Gaussian' in pars['model-secondary']:
+                    # FIXME: Need a more general and robust option handling.
+                    self.w = icarogw.rates.EMRI_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('EMRI_rate'))
+                else:
+                    if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_rate'))
+                    elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_redshift_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_redshift_rate'))
+                    elif 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_redshift_rate_given_redshift(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_redshift_rate_given_redshift'))
 
             else: # Using only the primary mass
                 if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
