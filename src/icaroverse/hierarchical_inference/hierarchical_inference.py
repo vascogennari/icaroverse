@@ -242,7 +242,7 @@ class Wrappers:
                     w = get_wrapper(self.m2_models[ms]['wrap name'])
             else: # The secondary does not explicitly depend on the primary mass distribution wrapper, and can be initialised independently.
                 w = get_wrapper(self.m2_models[ms]['wrap name'])
-                if smoothing:
+                if smoothing and not 'MassRatio' in ms:
                     w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
         else:
             raise ValueError("Unknown model for the Secondary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
