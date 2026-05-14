@@ -339,9 +339,12 @@ class Rate():
                 if   not 'Redshift' in pars['model-primary'] and not 'MassRatio' in pars['model-secondary']:
                     self.w = icarogw.rates.CBC_vanilla_rate(cw, m2w, rw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_vanilla_rate'))
-                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary']:
+                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
                     self.w = icarogw.rates.CBC_rate_m1_q(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_rate_m1_q'))
+                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_redshift_rate_m1_q(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_redshift_rate_m1_q'))
                 elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
                     self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
