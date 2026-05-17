@@ -319,6 +319,10 @@ def default_priors():
         'mmin_j'        : 2.,
         'mmax_j'        : 9.,
 
+        'mu_g_j'        : [   2.  ,   9.  ],
+        'sigma_g_j'     : [   0.1 ,   5.  ],
+        'mix_j'         : [   0.  ,   1.  ],
+
         'alpha_dpl'     : [   1.  ,  20.  ],
         'beta_dpl'      : [   1.  ,  20.  ],
         'mmin_dpl'      : 2.,

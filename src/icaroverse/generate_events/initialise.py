@@ -274,6 +274,10 @@ def default_population():
         'mmin_j'        : 3.,
         'mmax_j'        : 9.,
 
+        'mu_g_j'        : 7.,
+        'sigma_g_j'     : 1.,
+        'mix_j'         : 0.9,
+
         'alpha_dpl'     : 7.,
         'beta_dpl'      : 14.,
         'mmin_dpl'      : 2.,

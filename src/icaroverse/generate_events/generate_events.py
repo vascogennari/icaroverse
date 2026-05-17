@@ -1156,7 +1156,7 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
                 plt.xlabel('$q$')
                 plt.ylabel('$p(q)$')
             else:
-                if not m2_samps.all() == 0:
+                if np.any(m2_samps != 0):
                     plt.hist(m2_samps, density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
                     plt.yscale('log')
                     plt.ylim(1e-5, 1)

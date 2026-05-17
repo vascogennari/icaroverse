@@ -177,7 +177,8 @@ class Wrappers:
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw-Gaussian':                                                                     {'wrap name': 'DoublePowerlaw_Gaussian',                                                                     'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlawRedshift':                                                                      {'wrap name': 'DoublePowerlawRedshift',                                                                      'z evolution': True,  'smoothing': 'included'},
-            'Johnson':                                                                                     {'wrap name': 'Johnson',                                                                                     'z evolution': False, 'smoothing': 'included'},            
+            'Johnson':                                                                                     {'wrap name': 'Johnson',                                                                                     'z evolution': False, 'smoothing': 'included'},
+            'Johnson-Gaussian':                                                                            {'wrap name': 'Johnson_Gaussian',                                                                            'z evolution': False, 'smoothing': 'included'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
