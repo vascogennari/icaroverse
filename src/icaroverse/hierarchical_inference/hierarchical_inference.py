@@ -208,7 +208,7 @@ class Wrappers:
             elif 'Splines' in mp:
                 if 'PowerLaw' in mp:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree, smoothing = smoothing)
-                if 'Log' in mp:
+                elif 'Log' in mp:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree)
                 else:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing)
