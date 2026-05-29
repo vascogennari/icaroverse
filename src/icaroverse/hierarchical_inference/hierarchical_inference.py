@@ -143,6 +143,7 @@ class Wrappers:
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m1_models = {
             'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
+            'BrokenPowerLaw':                                                                              {'wrap name': 'massprior_BrokenPowerLaw',                                                                    'z evolution': False, 'smoothing': 'global'},
             'Gaussian':                                                                                    {'wrap name': 'massprior_Gaussian',                                                                          'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian':                                                                           {'wrap name': 'massprior_PowerLawPeak',                                                                      'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-Gaussian-Gaussian':                                                                  {'wrap name': 'massprior_MultiPeak',                                                                         'z evolution': False, 'smoothing': 'global'},
@@ -290,6 +291,8 @@ class Wrappers:
     def Cosmology(self, pars):
 
         mc, mb = pars['model-cosmology'], pars['model-bkg-cosmo']
+        if mc == "w0waOEFT" and mb != "Flatw0waCDM":
+            raise ValueError("w0waOEFT cosmology only available with Flatw0waCDM as bkg cosmo.")
         # This is subject to be completed in the future with the addition of other cosmological models to icarogw
         models = {
             'FlatLambdaCDM': {'wrap name': 'FlatLambdaCDM_wrap', 'class': 'GR', }, 
@@ -301,6 +304,7 @@ class Wrappers:
             'extraD':        {'wrap name': 'extraD_mod_wrap',    'class': 'MG', }, 
             'cM':            {'wrap name': 'cM_mod_wrap',        'class': 'MG', }, 
             'alphalog':      {'wrap name': 'alphalog_mod_wrap',  'class': 'MG', }, 
+            'w0waOEFT':      {'wrap name': 'w0waOEFT_mod_wrap',  'class': 'MG', }, 
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -552,7 +556,7 @@ class SelectionEffects:
 
         print(
             '\n\tUsing {} injections out of {} to compute selection effects.'.format(
-                sum(selected_filt), 
+                xp.sum(selected_filt), 
                 len(selected_filt)
             )
         )

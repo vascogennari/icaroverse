@@ -62,13 +62,14 @@ def InitialiseOptions(Config):
         'single-mass'                   : False,
         'truths'                        : {},
         'zmax'                          : 20.,
+        'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
 
         'log10-PDF'                     : False,
         'inverse-mass-ratio'            : False,
 
-        'splines-number'                : 10,
-        'splines-order'                 : 3,
-        'spacing'                       : 'log',
+        'splines-number'              : 10,
+        'splines-degree'              : 2,
+        'spacing'                     : 'uniform',
 
         # Plots
         'N-points'                      : 10000,
@@ -179,6 +180,9 @@ def default_population():
         'alpha_z0'      : 4.,
         'alpha_z1'      : 0.,
         'mu_alpha'      : 4.,
+        'alpha_1'       : 1.,
+        'alpha_2'       : 4.,
+        'b'             : 50.,
 
         'alpha_a'       : 50.,
         'alpha_b'       : 10.,
@@ -296,6 +300,7 @@ def default_population():
         'mu_q'          : 0.8,
         'sigma_q'       : 0.1,
         'alpha_q'       : 1.2,
+        'qmin'          : 0.0,
 
         'low_b'         : 1.,
         'high_b'        : 10.,
