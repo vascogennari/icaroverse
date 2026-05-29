@@ -44,7 +44,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             elif 'Spline' in wrap_name:
                 if 'PowerLaw' in wrap_name:
                     print('\t\tUsing a spline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}.\n'.format(n_splines, degree, spacing))
-                    return wrap(n_basis = n_splines, spacing = spacing, degree = degree, powerlaw = True, smoothing=smoothing)
+                    return wrap(n_basis = n_splines, spacing = spacing, degree = degree)
                 elif 'Log' in wrap_name:
                     print('\t\tUsing a spline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}.\n'.format(n_splines, degree, spacing))
                     return wrap(n_basis = n_splines, spacing = spacing, degree = degree)
@@ -183,7 +183,8 @@ class Wrappers:
             'Splines-Quadratic':                                                                           {'wrap name': 'QuadraticSpline',                                                                             'z evolution': False, 'smoothing': 'component-wise'},
             'Splines-Cubic':                                                                               {'wrap name': 'CubicSpline',                                                                                 'z evolution': False, 'smoothing': 'component-wise'},
             'Splines-LogPDF':                                                                              {'wrap name': 'LogSplineCoxDeBoor',                                                                          'z evolution': False, 'smoothing': 'component-wise'},
-            'PowerLaw-Splines-LogPDF':                                                                     {'wrap name': 'PowerLaw_LogSplineCoxDeBoor',                                                                 'z evolution': False, 'smoothing': 'component-wise'},
+            'logBsplines':                                                                                 {'wrap name': 'massprior_logBspline',                                                                        'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-logBsplines':                                                                        {'wrap name': 'massprior_PowerLawlogBspline',                                                                'z evolution': False, 'smoothing': 'global'},
             'Uniform':                                                                                     {'wrap name': 'Uniform',                                                                                     'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw-Gaussian':                                                                     {'wrap name': 'DoublePowerlaw_Gaussian',                                                                     'z evolution': False, 'smoothing': 'included'},
@@ -200,28 +201,28 @@ class Wrappers:
         if search is not None: mp, order = 'GaussianRedshift-order-X', int(search.group('order'))
 
         if mp in icarogw_models:
-            # Non-evolving models.
-            if   (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'global':
-                w = get_wrapper(self.m1_models[mp]['wrap name'])
-                if (not (single_mass and 'Mass2' in ms)) and smoothing: w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
-            elif 'Splines' in mp:
-                if 'PowerLaw' in mp:
-                    w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree, smoothing = smoothing)
-                if 'Log' in mp:
+            # evolving models
+            if self.m1_models[mp]['z evolution']:
+                if order > 0: # GaussianRedshift-order-X model.
+                    w = get_wrapper(self.m1_models[mp]['wrap name'],                        order = order,                                                 )
+                elif self.m1_models[mp]['smoothing'] == 'included':
+                    w = get_wrapper(self.m1_models[mp]['wrap name'],                                       transition = z_transition                       )
+                else:
+                    w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
+            # Non-evolving splines.
+            elif 'Splines' in mp or 'splines' in mp:
+                if 'PowerLaw' in mp or 'Log' in mp:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree)
                 else:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing)
-            elif (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'component-wise':
+            # non-evolving others
+            elif self.m1_models[mp]['smoothing'] == 'component-wise':
                 w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing)
-            elif (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'included':
+            else:
                 w = get_wrapper(self.m1_models[mp]['wrap name'])
-            # Evolving models.
-            elif (    self.m1_models[mp]['z evolution']) and order > 0: # GaussianRedshift-order-X model.
-                w = get_wrapper(self.m1_models[mp]['wrap name'],                        order = order,                                                 )
-            elif (    self.m1_models[mp]['z evolution']) and self.m1_models[mp]['smoothing'] == 'included':
-                w = get_wrapper(self.m1_models[mp]['wrap name'],                                       transition = z_transition                       )
-            elif (    self.m1_models[mp]['z evolution']):
-                w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
+
+            if (not (single_mass and 'Mass2' in ms)) and (not self.m1_models[mp]['z evolution']) and self.m1_models[mp]["smoothing"] == "global" and smoothing: 
+                w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
         # Unknown model
         else:
             raise ValueError("Unknown model for the Primary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(mp, "\n\t".join(icarogw_models)))
