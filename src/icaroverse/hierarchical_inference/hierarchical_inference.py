@@ -41,7 +41,7 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
                 return wrap(flag_powerlaw_smoothing = smoothing)
             elif "flag_smoothing" in sig.parameters: # same for a flag_smoothing arg. Note that flag_powerlaw_smoothing and flag_smoothing are assumed to be mutually exclusive in the list of available wrappers: there should not be a wrapper asking for both.
                 return wrap(flag_smoothing = smoothing)
-            elif 'Spline' in wrap_name:
+            elif 'Spline' in wrap_name or 'spline' in wrap_name:
                 if 'PowerLaw' in wrap_name:
                     print('\t\tUsing a spline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}.\n'.format(n_splines, degree, spacing))
                     return wrap(n_basis = n_splines, spacing = spacing, degree = degree)
