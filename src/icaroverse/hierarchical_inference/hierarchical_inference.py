@@ -378,16 +378,18 @@ class SelectionEffects:
 
             path = IGWN_pointers.sensitivity_estimates[pars['catalog']].replace("~IGWN_injections_path", pars['injections-path'])
             try: data_inj = h5py.File(path)
-            except: raise ValueError('Could not open the file containing the injections for selection effects. Please verify that you have downloaded the IGWN sensitivity estimates and that the path is correct:\n{}'.format(sensitivity_estimates[pars['catalog']]))
+            except: raise ValueError('Could not open the file containing the injections for selection effects. Please verify that you have downloaded the IGWN sensitivity estimates and that the path is correct:\n{}'.format(IGWN_pointers.sensitivity_estimates[pars['catalog']]))
             print('\n\t{}'.format(path))
 
             # FIXME: Add control to make sure that the injections used correspond to the correct catalog.
             if   pars['catalog'] == 'GWTC-3':   obs_time = None # FIXME: Where can this value be found?
             elif pars['catalog'] == 'GWTC-4.0': obs_time = data_inj.attrs['total_analysis_time'] / 31557600.0
+            elif pars['catalog'] == 'GWTC-5.0': obs_time = data_inj.attrs['total_analysis_time'] / 31557600.0
             elif pars['catalog'] == 'O3':       obs_time = (28519200 / 86400) / 365 # FIXME: Where is this read from and why is it hardcoded?
             elif pars['catalog'] == 'O4a':      obs_time = None # FIXME: Where can this value be found?
+            elif pars['catalog'] == 'O4b':      obs_time = None # FIXME: Where can this value be found?
             else:
-                raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, O3 or O4a.')
+                raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, GWTC-5.0, O3, O4a or O4b.')
 
             pars['injections-number'] = data_inj.attrs['total_generated']
 
@@ -405,7 +407,7 @@ class SelectionEffects:
                     'mass_2':              xp.array(data_inj['injections/mass2'][()]),
                     'luminosity_distance': xp.array(data_inj['injections/distance'][()])}
 
-            elif pars['catalog'] == 'GWTC-4.0':
+            elif pars['catalog'] in ['GWTC-4.0', 'GWTC-5.0']:
 
                 pars['injections-number'] = data_inj.attrs['total_generated']
                 events = data_inj['events'][:]
@@ -529,12 +531,29 @@ class Data:
             # https://zenodo.org/records/8177023 for O3b events.
             # https://zenodo.org/records/17014085 for O4a events.
 
-            if   pars['catalog'] == 'GWTC-3':   catalog = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1
-            elif pars['catalog'] == 'GWTC-4.0': catalog = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1 | IGWN_pointers.O4a_BBHs_FAR_1
-            elif pars['catalog'] == 'O3':       catalog = IGWN_pointers.O3_BBHs_FAR_1
-            elif pars['catalog'] == 'O4a':      catalog = IGWN_pointers.O4a_BBHs_FAR_1
+            if   pars['catalog'] == 'GWTC-3':
+                catalog_BBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1
+                catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1
+            elif pars['catalog'] == 'GWTC-4.0':
+                catalog_BBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1 | IGWN_pointers.O4a_BBHs_FAR_1
+                catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BNSsNSBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1 | IGWN_pointers.O4a_BNSsNSBHs_FAR_1
+            elif pars['catalog'] == 'GWTC-5.0':
+                catalog_BBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1 | IGWN_pointers.O4a_BBHs_FAR_1 | IGWN_pointers.O4b_BBHs_FAR_1
+                catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BNSsNSBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1 | IGWN_pointers.O4a_BNSsNSBHs_FAR_1 | IGWN_pointers.O4b_BNSsNSBH_FAR_1
+            elif pars['catalog'] == 'O3':
+                catalog_BBHs = IGWN_pointers.O3_BBHs_FAR_1
+                catalog_BNSsNSBHs = IGWN_pointers.O3_BNSsNSBHs_FAR_1
+            elif pars['catalog'] == 'O4a':
+                catalog_BBHs = IGWN_pointers.O4a_BBHs_FAR_1
+                catalog_BNSsNSBHs = IGWN_pointers.O4a_BNSsNSBHs_FAR_1
+            elif pars['catalog'] == 'O4b':
+                catalog_BBHs = IGWN_pointers.O4b_BBHs_FAR_1
+                catalog_BNSsNSBHs = IGWN_pointers.O4b_BNSsNSBHs_FAR_1
             else:
                 raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, O3 or O4a.')
+            
+            if pars["include-NS"]: catalog = catalog_BBHs | catalog_BNSsNSBHs
+            else:                  catalog = catalog_BBHs
 
             print('')
             samps_dict = {}
