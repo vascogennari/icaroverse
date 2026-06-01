@@ -539,7 +539,7 @@ class Data:
                 catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BNSsNSBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1 | IGWN_pointers.O4a_BNSsNSBHs_FAR_1
             elif pars['catalog'] == 'GWTC-5.0':
                 catalog_BBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1 | IGWN_pointers.O4a_BBHs_FAR_1 | IGWN_pointers.O4b_BBHs_FAR_1
-                catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BNSsNSBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1 | IGWN_pointers.O4a_BNSsNSBHs_FAR_1 | IGWN_pointers.O4b_BNSsNSBH_FAR_1
+                catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BNSsNSBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1 | IGWN_pointers.O4a_BNSsNSBHs_FAR_1 | IGWN_pointers.O4b_BNSsNSBHs_FAR_1
             elif pars['catalog'] == 'O3':
                 catalog_BBHs = IGWN_pointers.O3_BBHs_FAR_1
                 catalog_BNSsNSBHs = IGWN_pointers.O3_BNSsNSBHs_FAR_1
@@ -597,7 +597,7 @@ class Data:
                         prior = xp.power(   pos_dict['luminosity_distance'], 2.)
                         event_print += " | dL prior: {:<30}".format('uniform in detected volume')
                     # If the filenames for O1-O3 events doesn't have 'nocosmo', they correspond to PE samples with UniformSourceFrame dL priors
-                    elif catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b'] or catalog[ev]['run'] == 'O4a':
+                    elif catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b', 'O4a', 'O4b']:
                         prior_usf = bilby.gw.prior.UniformSourceFrame(
                             name='luminosity_distance', 
                             minimum=0.1, 
@@ -607,7 +607,7 @@ class Data:
                         prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
                         event_print += " | dL prior: {:<30}".format('uniform in source frame')
                     else:
-                        raise KeyError("Unknown run for event {} in IGWN_pointers dictionary.".format(catalog[ev]['run']))
+                        raise KeyError("Unknown run {} for event {} in IGWN_pointers dictionary.".format(catalog[ev]['run'], ev))
 
                 else:
                     raise ValueError("Unknown PE-prior-distance option. Please choose from 'dL', 'dL3', 'UniformSourceFrame', 'per-run'.")
