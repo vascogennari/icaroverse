@@ -178,7 +178,7 @@ O4a_BBHs_FAR_1 = {
 }
 
 O4a_BNSsNSBHs_FAR_1 = {
-    'GW230529_181500': {'PE': '~IGNW_data_path/O4a/IGWN-GWTC4p0-1a206db3d_721-GW230529_181500-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:Mixed', 'run': 'O4a'},
+    'GW230529_181500': {'PE': '~IGNW_data_path/O4a/IGWN-GWTC4p0-1a206db3d_721-GW230529_181500-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomNSBH', 'run': 'O4a'},
 }
 
 O4b_BBHs_FAR_1 = {
