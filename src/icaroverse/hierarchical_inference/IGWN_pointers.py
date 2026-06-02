@@ -2,6 +2,7 @@
 # https://zenodo.org/records/6513631PE for O1, O2 and O3a events.
 # https://zenodo.org/records/8177023 for O3b events.
 # https://zenodo.org/records/17014085 for O4a events.
+# https://zenodo.org/records/20348005 and https://zenodo.org/records/20348006 for O4b events
 
 O1_O2_BBHs_FAR_1 = {
     'GW150914_095045' : {'PE': '~IGNW_data_path/O1-O2-O3a/IGWN-GWTC2p1-v2-GW150914_095045_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:Mixed', 'run': 'O1'},
@@ -16,6 +17,8 @@ O1_O2_BBHs_FAR_1 = {
     'GW170818_022509' : {'PE': '~IGNW_data_path/O1-O2-O3a/IGWN-GWTC2p1-v2-GW170818_022509_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:Mixed', 'run': 'O2'},
     'GW170823_131358' : {'PE': '~IGNW_data_path/O1-O2-O3a/IGWN-GWTC2p1-v2-GW170823_131358_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:Mixed', 'run': 'O2'},
 }
+
+O1_O2_BNSsNSBHs_FAR_1 = {}
 
 O3_BBHs_FAR_1 = {
     'GW190408_181802' : {'PE': '~IGNW_data_path/O1-O2-O3a/IGWN-GWTC2p1-v2-GW190408_181802_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:Mixed', 'run': 'O3a'},
@@ -78,6 +81,13 @@ O3_BBHs_FAR_1 = {
     'GW200302_015811' : {'PE': '~IGNW_data_path/O3b/IGWN-GWTC3p0-v2-GW200302_015811_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:Mixed', 'run': 'O3b'},
     'GW200311_115853' : {'PE': '~IGNW_data_path/O3b/IGWN-GWTC3p0-v2-GW200311_115853_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:Mixed', 'run': 'O3b'},
     'GW200316_215756' : {'PE': '~IGNW_data_path/O3b/IGWN-GWTC3p0-v2-GW200316_215756_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:Mixed', 'run': 'O3b'},
+}
+
+O3_BNSsNSBHs_FAR_1 = {
+    'GW190425_081805' : {'PE': '~IGNW_data_path/O1-O2-O3a/IGWN-GWTC2p1-v2-GW190425_081805_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:IMRPhenomPv2_NRTidal:HighSpin', 'run': 'O3a'},
+    'GW190814_211039' : {'PE': '~IGNW_data_path/O1-O2-O3a/IGWN-GWTC2p1-v2-GW190814_211039_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:IMRPhenomXPHM', 'run': 'O3a'},
+
+    'GW200115_042309' : {'PE': '~IGNW_data_path/O3b/IGWN-GWTC3p0-v2-GW200115_042309_PEDataRelease_mixed_nocosmo.h5', 'PE_waveform': 'C01:Mixed', 'run': 'O3b'},
 }
 
 O4a_BBHs_FAR_1 = {
@@ -167,9 +177,131 @@ O4a_BBHs_FAR_1 = {
     'GW231230_170116': {'PE': '~IGNW_data_path/O4a/IGWN-GWTC4p0-1a206db3d_721-GW231230_170116-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:Mixed', 'run': 'O4a'},
 }
 
+O4a_BNSsNSBHs_FAR_1 = {
+    'GW230529_181500': {'PE': '~IGNW_data_path/O4a/IGWN-GWTC4p0-1a206db3d_721-GW230529_181500-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomNSBH', 'run': 'O4a'},
+}
+
+O4b_BBHs_FAR_1 = {
+'GW240413_022019': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240413_022019-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240414_054515': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240414_054515-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240420_175625': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240420_175625-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240426_031451': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240426_031451-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240428_225440': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240428_225440-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240501_033534': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240501_033534-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240505_133552': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240505_133552-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240507_041632': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240507_041632-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240511_031507': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240511_031507-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240512_024139': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240512_024139-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240513_183302': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240513_183302-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240514_121713': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240514_121713-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240515_005301': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240515_005301-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240519_012815': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240519_012815-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240520_213616': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240520_213616-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240525_031210': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240525_031210-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240526_093944': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240526_093944-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240527_183429': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240527_183429-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240527_230910': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240527_230910-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240530_012417': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240530_012417-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240531_040326': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240531_040326-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240531_075248': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240531_075248-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240601_061200': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240601_061200-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240601_231004': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240601_231004-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240612_081540': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240612_081540-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240615_113620': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240615_113620-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240615_160735': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240615_160735-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240618_071627': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240618_071627-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240621_195059': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240621_195059-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240621_200935': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240621_200935-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240621_214041': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240621_214041-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240622_004008': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240622_004008-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240627_131622': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240627_131622-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240629_145256': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240629_145256-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240630_101703': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240630_101703-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240703_191355': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240703_191355-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240705_053215': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240705_053215-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240716_034900': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240716_034900-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240824_205609': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240824_205609-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240825_055146': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240825_055146-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240830_211120': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240830_211120-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240902_143306': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240902_143306-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240907_153833': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240907_153833-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240908_082628': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240908_082628-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240908_125134': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240908_125134-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240910_103535': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240910_103535-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240915_001357': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240915_001357-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240915_105151': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240915_105151-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240916_184352': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240916_184352-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240919_061559': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240919_061559-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240920_073424': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240920_073424-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240920_124024': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240920_124024-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240921_201835': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240921_201835-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240922_142106': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240922_142106-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240923_204006': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240923_204006-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240924_000316': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240924_000316-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240925_005809': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240925_005809-combined_PEDataRelease.hdf5', 'PE_waveform': 'C01:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240930_035959': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240930_035959-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW240930_234614': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW240930_234614-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241002_030559': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241002_030559-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241006_015333': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241006_015333-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241007_082943': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241007_082943-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241009_022835': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241009_022835-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241009_084816': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241009_084816-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241009_220455': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241009_220455-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241011_233834': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241011_233834-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241101_220523': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241101_220523-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241102_124058': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241102_124058-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241102_144729': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241102_144729-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241109_033317': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241109_033317-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241109_115924': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241109_115924-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241110_124123': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241110_124123-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241111_111552': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241111_111552-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241113_163507': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241113_163507-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241114_024711': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241114_024711-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241114_235258': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241114_235258-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241116_151753': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241116_151753-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241124_024914': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241124_024914-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241125_010116': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241125_010116-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241127_061008': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241127_061008-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241129_021832': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241129_021832-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241130_034908': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241130_034908-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241130_110422': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241130_110422-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241201_055758': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241201_055758-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241210_060606': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241210_060606-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241210_120900': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241210_120900-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241225_042553': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241225_042553-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241225_082815': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241225_082815-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241229_155844': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241229_155844-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241230_084504': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241230_084504-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241230_233618': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241230_233618-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW241231_054133': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW241231_054133-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250101_011205': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250101_011205-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250104_015122': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250104_015122-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250108_152221': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250108_152221-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250109_010541': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250109_010541-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250109_074552': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250109_074552-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250114_082203': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250114_082203-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250116_015318': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250116_015318-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250118_023225': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250118_023225-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250118_055802': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250118_055802-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250118_170523': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250118_170523-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250119_025138': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250119_025138-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+'GW250119_190238': {'PE': '~IGNW_data_path/O4b/IGWN-GWTC5p0-29ebe06b7_25-GW250119_190238-combined_PEDataRelease.hdf5', 'PE_waveform': 'C00:IMRPhenomXPHM-SpinTaylor', 'run': 'O4b'}, 
+}
+
+O4b_BNSsNSBHs_FAR_1 = {}
+
+
+# =============================================================================
+# =============================================================================
+
+# The cumulative search sensitivity estimates are publicly available here
+# https://zenodo.org/records/16740128 for GWTC-4.0
+# https://zenodo.org/records/19500052 for GWTC-5.0
+
 sensitivity_estimates = {
     'GWTC-3': '~IGWN_injections_path/MISSING',
     'GWTC-4.0': '~IGWN_injections_path/mixture-semi_o1_o2-real_o3_o4a-polar_spins_20250503134659UTC.hdf',
+    'GWTC-5.0': '~IGWN_injections_path/mixture-semi_o1_o2-real_o3_o4a_o4b-polar_spins_20260410130052UTC-clipped.hdf',
     'O3': '~IGWN_injections_path/endo3_bbhpop-LIGO-T2100113-v12.hdf5',
     'O4a': '~IGWN_injections_path/MISSING',
 }
