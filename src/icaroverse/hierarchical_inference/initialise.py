@@ -20,6 +20,7 @@ def InitialiseOptions(Config):
         'real-data'                   : False,
         'real-noise-injections'       : False,
         'catalog'                     : 'GWTC-4.0',
+        'include-NS'                  : False,
         'remove-events'               : [],
         'inverse-mass-ratio'          : False,
         'PE-prior-distance'           : 'dL3',
@@ -106,7 +107,7 @@ def InitialiseOptions(Config):
         if (key == 'injections-number') or (key == 'snr-cut') or (key == 'ifar-cut'):
             try: input_pars[key] = Config.getfloat('input', key)
             except: pass
-        if (key == 'real-data') or (key == 'real-noise-injections') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'ignore-selection-effects'):
+        if (key == 'real-data') or (key == 'real-noise-injections') or (key == 'distance-prior-PE') or (key == 'screen-output') or (key == 'true-data') or (key == 'ignore-selection-effects') or (key == 'include-NS'):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
@@ -397,6 +398,7 @@ usage = """
         real-data                   [bool ]  Option to process real GW events. Default: 0.
         real-noise-injections       [bool ]  Option to use IGWN real noise sensitivy estimates for the selection effects. Default: 0.
         catalog                     [str  ]  Catalog of events to be used in the analysis. Options: 'GWTC-3', 'GWTC-4.0', 'O3', 'O4a', 'simulations'. Safely set to 'simulations' if real-data is False (NB: 'simulations' is a dummy value, it can be anything but 'GWTC-4.0'). Default: 'GWTC-4.0'.
+        include-NS                  [bool ]  When using real data, whether or not to include netron star containing events. Default: False
         remove-events               [list ]  List of events to be removed from the analysis. Example: ['GW190412_053044', 'GW190521_030229']. Default: [].
         PE-prior-distance           [str  ]  Option to re-weight the PE samples on the luminosity distance prior used in the single event parameter estimation. Options: 'dL' (uniform in luminosity distance), 'dL3' (uniform in detected volume), 'UniformSourceFrame' (uniform in source frame), 'per-run' (for real data analyses only: dL3 for <= O3, UniformSourceFrame for O4). Default: 'dL3'.
         PE-prior-masses             [str  ]  Option to re-weight the PE samples on the mass prior used in the single event parameter estimation. Options: 'm1-m2' (uniform in component masses), 'Mc-q' (uniform in chirp mass and mass ratio). Default: 'm1-m2'.
