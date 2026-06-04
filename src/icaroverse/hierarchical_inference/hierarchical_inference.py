@@ -20,7 +20,7 @@ from ..generate_events.snr_computation import clean_dict
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, spacing = None, degree = None, zmax = 20.):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, spacing = None, spline_variable = None, degree = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -41,11 +41,11 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
                 return wrap(flag_powerlaw_smoothing = smoothing)
             elif "flag_smoothing" in sig.parameters: # same for a flag_smoothing arg. Note that flag_powerlaw_smoothing and flag_smoothing are assumed to be mutually exclusive in the list of available wrappers: there should not be a wrapper asking for both.
                 return wrap(flag_smoothing = smoothing)
-            elif 'Spline' in wrap_name or 'spline' in wrap_name:
-                if 'PowerLaw' in wrap_name:
-                    print('\t\tUsing a spline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}.\n'.format(n_splines, degree, spacing))
-                    return wrap(n_basis = n_splines, spacing = spacing, degree = degree)
-                elif 'Log' in wrap_name:
+            elif 'Bspline' in wrap_name:
+                print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}. Bspline variable: {}.\n'.format(n_splines, degree, spacing, spline_variable))
+                return wrap(n_basis = n_splines, spacing = spacing, degree = degree, spline_variable = spline_variable)
+            elif 'Spline' in wrap_name:
+                if 'Log' in wrap_name:
                     print('\t\tUsing a spline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}.\n'.format(n_splines, degree, spacing))
                     return wrap(n_basis = n_splines, spacing = spacing, degree = degree)
                 else:
@@ -139,7 +139,7 @@ class Wrappers:
 
         mp, ms = pars['model-primary'], pars['model-secondary']
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
-        n_splines, degree, spacing = pars['splines-number'], pars['splines-degree'], pars['spacing']
+        n_splines, degree, spacing, spline_variable = pars['splines-number'], pars['splines-degree'], pars['spacing'], pars['spline-variable']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m1_models = {
             'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
@@ -211,7 +211,9 @@ class Wrappers:
                 else:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
             # Non-evolving splines.
-            elif 'Splines' in mp or 'splines' in mp:
+            elif 'Bsplines' in mp:
+                w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree, spline_variable = spline_variable)
+            elif 'Splines' in mp:
                 if 'PowerLaw' in mp or 'Log' in mp:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree)
                 else:
@@ -607,22 +609,22 @@ class Data:
             # https://zenodo.org/records/17014085 for O4a events.
 
             if   pars['catalog'] == 'GWTC-3':
-                catalog_BBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1
-                catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1
+                catalog_BBHs =      IGWN_pointers.O1_O2_BBHs_FAR_1      | IGWN_pointers.O3_BBHs_FAR_1
+                catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BNSsNSBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1
             elif pars['catalog'] == 'GWTC-4.0':
-                catalog_BBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1 | IGWN_pointers.O4a_BBHs_FAR_1
+                catalog_BBHs =      IGWN_pointers.O1_O2_BBHs_FAR_1      | IGWN_pointers.O3_BBHs_FAR_1      | IGWN_pointers.O4a_BBHs_FAR_1
                 catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BNSsNSBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1 | IGWN_pointers.O4a_BNSsNSBHs_FAR_1
             elif pars['catalog'] == 'GWTC-5.0':
-                catalog_BBHs = IGWN_pointers.O1_O2_BBHs_FAR_1 | IGWN_pointers.O3_BBHs_FAR_1 | IGWN_pointers.O4a_BBHs_FAR_1 | IGWN_pointers.O4b_BBHs_FAR_1
+                catalog_BBHs =      IGWN_pointers.O1_O2_BBHs_FAR_1      | IGWN_pointers.O3_BBHs_FAR_1      | IGWN_pointers.O4a_BBHs_FAR_1      | IGWN_pointers.O4b_BBHs_FAR_1
                 catalog_BNSsNSBHs = IGWN_pointers.O1_O2_BNSsNSBHs_FAR_1 | IGWN_pointers.O3_BNSsNSBHs_FAR_1 | IGWN_pointers.O4a_BNSsNSBHs_FAR_1 | IGWN_pointers.O4b_BNSsNSBHs_FAR_1
             elif pars['catalog'] == 'O3':
-                catalog_BBHs = IGWN_pointers.O3_BBHs_FAR_1
+                catalog_BBHs =      IGWN_pointers.O3_BBHs_FAR_1
                 catalog_BNSsNSBHs = IGWN_pointers.O3_BNSsNSBHs_FAR_1
             elif pars['catalog'] == 'O4a':
-                catalog_BBHs = IGWN_pointers.O4a_BBHs_FAR_1
+                catalog_BBHs =      IGWN_pointers.O4a_BBHs_FAR_1
                 catalog_BNSsNSBHs = IGWN_pointers.O4a_BNSsNSBHs_FAR_1
             elif pars['catalog'] == 'O4b':
-                catalog_BBHs = IGWN_pointers.O4b_BBHs_FAR_1
+                catalog_BBHs =      IGWN_pointers.O4b_BBHs_FAR_1
                 catalog_BNSsNSBHs = IGWN_pointers.O4b_BNSsNSBHs_FAR_1
             else:
                 raise ValueError('Unknown catalog option. Please choose from GWTC-3, GWTC-4.0, O3 or O4a.')
@@ -1191,6 +1193,8 @@ def main():
             print("\tRunning sampler on GPU, enforcing npool==None (no multiprocessing).")
         else: 
             sampler_pars['npool'] = input_pars['npool']
+        if input_pars['sampler'] == 'nessai':
+            sampler_pars['allow_multi_valued_likelihood'] = input_pars['allow_multi_valued_likelihood']
         print_dictionary(sampler_pars)
 
     elif input_pars['sampler'] == 'ptemcee':

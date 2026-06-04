@@ -52,6 +52,7 @@ def InitialiseOptions(Config):
         'splines-number'              : 10,
         'splines-degree'              : 2,
         'spacing'                     : 'uniform',
+        'spline-variable'             : 'uniform',
         'dirichlet-prior'             : True,
 
         # Sampler
@@ -74,6 +75,7 @@ def InitialiseOptions(Config):
         'npool'                       : 10,
         'nessai-plot'                 : False,
         'correct-BF-Nsamples'         : 0, 
+        'allow_multi_valued_likelihood': False, 
 
         # Plots
         'N-points'                    : 500,
@@ -118,7 +120,7 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing') or (key == 'mass-parameters'):
+        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing') or (key == 'spline-variable') or (key == 'mass-parameters'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
         if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'constraint_qmin_muq_ordering') or (key == 'dirichlet-prior'):
@@ -144,7 +146,7 @@ def InitialiseOptions(Config):
         if (key == 'loglike-var'):
             try: input_pars[key] = Config.getfloat('sampler', key)
             except: pass
-        if (key == 'nessai-plot'):
+        if (key == 'nessai-plot') or (key == 'allow_multi_valued_likelihood'):
             try: input_pars[key] = Config.getboolean('sampler', key)
             except: pass
 
