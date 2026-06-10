@@ -32,6 +32,7 @@ def InitialiseOptions(Config):
         'model-primary'               : 'PowerLaw-Gaussian',
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
+        'model-spin'                  : 'BetaDistributionMag-MixTilt'
         'model-cosmology'             : 'FlatLambdaCDM',
         'model-bkg-cosmo'             : 'FlatLambdaCDM',
         'constraint_w0wa_earlyMDera'  : False,

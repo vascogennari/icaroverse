@@ -267,7 +267,25 @@ class Wrappers:
         else:
             raise ValueError("Unknown model for the Rate Evolution: {}.\nPlease choose from the available models:\n\t{}".format(mr, "\n\t".join(icarogw_models)))
         return w
-    
+
+    def Spin(self, pars):
+
+        msp = pars['model-spin']
+        # This is subject to be completed in the future with the addition of other rate evolution models to icarogw
+        models = {
+            'BetaDistributionMag-MixTilt':                   {'wrap name': 'spinprior_default'},
+            'TruncGaussianMag-MixTilt':                 {'wrap name': 'spinprior_default_gaussian'},
+        }
+        # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
+        available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
+        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+
+        if msp in icarogw_models:
+            w = get_wrapper(models[msp]['wrap name'])
+        else:
+            raise ValueError("Unknown model for the Rate Evolution: {}.\nPlease choose from the available models:\n\t{}".format(mr, "\n\t".join(icarogw_models)))
+        return w
+
     def Cosmology(self, pars):
 
         mc, mb = pars['model-cosmology'], pars['model-bkg-cosmo']
