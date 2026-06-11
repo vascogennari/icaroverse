@@ -271,7 +271,7 @@ class Wrappers:
     def Spin(self, pars):
 
         msp = pars['model-spin']
-        # This is subject to be completed in the future with the addition of other rate evolution models to icarogw
+        # This is subject to be completed in the future with the addition of other spin models to icarogw
         models = {
             'BetaDistributionMag-MixTilt':                   {'wrap name': 'spinprior_default'},
             'TruncGaussianMag-MixTilt':                 {'wrap name': 'spinprior_default_gaussian'},
@@ -283,7 +283,7 @@ class Wrappers:
         if msp in icarogw_models:
             w = get_wrapper(models[msp]['wrap name'])
         else:
-            raise ValueError("Unknown model for the Rate Evolution: {}.\nPlease choose from the available models:\n\t{}".format(mr, "\n\t".join(icarogw_models)))
+            raise ValueError("Unknown model for the Spin: {}.\nPlease choose from the available models:\n\t{}".format(msp, "\n\t".join(icarogw_models)))
         return w
 
     def Cosmology(self, pars):
@@ -446,7 +446,12 @@ class SelectionEffects:
                 inj_dict = {
                     'mass_1': xp.array(xp.array(events['mass1_source']) * (1 + xp.array(events['redshift']))),
                     'mass_2': xp.array(xp.array(events['mass2_source']) * (1 + xp.array(events['redshift']))),
-                    'luminosity_distance': xp.array(events['luminosity_distance'])}
+                    'luminosity_distance': xp.array(events['luminosity_distance']),
+                    'chi_1': xp.array(events['spin1_magnitude']),
+                    'cos_t_1': xp.cos(xp.array(events['spin1_polar_angle'])),
+                    'chi_2': xp.array(events['spin2_magnitude']),
+                    'cos_t_2': xp.cos(xp.array(events['spin2_polar_angle']))
+                            }
             
             else:
                 raise ValueError('Catalog option not yet implemented. Please choose GWTC-4.0 or O3.')
