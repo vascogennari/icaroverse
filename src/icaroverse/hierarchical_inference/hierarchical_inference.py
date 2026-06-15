@@ -41,6 +41,9 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
                 return wrap(flag_powerlaw_smoothing = smoothing)
             elif "flag_smoothing" in sig.parameters: # same for a flag_smoothing arg. Note that flag_powerlaw_smoothing and flag_smoothing are assumed to be mutually exclusive in the list of available wrappers: there should not be a wrapper asking for both.
                 return wrap(flag_smoothing = smoothing)
+            elif 'Bspline' in wrap_name and 'freeKnots' in wrap_name:
+                print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: inferred. Bspline variable: lin.\n'.format(n_splines, degree))
+                return wrap(n_basis = n_splines, degree = degree)
             elif 'Bspline' in wrap_name:
                 print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}. Bspline variable: {}.\n'.format(n_splines, degree, spacing, spline_variable))
                 return wrap(n_basis = n_splines, spacing = spacing, degree = degree, spline_variable = spline_variable)
@@ -186,6 +189,7 @@ class Wrappers:
             'Splines-LogPDF':                                                                              {'wrap name': 'LogSplineCoxDeBoor',                                                                          'z evolution': False, 'smoothing': 'component-wise'},
             'logBsplines':                                                                                 {'wrap name': 'massprior_logBspline',                                                                        'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-logBsplines':                                                                        {'wrap name': 'massprior_PowerLawlogBspline',                                                                'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-logBsplines-freeKnots':                                                              {'wrap name': 'massprior_PowerLawlogBspline_freeKnots',                                                      'z evolution': False, 'smoothing': 'global'},
             'Uniform':                                                                                     {'wrap name': 'Uniform',                                                                                     'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw-Gaussian':                                                                     {'wrap name': 'DoublePowerlaw_Gaussian',                                                                     'z evolution': False, 'smoothing': 'included'},
@@ -211,6 +215,8 @@ class Wrappers:
                 else:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
             # Non-evolving splines.
+            elif 'Bsplines' in mp and 'freeKnots' in mp:
+                w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, degree = degree)
             elif 'Bsplines' in mp:
                 w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree, spline_variable = spline_variable)
             elif 'Splines' in mp:
@@ -881,14 +887,20 @@ class LikelihoodPrior:
             ]
 
             # Precompute spline coefficient names safely
-            use_dirichlet = ('Spline' in pars['model-primary']) and pars['dirichlet-prior'] and not ('Log' in pars['model-primary'])
-            if use_dirichlet:
-                spline_coeffs = [f'c{i}' for i in range(1, pars['splines-number']+1)]
-            
+            flag_use_dirichlet = False
+            if ('Spline' in pars['model-primary']) and pars['dirichlet-prior']:
+                dirichlet_coeffs = [f'c{i}' for i in range(1, pars['splines-number']+1)]
+                flag_use_dirichlet = True
+            elif ('spline' in pars['model-primary'] and 'freeKnots' in pars['model-primary']) and pars['dirichlet-prior']:
+                dirichlet_coeffs = [f's{i}' for i in range(1, pars['splines-number']-pars['splines-degree'])]
+                flag_use_dirichlet = True
+            else: 
+                pass
+
             for par in w.population_parameters:
 
                 # Dirichlet case via Gamma priors
-                if use_dirichlet and par in spline_coeffs:
+                if flag_use_dirichlet and par in dirichlet_coeffs:
                     dict_out[par] = bilby.core.prior.Gamma(1., 1., name = par)
 
                 # Standard Uniform / LogUniform priors
@@ -910,9 +922,9 @@ class LikelihoodPrior:
                     raise ValueError("Unknown type for prior on {}. Please provide either a fixed value, or a 2-list [min, max], or a n-list [*params, type]".format(dict_in[par]))
             
             print('\n * Using the following priors.\n')
-            if use_dirichlet:
-                print_dictionary({key: dict_in[key] for key in dict_out.keys()-set(spline_coeffs)})
-                print('\n\tUsing a Dirichlet prior for the spline coefficients: {}.'.format(spline_coeffs))
+            if flag_use_dirichlet:
+                print_dictionary({key: dict_in[key] for key in dict_out.keys()-set(dirichlet_coeffs)})
+                print('\n\tUsing a Dirichlet prior for the spline coefficients: {}.'.format(dirichlet_coeffs))
             else:
                 print_dictionary({key: dict_in[key] for key in dict_out.keys()})
 
