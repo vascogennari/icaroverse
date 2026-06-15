@@ -876,6 +876,8 @@ class LikelihoodPrior:
             available_bilby_priors = [
                 'Uniform',
                 'LogUniform',
+                'Gaussian',
+                'PowerLaw',
             ]
 
             # Precompute spline coefficient names safely
@@ -890,21 +892,22 @@ class LikelihoodPrior:
                     dict_out[par] = bilby.core.prior.Gamma(1., 1., name = par)
 
                 # Standard Uniform / LogUniform priors
-                elif isinstance(dict_in[par], list) and len(dict_in[par]) == 2:
-                    dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
-
-                elif isinstance(dict_in[par], list) and len(dict_in[par]) > 2:
+                elif isinstance(dict_in[par], list) and isinstance(dict_in[par][-1], str):
                     if dict_in[par][2] in available_bilby_priors:
-                        bilby_prior_class = getattr(bilby.core.prior, dict_in[par][2])
-                        dict_out[par] = bilby_prior_class(dict_in[par][0], dict_in[par][1])
+                        bilby_prior_class = getattr(bilby.core.prior, dict_in[par][-1])
+                        prior_params = dict_in[par][:-1]
+                        dict_out[par] = bilby_prior_class(*prior_params)
                     else:
                         raise KeyError("Unknown bilby prior. Available (in this pipeline):\n\t" + '\n\t'.join(available_bilby_priors))
+
+                elif isinstance(dict_in[par], list) and len(dict_in[par]) == 2:
+                    dict_out[par] = bilby.core.prior.Uniform(dict_in[par][0], dict_in[par][1])
 
                 # Fixed value
                 elif isinstance(dict_in[par], float): dict_out[par] = dict_in[par]
 
                 else:
-                    raise ValueError("Unknown type for prior on {}. Please provide either a fixed value, or a 2-list [min, max], or a 3-list [min, max, type]".format(dict_in[par]))
+                    raise ValueError("Unknown type for prior on {}. Please provide either a fixed value, or a 2-list [min, max], or a n-list [*params, type]".format(dict_in[par]))
             
             print('\n * Using the following priors.\n')
             if use_dirichlet:
