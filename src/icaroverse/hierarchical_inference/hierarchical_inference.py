@@ -887,21 +887,27 @@ class LikelihoodPrior:
             ]
 
             # Precompute spline coefficient names safely
-            flag_use_dirichlet = False
+            flag_use_dirichlet, dirichlet_type = False, None
             if ('Spline' in pars['model-primary']) and pars['dirichlet-prior']:
                 dirichlet_coeffs = [f'c{i}' for i in range(1, pars['splines-number']+1)]
                 flag_use_dirichlet = True
+                dirichlet_procedure = "gamma_normalised"
             elif ('spline' in pars['model-primary'] and 'freeKnots' in pars['model-primary']) and pars['dirichlet-prior']:
-                dirichlet_coeffs = [f's{i}' for i in range(1, pars['splines-number']-pars['splines-degree'])]
+                dirichlet_coeffs = [f'z{i}' for i in range(1, pars['splines-number']-pars['splines-degree'])]
                 flag_use_dirichlet = True
+                dirichlet_procedure = "stick_breaking"
             else: 
                 pass
 
             for par in w.population_parameters:
 
                 # Dirichlet case via Gamma priors
-                if flag_use_dirichlet and par in dirichlet_coeffs:
+                if flag_use_dirichlet and par in dirichlet_coeffs and dirichlet_procedure == "gamma_normalised":
                     dict_out[par] = bilby.core.prior.Gamma(1., 1., name = par)
+                elif flag_use_dirichlet and par in dirichlet_coeffs and dirichlet_procedure == "stick_breaking":
+                    i = int(par[1:])
+                    n = pars['splines-number']-pars['splines-degree']
+                    dict_out[par] = bilby.core.prior.Beta(1, n-i, name = par)
 
                 # Standard Uniform / LogUniform priors
                 elif isinstance(dict_in[par], list) and isinstance(dict_in[par][-1], str):
