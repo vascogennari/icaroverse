@@ -929,8 +929,11 @@ class LikelihoodPrior:
             
             print('\n * Using the following priors.\n')
             if flag_use_dirichlet:
-                print_dictionary({key: dict_in[key] for key in dict_out.keys()-set(dirichlet_coeffs)})
-                print('\n\tUsing a Dirichlet prior for the spline coefficients: {}.'.format(dirichlet_coeffs))
+                print_dictionary({
+                    key: dict_in[key] 
+                    for key in sorted(list(dict_out.keys()-set(dirichlet_coeffs)))
+                })
+                print('\n\tUsing a Dirichlet prior for the following set of coefficients: {}.'.format(dirichlet_coeffs))
             else:
                 print_dictionary({key: dict_in[key] for key in dict_out.keys()})
 
