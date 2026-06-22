@@ -331,14 +331,15 @@ class Wrappers:
         self.Wrapper_RateEvolution = self.RateEvolution(self.pars)
         self.Wrapper_Cosmology     = self.Cosmology(self.pars)
         self.Wrapper_RefCosmology  = self.ReferenceCosmology()
+        self.Wrapper_Spin          = self.Spin(self.pars)
 
-        return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
+        return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Cosmology, self.Wrapper_Spin, self.Wrapper_RefCosmology
 
 
 
 class Rate():
       
-    def __init__(self, pars, m1w, m2w, rw, cw):
+    def __init__(self, pars, m1w, m2w, rw, cw, sw):
 
         if not pars['single-mass']:
             if   not 'Redshift' in pars['model-primary'] and not 'MassRatio'  in pars['model-secondary']:
@@ -354,7 +355,7 @@ class Rate():
                 self.w = icarogw.rates.MBH_redshift_rate_given_redshift(  cw, m1w, m2w, rw, scale_free = pars['scale-free'])
                 print('\t{}'.format('MBH_redshift_rate_given_redshift'))
             elif not 'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_q(                     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                self.w = icarogw.rates.CBC_rate_m1_q(                     cw, m1w, m2w, rw, sw, scale_free = pars['scale-free'])
                 print('\t{}'.format('CBC_rate_m1_q'))
             elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
                 self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
@@ -592,7 +593,11 @@ class Data:
                 pos_dict  = {
                     'mass_1'             : xp.array(data_evs['mass_1'][()]),
                     'mass_2'             : xp.array(data_evs['mass_2'][()]),
-                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()])}
+                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()]),
+                    'chi_1'             : xp.array(data_evs['a_1'][()]),
+                    'chi_2'             : xp.array(data_evs['a_2'][()]),
+                    'cos_t_1'           : xp.array(data_evs['cos_tilt_1'][()]),
+                    'cos_t_2'           : xp.array(data_evs['cos_tilt_2'][()])}
 
                 # Account for PE priors. For O3 data, PE priors are uniform in component masses.
                 # Luminosity distance.
@@ -627,7 +632,10 @@ class Data:
                             maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
                             unit='Mpc'
                         )
+                        amax = 1.
+                        spinp = (1./amax)*(1./amax)*0.5*0.5
                         prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                        prior *= spinp                  # Weighting by the spin prior
                         event_print += " | dL prior: {:<30}".format('uniform in source frame')
                     else:
                         raise KeyError("Unknown run {} for event {} in IGWN_pointers dictionary.".format(catalog[ev]['run'], ev))
@@ -1000,9 +1008,9 @@ def main():
 
     # Initialise the model wrappers.
     tmp = Wrappers(input_pars)
-    m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
+    m1w, m2w, rw, cw, sw, ref_cosmo = tmp.return_Wrappers()
 
-    tmp = Rate(input_pars, m1w, m2w, rw, cw)
+    tmp = Rate(input_pars, m1w, m2w, rw, cw, sw)
     wrapper = tmp.return_Rate()
 
     # Read injections for selection effects.
