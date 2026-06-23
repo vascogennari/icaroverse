@@ -269,22 +269,25 @@ class Wrappers:
         return w
 
     def Spin(self, pars):
+        if pars['include-spin']:
 
-        msp = pars['model-spin']
-        # This is subject to be completed in the future with the addition of other spin models to icarogw
-        models = {
-            'BetaDistributionMag-MixTilt':                   {'wrap name': 'spinprior_default'},
-            'TruncGaussianMag-MixTilt':                 {'wrap name': 'spinprior_default_gaussian'},
-        }
-        # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
-        available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
-        icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+               msp = pars['model-spin']
+               # This is subject to be completed in the future with the addition of other spin models to icarogw
+               models = {
+                         'BetaDistributionMag-MixTilt':                   {'wrap name': 'spinprior_default'},
+                         'TruncGaussianMag-MixTilt':                 {'wrap name': 'spinprior_default_gaussian'},
+                          }
+               # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
+               available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
+               icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
 
-        if msp in icarogw_models:
-            w = get_wrapper(models[msp]['wrap name'])
+               if msp in icarogw_models:
+                    w = get_wrapper(models[msp]['wrap name'])
+               else:
+                    raise ValueError("Unknown model for the Spin: {}.\nPlease choose from the available models:\n\t{}".format(msp, "\n\t".join(icarogw_models)))
+               return w
         else:
-            raise ValueError("Unknown model for the Spin: {}.\nPlease choose from the available models:\n\t{}".format(msp, "\n\t".join(icarogw_models)))
-        return w
+               return None
 
     def Cosmology(self, pars):
 

@@ -32,7 +32,7 @@ def InitialiseOptions(Config):
         'model-primary'               : 'PowerLaw-Gaussian',
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
-        'model-spin'                  : 'BetaDistributionMag-MixTilt',
+        'model-spin'                  : 'BetaDistributionMag-MixTilt',       # Spin Default Model
         'model-cosmology'             : 'FlatLambdaCDM',
         'model-bkg-cosmo'             : 'FlatLambdaCDM',
         'constraint_w0wa_earlyMDera'  : False,
@@ -44,6 +44,7 @@ def InitialiseOptions(Config):
         'low-smoothing'               : False,
         'priors'                      : {},
         'scale-free'                  : False,
+        'include-spin'                : False,           # Setting spin modelling as optional
         'single-mass'                 : False,
         'zmax'                        : 20.,
         'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
@@ -116,10 +117,10 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
+        if (key == 'model-primary') or (key == 'model-spin') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
+        if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -372,6 +373,17 @@ def default_priors():
 
         'z_min'         : [   0.  ,   0.5 ],
         'z_max'         : [   0.5 ,   1.  ],
+
+        # Spin Distribution
+        'alpha_chi'     : [ 1.    ,   10. ],
+        'beta_chi'      : [ 1.    ,   10. ],
+        'sigma_t'       : [ 0.    ,   1.  ],
+        'csi_spin'      : [ 0.    ,   1.  ],
+        'mu_chi_1'      : [ 0.    ,   1.  ],
+        'mu_chi_2'      : [ 0.    ,   1.  ],
+        'sigma_chi_1'   : [ 0.    ,   1.  ],
+        'sigma_chi_2'   : [ 0.    ,   1.  ],
+
     }
 
     return prior
