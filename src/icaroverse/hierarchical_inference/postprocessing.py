@@ -312,9 +312,9 @@ class ReconstructDistributions:
     def SecondaryMassFunction(df, w, p_dct, pars, prior = False):
 
         if   'MassRatio' in pars['model-secondary']: bound = 'bounds-q'
-        elif 'PowerLaw'  in pars['model-secondary']: bound = 'bounds-m2'
+        elif 'Mass2'     in pars['model-secondary']: bound = 'bounds-m2'
         else:
-            raise ValueError('Unknown option for the secondary mass plot. Current implementation accounts for MassRatio and PowerLaw.')
+            raise ValueError('Unknown option for the secondary mass plot. Current implementation accounts for MassRatio and Mass2.')
         
         if prior:
             tmp = {key: bilby.prior.Uniform(p_dct[key]['kwargs']['minimum'], p_dct[key]['kwargs']['maximum']).sample(pars['N-samps-prior']) for key in w.population_parameters}
@@ -327,8 +327,15 @@ class ReconstructDistributions:
         for idx, samp in df.iterrows():
             samp_filt = {key: samp[key] for key in w.population_parameters}
             w.update(**samp_filt)
-            if   'MassRatio' in pars['model-secondary']: pdf = w.pdf(m_array)
-            elif 'PowerLaw'  in pars['model-secondary']: pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
+
+            if   'MassRatio' in pars['model-secondary']:
+                pdf = w.pdf(m_array)
+            elif 'Mass2'     in pars['model-secondary']:
+                try:
+                    pdf = np.exp(w.prior.pdf2._log_pdf(m_array))
+                except:
+                    pdf = w.pdf(m_array)
+
             curves[idx] = pdf
 
         if not 'MassRatio-Gamma' in pars['model-secondary']: label = r'$m_2\ [M_{\odot}]$'
