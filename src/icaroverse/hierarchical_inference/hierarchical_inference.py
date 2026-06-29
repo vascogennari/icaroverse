@@ -334,7 +334,7 @@ class Rate():
         # mass and cosmology wrappers, and then checking that the provided
         # wrappers are compatible with the chosen rate model.
 
-        if not pars['log10-PDF']: # CBC sources
+        if not pars['LISA-rate']: # CBC sources
 
             if not pars['single-mass']: # Using both primary and secondary mass
                 if   not 'Redshift' in pars['model-primary'] and not 'MassRatio' in pars['model-secondary']:
@@ -1109,6 +1109,12 @@ def main():
     print('\n * Producing plots.')
     input_pars['output-plots']  = os.path.join(input_pars['output'], 'plots' )
     if not os.path.exists(input_pars['output-plots']):  os.makedirs(input_pars['output-plots'] )
+
+    # Consistency checks.
+    if   not input_pars['LISA-rate'] and input_pars['log10-PDF']:
+        print("\n Warning: You are plotting the PDF in log10-space for CBC sources.")
+    elif input_pars['LISA-rate'] and not input_pars['log10-PDF']:
+        print("\n Warning: You are not plotting the PDF in log10-space for LISA sources.")
 
     tmp = postprocessing.Plots(input_pars, df, m1w, m2w, rw, cw, ref_cosmo, wrapper, priors_dict, injections)
     tmp.ProducePlots()

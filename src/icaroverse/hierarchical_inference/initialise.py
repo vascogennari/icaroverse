@@ -43,6 +43,7 @@ def InitialiseOptions(Config):
         'priors'                      : {},
         'scale-free'                  : False,
         'single-mass'                 : False,
+        'LISA-rate'                   : False,
         'zmax'                        : 20.,
         'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
 
@@ -117,7 +118,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
+        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -443,6 +444,7 @@ usage = """
         priors                      [dict ]  Dictionary of the prior bounds for the population parameters. Default values are set in 'icaroverse.options.default_priors'.
         scale-free                  [bool ]  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
+        LISA-rate                   [bool ]  Flag to use the population rates for LISA's sources. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
         ref-cosmology               [dict ]  Reference cosmology values used to compute the luminosity distance from redshift for injections and true values. Keys: 'H0' (Hubble constant in km/s/Mpc), 'Om0' (matter density parameter at z=0). Default: {'H0': 67.7, 'Om0': 0.308}.
