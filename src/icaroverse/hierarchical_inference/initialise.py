@@ -46,6 +46,7 @@ def InitialiseOptions(Config):
         'scale-free'                  : False,
         'include-spin'                : False,
         'single-mass'                 : False,
+        'LISA-rate'                   : False,
         'zmax'                        : 20.,
         'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
 
@@ -120,7 +121,7 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-spin') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
+        if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -322,6 +323,26 @@ def default_priors():
         'mmin_j'        : 2.,
         'mmax_j'        : 9.,
 
+        'mu_g_j'        : [   2.  ,   9.  ],
+        'sigma_g_j'     : [   0.1 ,   5.  ],
+        'mix_j'         : [   0.  ,   1.  ],
+
+        'alpha_dpl'     : [   1.  ,  20.  ],
+        'beta_dpl'      : [   1.  ,  20.  ],
+        'mmin_dpl'      : 2.,
+        'mmax_dpl'      : 9.,
+        'm_break_dpl'   : [   2.  ,   7.  ],
+        'delta_dpl'     : [   0.01,  10.  ],
+
+        'mu_g_dpl'      : [   2.  ,   9.  ],
+        'sigma_g_dpl'   : [   0.1 ,   5.  ],
+        'mix_dpl'       : [   0.  ,   1.  ],
+
+        'm_break_z0_dpl'      : 5.5,
+        'm_break_z10_dpl'     : 5.5,
+        'm_break_zt_dpl'      : 3.,
+        'm_break_delta_zt_dpl': 3.,
+
         'c1'            : [   0.  ,   1.  ],
         'c2'            : [   0.  ,   1.  ],
         'c3'            : [   0.  ,   1.  ],
@@ -354,8 +375,8 @@ def default_priors():
         'start_b'       : 0.,
         'scale_b'       : 5.,
 
-        'a_gamma'       : [   1.  ,  10.  ],
-        'theta'         : [   0.01,   1.  ],
+        'alpha_g'       : [   1.  ,  10.  ],
+        'beta_g'        : [   0.01,   1.  ],
 
         # Rate evolution
         'gamma'         : [ -50.  ,  30.  ],
@@ -438,6 +459,7 @@ usage = """
         scale-free                  [bool ]  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
         include-spin                [bool ]  Flag to include the spins in the analysis. The option is not currently implemented for simulated data. Default: 0.
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
+        LISA-rate                   [bool ]  Flag to use the population rates for LISA's sources. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
         ref-cosmology               [dict ]  Reference cosmology values used to compute the luminosity distance from redshift for injections and true values. Keys: 'H0' (Hubble constant in km/s/Mpc), 'Om0' (matter density parameter at z=0). Default: {'H0': 67.7, 'Om0': 0.308}.

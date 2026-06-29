@@ -177,7 +177,8 @@ class Wrappers:
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw-Gaussian':                                                                     {'wrap name': 'DoublePowerlaw_Gaussian',                                                                     'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlawRedshift':                                                                      {'wrap name': 'DoublePowerlawRedshift',                                                                      'z evolution': True,  'smoothing': 'included'},
-            'Johnson':                                                                                     {'wrap name': 'Johnson',                                                                                     'z evolution': False, 'smoothing': 'included'},            
+            'Johnson':                                                                                     {'wrap name': 'Johnson',                                                                                     'z evolution': False, 'smoothing': 'included'},
+            'Johnson-Gaussian':                                                                            {'wrap name': 'Johnson_Gaussian',                                                                            'z evolution': False, 'smoothing': 'included'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -217,12 +218,13 @@ class Wrappers:
         single_mass, smoothing = pars['single-mass'], pars['low-smoothing']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m2_models = {
-            'Mass2-PowerLaw':         {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
-            'Mass2-PowerLaw-pairing': {'wrap name': 'm1m2_paired',               'var': 'm2'},
-            'MassRatio-Gaussian':     {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
-            'MassRatio-PowerLaw':     {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
-            'MassRatio-Gamma':        {'wrap name': 'Gamma',                     'var': 'q' }, 
-            'MassRatio-Beta':         {'wrap name': 'Beta',                      'var': 'q' },
+            'Mass2-PowerLaw':          {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
+            'Mass2-PowerLaw-pairing':  {'wrap name': 'm1m2_paired',               'var': 'm2'},
+            'Mass2-PowerLaw-Gaussian': {'wrap name': 'massprior_PowerLawPeak',    'var': 'm2'},
+            'MassRatio-Gaussian':      {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
+            'MassRatio-PowerLaw':      {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
+            'MassRatio-Gamma':         {'wrap name': 'Gamma',                     'var': 'q' }, 
+            'MassRatio-Beta':          {'wrap name': 'Beta',                      'var': 'q' },
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -232,12 +234,17 @@ class Wrappers:
             print('\t * Skipping secondary mass wrapper')
             w = None
         elif ms in icarogw_models:
-            if   self.m2_models[ms]['var'] == 'm2': 
-                if 'pairing' in ms: smoothing_wrap_name_extension = ''
-                else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
-                w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
-            elif self.m2_models[ms]['var'] == 'q':  
-                w = get_wrapper(self.m2_models[ms]['wrap name']                                            )
+            if 'm1m2' in self.m2_models[ms]['wrap name']:
+                if   self.m2_models[ms]['var'] == 'm2': 
+                    if 'pairing' in ms: smoothing_wrap_name_extension = ''
+                    else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
+                    w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
+                elif self.m2_models[ms]['var'] == 'q':  
+                    w = get_wrapper(self.m2_models[ms]['wrap name'])
+            else: # The secondary does not explicitly depend on the primary mass distribution wrapper, and can be initialised independently.
+                w = get_wrapper(self.m2_models[ms]['wrap name'])
+                if smoothing and not 'MassRatio' in ms:
+                    w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
         else:
             raise ValueError("Unknown model for the Secondary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
         return w
@@ -347,39 +354,64 @@ class Rate():
       
     def __init__(self, pars, m1w, m2w, rw, sw, cw):
 
-        if not pars['single-mass']:
-            if   not 'Redshift' in pars['model-primary'] and not 'MassRatio'  in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_vanilla_rate(                  cw,      m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_vanilla_rate'))
-            elif not 'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_rate(                          cw, m1w, m2w, rw,                    scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_rate'))
-            elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_redshift_rate(                 cw, m1w, m2w, rw,                    scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_redshift_rate'))
-            elif 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_redshift_rate_given_redshift(  cw, m1w, m2w, rw,                    scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_redshift_rate_given_redshift'))
-            elif not 'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_q(                     cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_q'))
-            elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(     cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
-            elif     'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(      cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
-        else:
-            if not 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.CBC_rate_m_given_redshift(         cw, m1w,      rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m_given_redshift'))
-            else:
-                if not 'Luminosity' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w,  rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+        # IMPROVEME: This selection should be done in a more elegant way,
+        # e.g. by defining a dictionary of rate models and their required
+        # mass and cosmology wrappers, and then checking that the provided
+        # wrappers are compatible with the chosen rate model.
+
+        if not pars['LISA-rate']: # CBC sources
+
+            if not pars['single-mass']: # Using both primary and secondary mass
+                if   not 'Redshift' in pars['model-primary'] and not 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_vanilla_rate(cw, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_vanilla_rate'))
+                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_q'))
+                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_redshift_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_redshift_rate_m1_q'))
+                elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
+                elif     'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
+
+            else: # Using only the primary mass
+                if not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_rate_m_given_redshift(cw, m1w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m_given_redshift'))
                 else:
-                    self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
-                    print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
+                    if not 'Luminosity' in pars['model-rate']:
+                        self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+                    else:
+                        self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
+                        print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
+        
+        else: # LISA sources
+
+            if not pars['single-mass']: # Using both primary and secondary mass
+                if 'PowerLaw-Gaussian' in pars['model-secondary']:
+                    # FIXME: Need a more general and robust option handling.
+                    self.w = icarogw.rates.EMRI_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('EMRI_rate'))
+                else:
+                    if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_rate'))
+                    elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_redshift_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_redshift_rate'))
+                    elif 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_redshift_rate_given_redshift(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_redshift_rate_given_redshift'))
+
+            else: # Using only the primary mass
+                if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.EMRI_rate_no_q(cw, m1w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('EMRI_rate_no_q'))
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
@@ -504,9 +536,6 @@ class SelectionEffects:
                         inj_dict['mass_ratio'] = inj_dict['mass_1'] / inj_dict.pop('mass_2')
                         prior *= inj_dict['mass_1'] / inj_dict['mass_ratio']**2 # |J_(m1,m2)->(m1,q)| = m1/q^2, with q = m1/m2.
             else:
-                # If only using one mass, remove the Jacobian contribution from the secondary.
-                # This operation depends on the injection prior used to generate the injections.
-                prior *= (1 + ref_cosmo.dl2z(inj_dict['luminosity_distance']))
                 inj_dict.pop('mass_2')
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
@@ -1143,6 +1172,12 @@ def main():
     print('\n * Producing plots.')
     input_pars['output-plots']  = os.path.join(input_pars['output'], 'plots' )
     if not os.path.exists(input_pars['output-plots']):  os.makedirs(input_pars['output-plots'] )
+
+    # Consistency checks.
+    if   not input_pars['LISA-rate'] and input_pars['log10-PDF']:
+        print("\n Warning: You are plotting the PDF in log10-space for CBC sources.")
+    elif input_pars['LISA-rate'] and not input_pars['log10-PDF']:
+        print("\n Warning: You are not plotting the PDF in log10-space for LISA sources.")
 
     tmp = postprocessing.Plots(input_pars, df, m1w, m2w, rw, cw, ref_cosmo, wrapper, priors_dict, injections)
     tmp.ProducePlots()
