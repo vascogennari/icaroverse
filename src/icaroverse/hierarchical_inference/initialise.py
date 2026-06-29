@@ -32,6 +32,7 @@ def InitialiseOptions(Config):
         'model-primary'               : 'PowerLaw-Gaussian',
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
+        'model-spin'                  : 'BetaDistributionMag-MixTilt',
         'model-cosmology'             : 'FlatLambdaCDM',
         'model-bkg-cosmo'             : 'FlatLambdaCDM',
         'constraint_w0wa_earlyMDera'  : False,
@@ -43,6 +44,7 @@ def InitialiseOptions(Config):
         'low-smoothing'               : False,
         'priors'                      : {},
         'scale-free'                  : False,
+        'include-spin'                : False,
         'single-mass'                 : False,
         'LISA-rate'                   : False,
         'zmax'                        : 20.,
@@ -116,10 +118,10 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
+        if (key == 'model-primary') or (key == 'model-spin') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
+        if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -392,6 +394,16 @@ def default_priors():
 
         'z_min'         : [   0.  ,   0.5 ],
         'z_max'         : [   0.5 ,   1.  ],
+
+        # Spin Distribution
+        'alpha_chi'     : [   1.  ,  10.  ],
+        'beta_chi'      : [   1.  ,  10.  ],
+        'sigma_t'       : [   0.  ,   1.  ],
+        'csi_spin'      : [   0.  ,   1.  ],
+        'mu_chi_1'      : [   0.  ,   1.  ],
+        'mu_chi_2'      : [   0.  ,   1.  ],
+        'sigma_chi_1'   : [   0.  ,   1.  ],
+        'sigma_chi_2'   : [   0.  ,   1.  ],
     }
 
     return prior
@@ -445,6 +457,7 @@ usage = """
         low-smoothing               [bool ]  Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
         priors                      [dict ]  Dictionary of the prior bounds for the population parameters. Default values are set in 'icaroverse.options.default_priors'.
         scale-free                  [bool ]  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
+        include-spin                [bool ]  Flag to include the spins in the analysis. The option is not currently implemented for simulated data. Default: 0.
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         LISA-rate                   [bool ]  Flag to use the population rates for LISA's sources. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.

@@ -274,7 +274,31 @@ class Wrappers:
         else:
             raise ValueError("Unknown model for the Rate Evolution: {}.\nPlease choose from the available models:\n\t{}".format(mr, "\n\t".join(icarogw_models)))
         return w
-    
+
+    def Spin(self, pars):
+
+        if pars['include-spin']:
+
+            ms = pars['model-spin']
+            # This is subject to be completed in the future with the addition of other spin models to icarogw
+            models = {
+                'BetaDistributionMag-MixTilt': {'wrap name': 'spinprior_default'},
+                'TruncGaussianMag-MixTilt':    {'wrap name': 'spinprior_default_gaussian'},
+            }
+            # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
+            available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
+            icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+
+            if ms in icarogw_models:
+                w = get_wrapper(models[ms]['wrap name'])
+            else:
+                raise ValueError("Unknown model for the Spin: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
+            return w
+
+        else:
+            # To ensure compatibility with icarogw.
+            return None
+
     def Cosmology(self, pars):
 
         mc, mb = pars['model-cosmology'], pars['model-bkg-cosmo']
@@ -318,16 +342,17 @@ class Wrappers:
         self.Wrapper_PrimaryMass   = self.PrimaryMass(self.pars)
         self.Wrapper_SecondaryMass = self.SecondaryMass(self.pars, self.Wrapper_PrimaryMass)
         self.Wrapper_RateEvolution = self.RateEvolution(self.pars)
+        self.Wrapper_Spin          = self.Spin(self.pars)
         self.Wrapper_Cosmology     = self.Cosmology(self.pars)
         self.Wrapper_RefCosmology  = self.ReferenceCosmology()
 
-        return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
+        return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Spin, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
 
 
 
 class Rate():
       
-    def __init__(self, pars, m1w, m2w, rw, cw):
+    def __init__(self, pars, m1w, m2w, rw, sw, cw):
 
         # IMPROVEME: This selection should be done in a more elegant way,
         # e.g. by defining a dictionary of rate models and their required
@@ -338,24 +363,24 @@ class Rate():
 
             if not pars['single-mass']: # Using both primary and secondary mass
                 if   not 'Redshift' in pars['model-primary'] and not 'MassRatio' in pars['model-secondary']:
-                    self.w = icarogw.rates.CBC_vanilla_rate(cw, m2w, rw, scale_free = pars['scale-free'])
+                    self.w = icarogw.rates.CBC_vanilla_rate(cw, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_vanilla_rate'))
                 elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_rate_m1_q(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    self.w = icarogw.rates.CBC_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_rate_m1_q'))
                 elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_redshift_rate_m1_q(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    self.w = icarogw.rates.CBC_redshift_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_redshift_rate_m1_q'))
                 elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
-                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
                 elif     'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary']:
-                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
 
             else: # Using only the primary mass
                 if not 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
+                    self.w = icarogw.rates.CBC_rate_m_given_redshift(cw, m1w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_rate_m_given_redshift'))
                 else:
                     if not 'Luminosity' in pars['model-rate']:
@@ -460,7 +485,12 @@ class SelectionEffects:
                 inj_dict = {
                     'mass_1': xp.array(xp.array(events['mass1_source']) * (1 + xp.array(events['redshift']))),
                     'mass_2': xp.array(xp.array(events['mass2_source']) * (1 + xp.array(events['redshift']))),
-                    'luminosity_distance': xp.array(events['luminosity_distance'])}
+                    'luminosity_distance': xp.array(events['luminosity_distance']),
+                    'chi_1': xp.array(events['spin1_magnitude']),
+                    'cos_t_1': xp.cos(xp.array(events['spin1_polar_angle'])),
+                    'chi_2': xp.array(events['spin2_magnitude']),
+                    'cos_t_2': xp.cos(xp.array(events['spin2_polar_angle']))
+                }
             
             else:
                 raise ValueError('Catalog option not yet implemented. Please choose GWTC-4.0 or O3.')
@@ -483,6 +513,8 @@ class SelectionEffects:
                     raise ValueError('Only pickle files are currently supported for custom injections:\n{}'.format(pars['injections-path']))
             except:
                 raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
+        
+            if pars['include-spin'] == 'per-run': raise Warning("'include-spin' option is not yet impolemented for simulated injections.")
             
             # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
             # Whatever distribution and variables used to generate the injections, please make sure it follows such conventions.
@@ -598,7 +630,12 @@ class Data:
                 pos_dict  = {
                     'mass_1'             : xp.array(data_evs['mass_1'][()]),
                     'mass_2'             : xp.array(data_evs['mass_2'][()]),
-                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()])}
+                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()]),
+                    'chi_1'              : xp.array(data_evs['a_1'][()]),
+                    'chi_2'              : xp.array(data_evs['a_2'][()]),
+                    'cos_t_1'            : xp.array(data_evs['cos_tilt_1'][()]),
+                    'cos_t_2'            : xp.array(data_evs['cos_tilt_2'][()]),
+                }
 
                 # Account for PE priors. For O3 data, PE priors are uniform in component masses.
                 # Luminosity distance.
@@ -632,8 +669,9 @@ class Data:
                             minimum=0.1, 
                             maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
                             unit='Mpc'
-                        )
+                        )                        
                         prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+
                         event_print += " | dL prior: {:<30}".format('uniform in source frame')
                     else:
                         raise KeyError("Unknown run {} for event {} in IGWN_pointers dictionary.".format(catalog[ev]['run'], ev))
@@ -645,6 +683,11 @@ class Data:
                 if 'MassRatio' in pars['model-secondary']:
                     pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / pos_dict['mass_1']
                     prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
+
+                if pars['include-spin']:
+                    amax = 1.
+                    spin_prior = ((1./amax)*0.5)*((1./amax)*0.5)
+                    prior *= spin_prior
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
                 print(event_print)
@@ -660,6 +703,7 @@ class Data:
                 raise ValueError('Unknown format for the file containing the single events samples. Please make sure the file is correct:\n{}'.format(pars['data-path']))
 
             if pars['PE-prior-distance'] == 'per-run': raise ValueError("'per-run' PE-prior-distance option incompatible with simulated data.")
+            if pars['include-spin'] == 'per-run': raise Warning("'include-spin' option is not yet impolemented for simulated data.")
 
             samps_dict = {}
             for i in range(len(data_evs['m1d'])):
@@ -1006,9 +1050,9 @@ def main():
 
     # Initialise the model wrappers.
     tmp = Wrappers(input_pars)
-    m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
+    m1w, m2w, rw, sw, cw, ref_cosmo = tmp.return_Wrappers()
 
-    tmp = Rate(input_pars, m1w, m2w, rw, cw)
+    tmp = Rate(input_pars, m1w, m2w, rw, sw, cw)
     wrapper = tmp.return_Rate()
 
     # Read injections for selection effects.
