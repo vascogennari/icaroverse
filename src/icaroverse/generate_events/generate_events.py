@@ -77,12 +77,13 @@ def main():
     # Set maximum simulated redshift
     input_pars['bounds-z'][1] = input_pars['zmax-simulations']
 
-    # Set additional input parameters for icarogw_runner.
+    # Set additional input parameters for hierarchical_inference, which is used to initialise the wrappers.
     input_pars['ref-cosmology'] = {'H0': 0., 'Om0': 0.} # Placeholder required by the wrappers initialisation, never used in this script.
+    input_pars['include-spin'] = False # For the moment, this option is not implemented in generating events.
 
     # Initialise the model wrappers.
     tmp = hierarchical_inference.Wrappers(input_pars)
-    m1w, m2w, rw, cw, _ = tmp.return_Wrappers()
+    m1w, m2w, rw, _, cw, _ = tmp.return_Wrappers()
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw}
 
     # Initilialise the cosmology.
