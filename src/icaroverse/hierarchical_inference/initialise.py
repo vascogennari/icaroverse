@@ -32,7 +32,7 @@ def InitialiseOptions(Config):
         'model-primary'               : 'PowerLaw-Gaussian',
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
-        'model-spin'                  : 'BetaDistributionMag-MixTilt',       # Spin Default Model
+        'model-spin'                  : 'BetaDistributionMag-MixTilt',
         'model-cosmology'             : 'FlatLambdaCDM',
         'model-bkg-cosmo'             : 'FlatLambdaCDM',
         'constraint_w0wa_earlyMDera'  : False,
@@ -44,7 +44,7 @@ def InitialiseOptions(Config):
         'low-smoothing'               : False,
         'priors'                      : {},
         'scale-free'                  : False,
-        'include-spin'                : False,           # Setting spin modelling as optional
+        'include-spin'                : False,
         'single-mass'                 : False,
         'zmax'                        : 20.,
         'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
@@ -375,15 +375,14 @@ def default_priors():
         'z_max'         : [   0.5 ,   1.  ],
 
         # Spin Distribution
-        'alpha_chi'     : [ 1.    ,   10. ],
-        'beta_chi'      : [ 1.    ,   10. ],
-        'sigma_t'       : [ 0.    ,   1.  ],
-        'csi_spin'      : [ 0.    ,   1.  ],
-        'mu_chi_1'      : [ 0.    ,   1.  ],
-        'mu_chi_2'      : [ 0.    ,   1.  ],
-        'sigma_chi_1'   : [ 0.    ,   1.  ],
-        'sigma_chi_2'   : [ 0.    ,   1.  ],
-
+        'alpha_chi'     : [   1.  ,  10.  ],
+        'beta_chi'      : [   1.  ,  10.  ],
+        'sigma_t'       : [   0.  ,   1.  ],
+        'csi_spin'      : [   0.  ,   1.  ],
+        'mu_chi_1'      : [   0.  ,   1.  ],
+        'mu_chi_2'      : [   0.  ,   1.  ],
+        'sigma_chi_1'   : [   0.  ,   1.  ],
+        'sigma_chi_2'   : [   0.  ,   1.  ],
     }
 
     return prior
@@ -437,6 +436,7 @@ usage = """
         low-smoothing               [bool ]  Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
         priors                      [dict ]  Dictionary of the prior bounds for the population parameters. Default values are set in 'icaroverse.options.default_priors'.
         scale-free                  [bool ]  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
+        include-spin                [bool ]  Flag to include the spins in the analysis. The option is not currently implemented for simulated data. Default: 0.
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
