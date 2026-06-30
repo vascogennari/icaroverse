@@ -1,4 +1,6 @@
 import ast
+from collections import Counter
+
 
 def InitialiseOptions(Config):
 
@@ -114,7 +116,8 @@ def InitialiseOptions(Config):
             try: input_pars[key] = Config.getboolean('input', key)
             except: pass
         if (key == 'remove-events'):
-            try: input_pars[key] = ast.literal_eval(Config.get('input', key))
+            try: input_pars[key] = safe_literal_eval(Config.get('input', key), key)
+            except ValueError: raise
             except: pass
 
         # Model
@@ -128,7 +131,8 @@ def InitialiseOptions(Config):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
         if (key == 'priors') or (key == 'ref-cosmology'):
-            try: input_pars[key] = ast.literal_eval(Config.get('model', key))
+            try: input_pars[key] = safe_literal_eval(Config.get('model', key), key)
+            except ValueError: raise
             except: pass
         if (key == 'splines-number'):
             try: input_pars[key] = Config.getint('model', key)
@@ -156,7 +160,8 @@ def InitialiseOptions(Config):
             try: input_pars[key] = Config.getint('plots', key)
             except: pass
         if (key == 'true-values') or (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z')  or (key == 'percentiles'):
-            try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
+            try: input_pars[key] = safe_literal_eval(Config.get('plots', key), key)
+            except ValueError: raise
             except: pass
         if (key == 'selection-effects') or (key == 'plot-prior') or (key == 'log10-PDF'):
             try: input_pars[key] = Config.getboolean('plots', key)
@@ -170,10 +175,39 @@ def InitialiseOptions(Config):
     if not input_pars['priors'] == {}:
         for key in input_pars['priors']: input_pars['all-priors'][key] = input_pars['priors'][key]
 
-    # ensure consistency between options. The default for 'catalog' is GWTC-4.0, but that breaks if 'real-data' is False.
+    # Ensure consistency between options. The default for 'catalog' is GWTC-4.0, but that breaks if 'real-data' is False.
     if not input_pars['real-data']: input_pars['catalog'] = "simulations"
 
     return input_pars
+
+
+def safe_literal_eval(text, key):
+    """
+    Ensure that there are no repeated keys in the dictionary.
+    """
+    tree = ast.parse(text, mode="eval")
+
+    if isinstance(tree.body, ast.Dict):
+
+        keys = []
+
+        for k in tree.body.keys:
+
+            if isinstance(k, ast.Constant):
+                keys.append(k.value)
+
+            else:
+                keys.append(ast.literal_eval(k))
+
+        duplicates = [
+            k for k, c in Counter(keys).items()
+            if c > 1
+        ]
+
+        if duplicates:
+            raise ValueError(f"Duplicate keys found in the '{key}' config entry: {duplicates}.")
+
+    return ast.literal_eval(text)
 
 
 def default_priors():

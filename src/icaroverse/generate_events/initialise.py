@@ -1,4 +1,6 @@
-import ast
+# Internal imports
+from ..hierarchical_inference.initialise import safe_literal_eval
+
 
 def InitialiseOptions(Config):
 
@@ -122,7 +124,8 @@ def InitialiseOptions(Config):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
         if (key == 'truths'):
-            try: input_pars[key] = ast.literal_eval(Config.get('model', key))
+            try: input_pars[key] = safe_literal_eval(Config.get('model', key), key)
+            except ValueError: raise
             except: pass
         if (key == 'splines-number') or (key == 'splines-order'):
             try: input_pars[key] = Config.getint('snr-options', key)
@@ -136,7 +139,8 @@ def InitialiseOptions(Config):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
         if (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z'):
-            try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
+            try: input_pars[key] = safe_literal_eval(Config.get('plots', key), key)
+            except ValueError: raise
             except: pass
     
     # Initialise the population true values.

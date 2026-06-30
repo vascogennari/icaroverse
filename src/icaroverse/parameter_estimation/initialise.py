@@ -1,4 +1,7 @@
-import ast, numpy as np
+import numpy as np
+
+# Internal imports
+from ..hierarchical_inference.initialise import safe_literal_eval
 
 
 def InitialiseOptions(Config):
@@ -59,7 +62,8 @@ def InitialiseOptions(Config):
 
         # Model
         if (key == 'event-parameters') or (key == 'priors'):
-            try: input_pars[key] = ast.literal_eval(Config.get('model', key))
+            try: input_pars[key] = safe_literal_eval(Config.get('model', key), key)
+            except ValueError: raise
             except: pass
         if (key == 'observing-run') or (key == 'waveform') or (key == 'mass-parameters-sampled') or (key == 'strain-file') or (key == 'mass-parameters-uniform-prior'): 
             try: input_pars[key] = Config.get('model', key)
