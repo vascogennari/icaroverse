@@ -1079,6 +1079,11 @@ def main():
     #     pass
     #     print("\t...failed. Carry on...\n")
 
+    # Sanity checks.
+    if not input_pars['true-values'] == {}:
+        if set(wrapper.population_parameters) != set(input_pars["true-values"]):
+            raise ValueError("The keys in 'true-values' do not match the population parameters.")
+
     if not input_pars['ignore-selection-effects']:
         # Control the effective number of injections on the injected model.
         check_effective_number_injections(input_pars, likelihood, data.n_ev)
