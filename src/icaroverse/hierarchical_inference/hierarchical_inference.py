@@ -195,7 +195,8 @@ class Wrappers:
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw-Gaussian':                                                                     {'wrap name': 'DoublePowerlaw_Gaussian',                                                                     'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlawRedshift':                                                                      {'wrap name': 'DoublePowerlawRedshift',                                                                      'z evolution': True,  'smoothing': 'included'},
-            'Johnson':                                                                                     {'wrap name': 'Johnson',                                                                                     'z evolution': False, 'smoothing': 'included'},            
+            'Johnson':                                                                                     {'wrap name': 'Johnson',                                                                                     'z evolution': False, 'smoothing': 'included'},
+            'Johnson-Gaussian':                                                                            {'wrap name': 'Johnson_Gaussian',                                                                            'z evolution': False, 'smoothing': 'included'},
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -245,12 +246,13 @@ class Wrappers:
         single_mass, smoothing = pars['single-mass'], pars['low-smoothing']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m2_models = {
-            'Mass2-PowerLaw':         {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
-            'Mass2-PowerLaw-pairing': {'wrap name': 'm1m2_paired',               'var': 'm2'},
-            'MassRatio-Gaussian':     {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
-            'MassRatio-PowerLaw':     {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
-            'MassRatio-Gamma':        {'wrap name': 'Gamma',                     'var': 'q' }, 
-            'MassRatio-Beta':         {'wrap name': 'Beta',                      'var': 'q' },
+            'Mass2-PowerLaw':          {'wrap name': 'm1m2_conditioned',          'var': 'm2'},
+            'Mass2-PowerLaw-pairing':  {'wrap name': 'm1m2_paired',               'var': 'm2'},
+            'Mass2-PowerLaw-Gaussian': {'wrap name': 'massprior_PowerLawPeak',    'var': 'm2'},
+            'MassRatio-Gaussian':      {'wrap name': 'mass_ratio_prior_Gaussian', 'var': 'q' }, 
+            'MassRatio-PowerLaw':      {'wrap name': 'mass_ratio_prior_Powerlaw', 'var': 'q' }, 
+            'MassRatio-Gamma':         {'wrap name': 'Gamma',                     'var': 'q' }, 
+            'MassRatio-Beta':          {'wrap name': 'Beta',                      'var': 'q' },
         }
         # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
         available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
@@ -260,13 +262,17 @@ class Wrappers:
             print('\t * Skipping secondary mass wrapper')
             w = None
         elif ms in icarogw_models:
-            if   self.m2_models[ms]['var'] == 'm2': 
-                if 'pairing' in ms: smoothing_wrap_name_extension = ''
-                # else: smoothing_wrap_name_extension = ('_lowpass' + '_m2'*(self.m1_models[mp]['smoothing'] == 'component-wise'))*smoothing
-                else: smoothing_wrap_name_extension = '_lowpass_m2'*smoothing
-                w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
-            elif self.m2_models[ms]['var'] == 'q':  
-                w = get_wrapper(self.m2_models[ms]['wrap name']                                            )
+            if 'm1m2' in self.m2_models[ms]['wrap name']:
+                if   self.m2_models[ms]['var'] == 'm2': 
+                    if 'pairing' in ms: smoothing_wrap_name_extension = ''
+                    else: smoothing_wrap_name_extension = '_lowpass_m2'*smoothing
+                    w = get_wrapper(self.m2_models[ms]['wrap name'] + smoothing_wrap_name_extension, input_wrapper = m1w)
+                elif self.m2_models[ms]['var'] == 'q':  
+                    w = get_wrapper(self.m2_models[ms]['wrap name'])
+            else: # The secondary does not explicitly depend on the primary mass distribution wrapper, and can be initialised independently.
+                w = get_wrapper(self.m2_models[ms]['wrap name'])
+                if smoothing and not 'MassRatio' in ms:
+                    w = get_wrapper('lowSmoothedwrapper', input_wrapper = w)
         else:
             raise ValueError("Unknown model for the Secondary Mass distribution: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
         return w
@@ -296,7 +302,31 @@ class Wrappers:
         else:
             raise ValueError("Unknown model for the Rate Evolution: {}.\nPlease choose from the available models:\n\t{}".format(mr, "\n\t".join(icarogw_models)))
         return w
-    
+
+    def Spin(self, pars):
+
+        if pars['include-spin']:
+
+            ms = pars['model-spin']
+            # This is subject to be completed in the future with the addition of other spin models to icarogw
+            models = {
+                'BetaDistributionMag-MixTilt': {'wrap name': 'spinprior_default'},
+                'TruncGaussianMag-MixTilt':    {'wrap name': 'spinprior_default_gaussian'},
+            }
+            # This is to make sure one can only use the models that are present in one's currently installed version of icarogw, AND that the present pipeline can handle.
+            available_icarogw_models = dict(getmembers(icarogw.wrappers, isclass))
+            icarogw_models = [m for m in models if models[m]['wrap name'] in available_icarogw_models]
+
+            if ms in icarogw_models:
+                w = get_wrapper(models[ms]['wrap name'])
+            else:
+                raise ValueError("Unknown model for the Spin: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
+            return w
+
+        else:
+            # To ensure compatibility with icarogw.
+            return None
+
     def Cosmology(self, pars):
 
         mc, mb = pars['model-cosmology'], pars['model-bkg-cosmo']
@@ -343,55 +373,76 @@ class Wrappers:
         self.Wrapper_PrimaryMass   = self.PrimaryMass(self.pars)
         self.Wrapper_SecondaryMass = self.SecondaryMass(self.pars, self.Wrapper_PrimaryMass)
         self.Wrapper_RateEvolution = self.RateEvolution(self.pars)
+        self.Wrapper_Spin          = self.Spin(self.pars)
         self.Wrapper_Cosmology     = self.Cosmology(self.pars)
         self.Wrapper_RefCosmology  = self.ReferenceCosmology()
 
-        return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
+        return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Spin, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
 
 
 
 class Rate():
       
-    def __init__(self, pars, m1w, m2w, rw, cw):
+    def __init__(self, pars, m1w, m2w, rw, sw, cw):
 
-        if not pars['single-mass']:
-            if   not 'Redshift' in pars['model-primary'] and not 'MassRatio'  in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_vanilla_rate(                  cw,      m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_vanilla_rate'))
-            elif not 'Redshift' in pars['model-primary'] and      'Gamma'     in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_rate(                          cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_rate'))
-            elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_redshift_rate(                 cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_redshift_rate'))
-            elif 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.MBH_redshift_rate_given_redshift(  cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('MBH_redshift_rate_given_redshift'))
-            elif not 'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary'] and pars['mass-parameters'] == 'Mc-q':
-                self.w = icarogw.rates.CBC_rate_mchirp_q(                 cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_mchirp_q'))
-            elif not 'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_q(                     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_q'))
-            elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(     cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
-            elif     'Redshift' in pars['model-primary'] and      'MassRatio' in pars['model-secondary']:
-                self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(      cw, m1w, m2w, rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
-            else:
-                raise ValueError("Unavailable model combination")
-        else:
-            if not 'Probability' in pars['model-rate']:
-                self.w = icarogw.rates.CBC_rate_m_given_redshift(         cw, m1w,      rw, scale_free = pars['scale-free'])
-                print('\t{}'.format('CBC_rate_m_given_redshift'))
-            else:
-                if not 'Luminosity' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+        # IMPROVEME: This selection should be done in a more elegant way,
+        # e.g. by defining a dictionary of rate models and their required
+        # mass and cosmology wrappers, and then checking that the provided
+        # wrappers are compatible with the chosen rate model.
+
+        if not pars['LISA-rate']: # CBC sources
+
+            if not pars['single-mass']: # Using both primary and secondary mass
+                if   not 'Redshift' in pars['model-primary'] and not 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_vanilla_rate(cw, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_vanilla_rate'))
+                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_q'))
+                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_redshift_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_redshift_rate_m1_q'))
+                elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
+                elif     'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary']:
+                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
+
+            else: # Using only the primary mass
+                if not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.CBC_rate_m_given_redshift(cw, m1w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_m_given_redshift'))
                 else:
-                    self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
-                    print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
+                    if not 'Luminosity' in pars['model-rate']:
+                        self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
+                    else:
+                        self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
+                        print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
+        
+        else: # LISA sources
+
+            if not pars['single-mass']: # Using both primary and secondary mass
+                if 'PowerLaw-Gaussian' in pars['model-secondary']:
+                    # FIXME: Need a more general and robust option handling.
+                    self.w = icarogw.rates.EMRI_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('EMRI_rate'))
+                else:
+                    if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_rate'))
+                    elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_redshift_rate(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_redshift_rate'))
+                    elif 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']:
+                        self.w = icarogw.rates.MBH_redshift_rate_given_redshift(cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                        print('\t{}'.format('MBH_redshift_rate_given_redshift'))
+
+            else: # Using only the primary mass
+                if not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']:
+                    self.w = icarogw.rates.EMRI_rate_no_q(cw, m1w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('EMRI_rate_no_q'))
 
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
@@ -471,7 +522,12 @@ class SelectionEffects:
                 inj_dict = {
                     'mass_1': xp.array(xp.array(events['mass1_source']) * (1 + xp.array(events['redshift']))),
                     'mass_2': xp.array(xp.array(events['mass2_source']) * (1 + xp.array(events['redshift']))),
-                    'luminosity_distance': xp.array(events['luminosity_distance'])}
+                    'luminosity_distance': xp.array(events['luminosity_distance']),
+                    'chi_1': xp.array(events['spin1_magnitude']),
+                    'cos_t_1': xp.cos(xp.array(events['spin1_polar_angle'])),
+                    'chi_2': xp.array(events['spin2_magnitude']),
+                    'cos_t_2': xp.cos(xp.array(events['spin2_polar_angle']))
+                }
             
             else:
                 raise ValueError('Catalog option not yet implemented. Please choose GWTC-4.0 or O3.')
@@ -514,9 +570,10 @@ class SelectionEffects:
                     raise ValueError('Only pickle files are currently supported for custom injections:\n{}'.format(pars['injections-path']))
             except:
                 raise ValueError('Could not open the file containing the injections for selection effects. Please verify that the path is correct:\n{}'.format(pars['injections-path']))
+        
+            if pars['include-spin'] == 'per-run': raise Warning("'include-spin' option is not yet impolemented for simulated injections.")
 
             selected_filt = xp.array(data_inj['snr']) > pars['snr-cut']
-
             # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
             # Whatever distribution and variables used to generate the injections, please make sure it follows such conventions.
             prior = xp.array(data_inj['prior'])
@@ -557,9 +614,6 @@ class SelectionEffects:
 # =========================================================================================================
 
             else:
-                # If only using one mass, remove the Jacobian contribution from the secondary.
-                # This operation depends on the injection prior used to generate the injections.
-                prior *= (1 + ref_cosmo.dl2z(inj_dict['luminosity_distance']))
                 inj_dict.pop('mass_2')
 
         self.injections = icarogw.injections.injections(inj_dict, prior = prior, ntotal = pars['injections-number'], Tobs = obs_time)
@@ -651,9 +705,14 @@ class Data:
                 data_evs = tmp[catalog[ev]['PE_waveform']]['posterior_samples']
 
                 pos_dict  = {
-                    # 'mass_1'             : xp.array(data_evs['mass_1'][()]),
-                    # 'mass_2'             : xp.array(data_evs['mass_2'][()]),
-                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()])}
+                    'mass_1'             : xp.array(data_evs['mass_1'][()]),
+                    'mass_2'             : xp.array(data_evs['mass_2'][()]),
+                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()]),
+                    'chi_1'              : xp.array(data_evs['a_1'][()]),
+                    'chi_2'              : xp.array(data_evs['a_2'][()]),
+                    'cos_t_1'            : xp.array(data_evs['cos_tilt_1'][()]),
+                    'cos_t_2'            : xp.array(data_evs['cos_tilt_2'][()]),
+                }
 
                 # Account for PE priors. For O3 data, PE priors are uniform in component masses.
                 # Luminosity distance.
@@ -687,8 +746,9 @@ class Data:
                             minimum=0.1, 
                             maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
                             unit='Mpc'
-                        )
+                        )                        
                         prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+
                         event_print += " | dL prior: {:<30}".format('uniform in source frame')
                     else:
                         raise KeyError("Unknown run {} for event {} in IGWN_pointers dictionary.".format(catalog[ev]['run'], ev))
@@ -712,6 +772,11 @@ class Data:
                     pos_dict['chirp_mass'] = Mc
                     pos_dict['mass_ratio'] = q
                     prior *= Mc * xp.power(1+q, 2/5) * xp.power(q, -6/5) # |J_(m1,m2)->(Mc,q)| = Mc * (1+q)^2/5 / q^6/5
+
+                if pars['include-spin']:
+                    amax = 1.
+                    spin_prior = ((1./amax)*0.5)*((1./amax)*0.5)
+                    prior *= spin_prior
                 
                 samps_dict[ev] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
                 print(event_print)
@@ -727,6 +792,7 @@ class Data:
                 raise ValueError('Unknown format for the file containing the single events samples. Please make sure the file is correct:\n{}'.format(pars['data-path']))
 
             if pars['PE-prior-distance'] == 'per-run': raise ValueError("'per-run' PE-prior-distance option incompatible with simulated data.")
+            if pars['include-spin'] == 'per-run': raise Warning("'include-spin' option is not yet impolemented for simulated data.")
 
             samps_dict = {}
             for i in range(len(data_evs['m1d'])):
@@ -1172,9 +1238,9 @@ def main():
 
     # Initialise the model wrappers.
     tmp = Wrappers(input_pars)
-    m1w, m2w, rw, cw, ref_cosmo = tmp.return_Wrappers()
+    m1w, m2w, rw, sw, cw, ref_cosmo = tmp.return_Wrappers()
 
-    tmp = Rate(input_pars, m1w, m2w, rw, cw)
+    tmp = Rate(input_pars, m1w, m2w, rw, sw, cw)
     wrapper = tmp.return_Rate()
 
     # Read injections for selection effects.
@@ -1296,6 +1362,12 @@ def main():
     print('\n * Producing plots.')
     input_pars['output-plots']  = os.path.join(input_pars['output'], 'plots' )
     if not os.path.exists(input_pars['output-plots']):  os.makedirs(input_pars['output-plots'] )
+
+    # Consistency checks.
+    if   not input_pars['LISA-rate'] and input_pars['log10-PDF']:
+        print("\n Warning: You are plotting the PDF in log10-space for CBC sources.")
+    elif input_pars['LISA-rate'] and not input_pars['log10-PDF']:
+        print("\n Warning: You are not plotting the PDF in log10-space for LISA sources.")
 
     tmp = postprocessing.Plots(input_pars, df, m1w, m2w, rw, cw, ref_cosmo, wrapper, priors_dict, injections)
     tmp.ProducePlots()

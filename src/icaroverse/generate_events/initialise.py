@@ -278,6 +278,26 @@ def default_population():
         'mmin_j'        : 3.,
         'mmax_j'        : 9.,
 
+        'mu_g_j'        : 7.,
+        'sigma_g_j'     : 1.,
+        'mix_j'         : 0.9,
+
+        'alpha_dpl'     : 7.,
+        'beta_dpl'      : 14.,
+        'mmin_dpl'      : 2.,
+        'mmax_dpl'      : 9.,
+        'm_break_dpl'   : 5.5,
+        'delta_dpl'     : 0.1,
+
+        'mu_g_dpl'      : 7.,
+        'sigma_g_dpl'   : 1.,
+        'mix_dpl'       : 0.9,
+
+        'm_break_z0_dpl'      : 5.5,
+        'm_break_z10_dpl'     : 5.5,
+        'm_break_zt_dpl'      : 3.,
+        'm_break_delta_zt_dpl': 3.,
+
         'c1'            : 10.,
         'c2'            : 10.,
         'c3'            : 10.,
@@ -307,8 +327,8 @@ def default_population():
         'start_b'       : 0.,
         'scale_b'       : 5.,
 
-        'a_gamma'       : 5.,
-        'theta'         : 0.5,
+        'alpha_g'       : 5.,
+        'beta_g'        : 0.5,
 
         # Rate evolution
         'gamma'         : 0.,

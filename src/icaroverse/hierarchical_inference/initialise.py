@@ -32,6 +32,7 @@ def InitialiseOptions(Config):
         'model-primary'               : 'PowerLaw-Gaussian',
         'model-secondary'             : 'MassRatio-Gaussian',
         'model-rate'                  : 'PowerLaw',
+        'model-spin'                  : 'BetaDistributionMag-MixTilt',
         'model-cosmology'             : 'FlatLambdaCDM',
         'model-bkg-cosmo'             : 'FlatLambdaCDM',
         'constraint_w0wa_earlyMDera'  : False,
@@ -44,8 +45,10 @@ def InitialiseOptions(Config):
         'low-smoothing'               : False,
         'priors'                      : {},
         'scale-free'                  : False,
+        'include-spin'                : False,
         'single-mass'                 : False,
         'mass-parameters'             : 'm1-m2',
+        'LISA-rate'                   : False,
         'zmax'                        : 20.,
         'ref-cosmology'               : {'H0': 67.7, 'Om0': 0.308},
 
@@ -73,7 +76,7 @@ def InitialiseOptions(Config):
         'threads'                     : 1,
         'nparallel'                   : 1,
         'npool'                       : 10,
-        'nessai-plot'                 : False,
+        'nessai-plot'                 : True,
         'correct-BF-Nsamples'         : 0, 
         'allow_multi_valued_likelihood': False, 
 
@@ -120,10 +123,10 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if (key == 'model-primary') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing') or (key == 'spline-variable') or (key == 'mass-parameters'):
+        if (key == 'model-primary') or (key == 'model-spin') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing') or (key == 'spline-variable') or (key == 'mass-parameters'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'constraint_qmin_muq_ordering') or (key == 'dirichlet-prior'):
+        if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior') or (key == 'constraint_qmin_muq_ordering'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
         if (key == 'zmax'):
@@ -328,6 +331,26 @@ def default_priors():
         'mmin_j'        : 2.,
         'mmax_j'        : 9.,
 
+        'mu_g_j'        : [   2.  ,   9.  ],
+        'sigma_g_j'     : [   0.1 ,   5.  ],
+        'mix_j'         : [   0.  ,   1.  ],
+
+        'alpha_dpl'     : [   1.  ,  20.  ],
+        'beta_dpl'      : [   1.  ,  20.  ],
+        'mmin_dpl'      : 2.,
+        'mmax_dpl'      : 9.,
+        'm_break_dpl'   : [   2.  ,   7.  ],
+        'delta_dpl'     : [   0.01,  10.  ],
+
+        'mu_g_dpl'      : [   2.  ,   9.  ],
+        'sigma_g_dpl'   : [   0.1 ,   5.  ],
+        'mix_dpl'       : [   0.  ,   1.  ],
+
+        'm_break_z0_dpl'      : 5.5,
+        'm_break_z10_dpl'     : 5.5,
+        'm_break_zt_dpl'      : 3.,
+        'm_break_delta_zt_dpl': 3.,
+
         'c1'            : [ -30.  ,  80.  ],
         'c2'            : [ -30.  ,  80.  ],
         'c3'            : [ -30.  ,  80.  ],
@@ -382,8 +405,8 @@ def default_priors():
         'start_b'       : 0.,
         'scale_b'       : 5.,
 
-        'a_gamma'       : [   1.  ,  10.  ],
-        'theta'         : [   0.01,   1.  ],
+        'alpha_g'       : [   1.  ,  10.  ],
+        'beta_g'        : [   0.01,   1.  ],
 
         # Rate evolution
         'gamma'         : [ -50.  ,  30.  ],
@@ -401,6 +424,16 @@ def default_priors():
 
         'z_min'         : [   0.  ,   0.5 ],
         'z_max'         : [   0.5 ,   1.  ],
+
+        # Spin Distribution
+        'alpha_chi'     : [   1.  ,  10.  ],
+        'beta_chi'      : [   1.  ,  10.  ],
+        'sigma_t'       : [   0.  ,   1.  ],
+        'csi_spin'      : [   0.  ,   1.  ],
+        'mu_chi_1'      : [   0.  ,   1.  ],
+        'mu_chi_2'      : [   0.  ,   1.  ],
+        'sigma_chi_1'   : [   0.  ,   1.  ],
+        'sigma_chi_2'   : [   0.  ,   1.  ],
     }
 
     return prior
@@ -455,7 +488,9 @@ usage = """
         low-smoothing               [bool ]  Flag to apply a smoothing function to the Powerlaws minimum mass. The option only applies to the mass models including Powerlaws. Default: 0.
         priors                      [dict ]  Dictionary of the prior bounds for the population parameters. Default values are set in 'icaroverse.options.default_priors'.
         scale-free                  [bool ]  Flag to use the scale-free likelihood fromulation. This is equivant to marginalizing over the expected number of events assuming a Jeffrey prior. Default: 0.
+        include-spin                [bool ]  Flag to include the spins in the analysis. The option is not currently implemented for simulated data. Default: 0.
         single-mass                 [bool ]  Flag to use only one mass for the single-event parameters. Default: 0.
+        LISA-rate                   [bool ]  Flag to use the population rates for LISA's sources. Default: 0.
         inverse-mass-ratio          [bool ]  Flag to use the inverse mass ratio as the secondary mass parameter, defined as q=m1/m2 with m1>m2. Default: 0.
         mass-parameters             [str  ]  Which mas parameters to use from individual events. Available: 'm1-m2', 'm1-q', 'Mc-q'. Default: 'm1-m2'
         zmax                        [float]  Maximum redshift up to which the cosmology wrappers are initialized. Default: 20.
@@ -480,7 +515,7 @@ usage = """
         print-method                [str  ]  Method for printing the sampler output. Dynesty uses a tqdm bar by default, otherwise passing 'interval-$TIME' it prints to sdtout every $TIME seconds. Default: 'interval-60'.
         sample                      [str  ]  Methods to perform the MCMC evolution to find a new point with a nested sampler. Option only available for Nested Samplers. More information on the different methods can be found in the related Bilby documentation (https://bilby-dev.github.io/bilby/dynesty-guide.html). Options: 'act-walk', 'acceptance-walk', 'rwalk'. Default: 'acceptance-walk'.
         npool                       [int  ]  Number of parallel process to be executed (see dynesty documentation: https://dynesty.readthedocs.io/en/stable/quickstart.html#parallelization). If running on a cluster, must match the number of . Default: 1.
-        nessai-plot                 [bool ]  Option to save nessai sampler diagnostic plots. Option only available for Nessai sampler. Default: 0.
+        nessai-plot                 [bool ]  Option to save nessai sampler diagnostic plots. Option only available for Nessai sampler. Default: 1.
 
         naccept                     [int  ]  The length of the MCMC chains during the run follows a Poisson distribution with mean naccept. Option only available for Nested Samplers and only applies to the sample method 'acceptance-walk'. Default: 60.
         nwalkers                    [int  ]  Number of parallel chains (walkers) running in the MCMC ensemble. Option only available for MCMC samplers. Default: 64.

@@ -77,12 +77,13 @@ def main():
     # Set maximum simulated redshift
     input_pars['bounds-z'][1] = input_pars['zmax-simulations']
 
-    # Set additional input parameters for icarogw_runner.
+    # Set additional input parameters for hierarchical_inference, which is used to initialise the wrappers.
     input_pars['ref-cosmology'] = {'H0': 0., 'Om0': 0.} # Placeholder required by the wrappers initialisation, never used in this script.
+    input_pars['include-spin'] = False # For the moment, this option is not implemented in generating events.
 
     # Initialise the model wrappers.
     tmp = hierarchical_inference.Wrappers(input_pars)
-    m1w, m2w, rw, cw, _ = tmp.return_Wrappers()
+    m1w, m2w, rw, _, cw, _ = tmp.return_Wrappers()
     input_pars['wrappers'] = {'m1w': m1w, 'm2w': m2w, 'rw': rw, 'cw': cw}
 
     # Initilialise the cosmology.
@@ -717,10 +718,20 @@ def get_distribution_samples(pars):
         else:
             if 'Redshift' in pars['model-primary']:
                 raise ValueError('The conditional secondary with redshift evolution in the primary is not implemented. Exiting...')
-            pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m1w']) # Condition the secondary on the primary.
-            update_weights(pars['wrappers']['m2w'], pars['truths'])
-            m1s, m2s = pars['wrappers']['m2w'].prior.sample(N_events)
-            pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)
+            if not 'PowerLaw-Gaussian' in pars['model-secondary']:
+                pars['wrappers']['m2w'] = icarowrap.m1m2_conditioned_lowpass_m2(pars['wrappers']['m1w']) # Condition the secondary on the primary.
+                update_weights(pars['wrappers']['m2w'], pars['truths'])
+                m1s, m2s = pars['wrappers']['m2w'].prior.sample(N_events)
+                pdf_m1m2 = pars['wrappers']['m2w'].prior.pdf(m1s, m2s)
+            else:
+                # FIXME: PowerLaw-Gaussian is the only model for which
+                # the secondary is not conditioned on the primary.
+                # A better handling of this option whould be implemented.
+                update_weights(pars['wrappers']['m2w'], pars['truths'])
+                m2s = pars['wrappers']['m2w'].prior.sample(N_events)
+                pdf_m2 = pars['wrappers']['m2w'].prior.pdf(m2s)
+                pdf_m1m2 = pdf_m1 * pdf_m2
+                if pars['plot-astrophysical']: plot_injected_distribution(pars, m2_array, pars['wrappers']['m2w'], 'm2_source_frame', m2_samps = m2s)
     else:
         m2s = np.zeros(N_events)
 
@@ -1105,7 +1116,7 @@ def plot_population(pars, samps_dict_astrophysical, samps_dict_observed):
 
     return 0
 
-def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, rate_evolution = 0, q_samps = 0, z_samps = 0):
+def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, rate_evolution = 0, q_samps = 0, z_samps = 0, m2_samps = 0):
 
     if redshift:
         N_z = 10
@@ -1143,11 +1154,20 @@ def plot_injected_distribution(pars, x_array, wrapper, title, redshift = False, 
             pdf = wrapper.pdf(x_array)
             if not pars['log10-PDF']:
                 plt.hist(q_samps, density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+                plt.xlabel('$q$')
+                plt.ylabel('$p(q)$')
             else:
-                plt.hist(np.log10(q_samps), density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+                if np.any(m2_samps != 0):
+                    plt.hist(m2_samps, density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+                    plt.yscale('log')
+                    plt.ylim(1e-5, 1)
+                    plt.xlabel('$m_2$')
+                    plt.ylabel('$p(m_2)$')
+                else:
+                    plt.hist(np.log10(q_samps), density = 1, bins = 40, color = '#0771AB', alpha = 0.5)
+                    plt.xlabel('$q$')
+                    plt.ylabel('$p(q)$')
             plt.plot(x_array, pdf, c = '#153B60', label = 'Injected')
-            plt.xlabel('$q$')
-            plt.ylabel('$p(q)$')
             plt.legend()
             plt.tight_layout()
             plt.savefig('{}.pdf'.format(figname), transparent = True)
