@@ -32,7 +32,7 @@ email_option_template = """
 def activate_slurm_submit(config_name):
 
     subfile = '{}/submit_icarogw_{}.sh'.format(sub_path, config_name.split('/')[-1].split('.ini')[0].split('config_')[-1])
-    sys.stderr.write('generating {}\n'.format(subfile))
+    sys.stderr.write('\ngenerating {}\n'.format(subfile))
 
     with open(subfile,'w') as f:
         if user_mail != '':
@@ -55,7 +55,7 @@ def activate_slurm_submit(config_name):
 
         f.write(submission_command)
 
-    sys.stderr.write('submitting {}\n\n'.format(subfile))
+    sys.stderr.write('submitting {}\n'.format(subfile))
     os.system('sbatch {}'.format(subfile))
 
 parser = ArgumentParser()
@@ -75,13 +75,13 @@ executable = shutil.which('iv_hierarchical_inference')
 # Handling request of CPU / GPU jobs (CC-IN2P3)
 available = ['v100', 'h100']
 if args.gpu is None:
-    slurm_partition    = "htc"
+    slurm_partition = "htc"
 elif args.gpu == "any":
     slurm_partition = f"gpu_v100,gpu_h100 \n#SBATCH --gpus={slurm_gpus}"
 elif args.gpu in available:
     slurm_partition = f"gpu_{args.gpu} \n#SBATCH --gpus={slurm_gpus}"
 else:
-    raise ArgumentTypeError(f"Invalid GPU type: {args.gpu}. Choose from {available + ["any"]}.")
+    raise ArgumentTypeError(f"Invalid GPU type: {args.gpu}. Choose from {available + ['any']}.")
 
 # Set the specific directory for the runs
 directory    = 'path_to_config_files_directory'
@@ -98,7 +98,6 @@ else:                        final_path = directory
 configs_path = os.path.join(os.getcwd(), final_path)
 config_list  = os.listdir(configs_path)
 
-print('')
 for config in config_list:
     config_path = os.path.join(configs_path, config)
     activate_slurm_submit(config_path)
