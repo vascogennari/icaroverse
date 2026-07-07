@@ -57,6 +57,7 @@ def InitialiseOptions(Config):
         'spacing'                     : 'uniform',
         'spline-variable'             : 'uniform',
         'dirichlet-prior'             : True,
+        'dirichlet-alpha'             : 1.0,
 
         # Sampler
         'sampler'                     : 'dynesty',
@@ -129,7 +130,7 @@ def InitialiseOptions(Config):
         if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior') or (key == 'constraint_qmin_muq_ordering'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if (key == 'zmax'):
+        if (key == 'zmax') or (key == 'dirichlet-alpha'):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
         if (key == 'priors') or (key == 'ref-cosmology'):
@@ -499,7 +500,9 @@ usage = """
         splines-number              [int  ]  Number of splines used for the spline models. The option only applies to models including splines. Default: 10.
         splines-degree              [int  ]  Degree of the splines used for the spline model. The option only applies to the log(pdf) spline model that uses Cox-De Boor recursion. Default: 2.
         spacing                     [str  ]  Spacing of the spline knots. Options: 'uniform', 'log'. The option only applies to models including splines. Default: 'uniform'.
-        dirichlet-prior             [bool ]  Flag to use a Dirichlet prior for the spline components. This is implemented through Gamma priors on the spline coefficients, which are then normalized to form a Dirichlet distribution (i.e. uniform weights on the simplex). Default: True.
+        splines-variable            [str  ]  Whether the B-spline is defined as B(x) or B(log(x)). The option only applies to models with 'logBspline' in their name. Available: lin, log. Default: lin.
+        dirichlet-prior             [bool ]  Flag to use a Dirichlet prior for the spline components (or spline knots). This is implemented through Gamma priors on the spline coefficients, which are then normalized to form a Dirichlet distribution (i.e. uniform weights on the simplex). Default: True.
+        dirichlet-alpha             [bool ]  When using Dirichlet prior with stick breaking procedure, controls how wide around the average values the priors are. alpha=1 gives a prior uniform on the simplex, alpha>1 (alpha<1) gives more (less) weight to the center of the simplex. Default: 1.0.
 
     # ------- #
     # sampler #

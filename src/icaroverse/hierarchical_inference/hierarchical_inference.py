@@ -42,8 +42,8 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             elif "flag_smoothing" in sig.parameters: # same for a flag_smoothing arg. Note that flag_powerlaw_smoothing and flag_smoothing are assumed to be mutually exclusive in the list of available wrappers: there should not be a wrapper asking for both.
                 return wrap(flag_smoothing = smoothing)
             elif 'Bspline' in wrap_name and 'freeKnots' in wrap_name:
-                print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: inferred. Bspline variable: lin.\n'.format(n_splines, degree))
-                return wrap(n_basis = n_splines, degree = degree)
+                print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}, inferred. Bspline variable: lin.\n'.format(n_splines, degree, spacing))
+                return wrap(n_basis = n_splines, degree = degree, spacing = spacing)
             elif 'Bspline' in wrap_name:
                 print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}. Bspline variable: {}.\n'.format(n_splines, degree, spacing, spline_variable))
                 return wrap(n_basis = n_splines, spacing = spacing, degree = degree, spline_variable = spline_variable)
@@ -218,7 +218,7 @@ class Wrappers:
                     w = get_wrapper(self.m1_models[mp]['wrap name'], smoothing = smoothing,                transition = z_transition, z_mixture = z_mixture)
             # Non-evolving splines.
             elif 'Bsplines' in mp and 'freeKnots' in mp:
-                w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, degree = degree)
+                w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, degree = degree, spacing = spacing)
             elif 'Bsplines' in mp:
                 w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree, spline_variable = spline_variable)
             elif 'Splines' in mp:
@@ -396,10 +396,13 @@ class Rate():
                 if   not 'Redshift' in pars['model-primary'] and not 'MassRatio' in pars['model-secondary']:
                     self.w = icarogw.rates.CBC_vanilla_rate(cw, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_vanilla_rate'))
-                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
+                elif not 'Redshift' in pars['model-primary'] and pars['mass-parameters'] == 'Mc-q': # Here we necessarily have "MassRatio" in pars['model-secondary']
+                    self.w = icarogw.rates.CBC_rate_mchirp_q(                 cw, m1w, m2w, rw, scale_free = pars['scale-free'])
+                    print('\t{}'.format('CBC_rate_mchirp_q'))
+                elif not 'Redshift' in pars['model-primary'] and not 'Probability' in pars['model-rate']: # Here we necessarily have "MassRatio" in pars['model-secondary']
                     self.w = icarogw.rates.CBC_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_rate_m1_q'))
-                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and 'Probability' in pars['model-rate']:
+                elif not 'Redshift' in pars['model-primary'] and 'Probability' in pars['model-rate']: # Here we necessarily have "MassRatio" in pars['model-secondary']
                     self.w = icarogw.rates.CBC_redshift_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
                     print('\t{}'.format('CBC_redshift_rate_m1_q'))
                 elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
@@ -974,7 +977,8 @@ class LikelihoodPrior:
                 elif flag_use_dirichlet and par in dirichlet_coeffs and dirichlet_procedure == "stick_breaking":
                     i = int(par[1:])
                     n = pars['splines-number']-pars['splines-degree']
-                    dict_out[par] = bilby.core.prior.Beta(1, n-i, name = par)
+                    alpha = pars['dirichlet-alpha']
+                    dict_out[par] = bilby.core.prior.Beta(alpha, alpha*(n-i), name = par)
 
                 # Standard Uniform / LogUniform priors
                 elif isinstance(dict_in[par], list) and isinstance(dict_in[par][-1], str):
@@ -1000,7 +1004,7 @@ class LikelihoodPrior:
                     key: dict_in[key] 
                     for key in sorted(list(dict_out.keys()-set(dirichlet_coeffs)))
                 })
-                print('\n\tUsing a Dirichlet prior for the following set of coefficients: {}.'.format(dirichlet_coeffs))
+                print(f'\n\tUsing a Dirichlet(alpha={alpha:.2f}) prior for the following set of coefficients: {dirichlet_coeffs}.')
             else:
                 print_dictionary({key: dict_in[key] for key in dict_out.keys()})
 
