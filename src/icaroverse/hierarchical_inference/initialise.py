@@ -1,4 +1,5 @@
 import ast
+import re
 from collections import Counter
 
 
@@ -47,6 +48,7 @@ def InitialiseOptions(Config):
         'priors'                      : {},
         'scale-free'                  : False,
         'include-spin'                : False,
+        'use-mixture'                 : False,
         'single-mass'                 : False,
         'LISA-rate'                   : False,
         'zmax'                        : 20.,
@@ -55,7 +57,6 @@ def InitialiseOptions(Config):
         'splines-number'              : 10,
         'spacing'                     : 'uniform',
         'dirichlet-prior'             : True,
-
         # Sampler
         'sampler'                     : 'dynesty',
         'neffPE'                      : 10,
@@ -102,6 +103,9 @@ def InitialiseOptions(Config):
         'downsample-postprocessing'   : 1,
     }
 
+
+
+    input_pars['use-mixture'] = Config.getboolean('model', 'use-mixture')
     # Read options from config file.
     for key in input_pars.keys():
 
@@ -121,7 +125,11 @@ def InitialiseOptions(Config):
             except: pass
 
         # Model
-        if (key == 'model-primary') or (key == 'model-spin') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
+        if (key == 'model-primary') or (key == 'model-spin') or (key == 'model-secondary') or (key == 'model-rate'):
+            try: input_pars[key] = read_models(Config.get('model', key), input_pars['use-mixture'], key)
+            except  ValueError: raise
+            except: pass
+        if (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
         if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior'):
@@ -130,14 +138,17 @@ def InitialiseOptions(Config):
         if (key == 'zmax'):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
-        if (key == 'priors') or (key == 'ref-cosmology'):
+        if (key == 'ref-cosmology'):
             try: input_pars[key] = safe_literal_eval(Config.get('model', key), key)
+            except ValueError: raise
+            except: pass
+        if (key == 'priors'):
+            try: input_pars[key] = read_priors(Config.get('model', key), input_pars['use-mixture'], key)
             except ValueError: raise
             except: pass
         if (key == 'splines-number'):
             try: input_pars[key] = Config.getint('model', key)
             except: pass
-
         # Sampler
         if (key == 'sampler') or (key == 'print-method'):
             try: input_pars[key] = Config.get('sampler', key)
@@ -169,16 +180,89 @@ def InitialiseOptions(Config):
         if (key == 'downsample-postprocessing') or (key == 'KDE-bandwidth-scale') or (key == 'KDE-bandwidth-scale-m1'):
             try: input_pars[key] = Config.getfloat('plots', key)
             except: pass
+
     
     # Initialise the prior bounds.
-    input_pars['all-priors'] = default_priors()
-    if not input_pars['priors'] == {}:
-        for key in input_pars['priors']: input_pars['all-priors'][key] = input_pars['priors'][key]
+    if not input_pars['use-mixture']:
+        input_pars['all-priors'] = default_priors()
+        if not input_pars['priors'] == {}:
+            for key in input_pars['priors']: input_pars['all-priors'][key] = input_pars['priors'][key]
+    else:
+        input_pars['all-priors'] = [default_priors(), default_priors()]
+        if not input_pars['priors'] == []:
+            for i in range(len(input_pars['priors'])):
+                for key in input_pars['priors'][i]: input_pars['all-priors'][i][key] = input_pars['priors'][i][key]
 
     # Ensure consistency between options. The default for 'catalog' is GWTC-4.0, but that breaks if 'real-data' is False.
     if not input_pars['real-data']: input_pars['catalog'] = "simulations"
 
     return input_pars
+
+
+def parse_mix_prior(str):
+  """
+  parse a list of 2 dictionaries (one for each prior of the mix models),
+  keep the duplicate keys in the dictionary (if any), which makes it
+  ready to be iterated internally with the safe_literal_eval() to check
+  any duplicated keys .
+  """
+  str = str[1:-1]
+  parts = re.split(r"\}\s*,\s*\{", str)
+
+  # Restore the braces
+  parts = ["{" + p if not p.startswith("{") else p for p in parts]
+  parts = [p + "}" if not p.endswith("}") else p for p in parts]
+
+  return parts
+
+def read_priors(model_input, mix_bool, key):
+  """
+  read the config file priors including the case
+  of a mix model,and check the consistency of the inputs.
+  """
+
+  if model_input.strip().startswith("["):
+         value = parse_mix_prior(model_input)
+         value = [safe_literal_eval(i, key) for i in value]
+  else:
+         value = safe_literal_eval(model_input, key)
+  if not mix_bool:
+
+    if not isinstance(value, dict):
+        raise ValueError(f"The '{key}' is expected to be a single set of priors, got '{model_input}'!")
+    return value
+  else:
+    if not isinstance(value, list):
+        raise ValueError(f"The '{key}' is expected to be a list of two set of priors, got '{model_input}'!")
+
+    if len(value) != 2:
+        raise ValueError(f"The '{key}' is expected to contain 2 set of priors, got '{len(model_input)}' models!")
+
+    return value
+
+def read_models(model_input, mix_bool, model):
+  """
+  read the config file models including the case of
+  a mix model, and check the consistency of the inputs.
+  """
+
+  value =  model_input
+  if value.strip().startswith("["):
+       value = ast.literal_eval(value)
+  if not mix_bool:
+
+    if not isinstance(value, str):
+        raise ValueError(f"The '{model}' is expected to be a single model, got '{model_input}'!")
+    return value
+  else:
+    if not isinstance(value, list):
+        raise ValueError(f"The '{model}' is expected to be a list of two models, got '{model_input}'!")
+
+    if len(value) != 2:
+        raise ValueError(f"The '{model}' is expected to contain 2 models, got '{len(value)}' models!")
+
+    return value
+
 
 
 def safe_literal_eval(text, key):
