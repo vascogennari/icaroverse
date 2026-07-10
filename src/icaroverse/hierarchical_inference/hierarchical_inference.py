@@ -20,7 +20,7 @@ from ..generate_events.snr_computation import clean_dict
 
 
 
-def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, spacing = None, spline_variable = None, degree = None, zmax = 20.):
+def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, spacing = None, spline_variable = None, degree = None, knots = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
     wrap = getattr(icarogw.wrappers, wrap_name)
@@ -44,6 +44,9 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             elif 'Bspline' in wrap_name and 'freeKnots' in wrap_name:
                 print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}, inferred. Bspline variable: lin.\n'.format(n_splines, degree, spacing))
                 return wrap(n_basis = n_splines, degree = degree, spacing = spacing)
+            elif 'Bspline' in wrap_name and 'fixedKnots' in wrap_name:
+                print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots: fixed, inferred. Bspline variable: lin.\n'.format(n_splines, degree))
+                return wrap(n_basis = n_splines, degree = degree, knots = knots)
             elif 'Bspline' in wrap_name:
                 print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}. Bspline variable: {}.\n'.format(n_splines, degree, spacing, spline_variable))
                 return wrap(n_basis = n_splines, spacing = spacing, degree = degree, spline_variable = spline_variable)
@@ -143,6 +146,7 @@ class Wrappers:
         mp, ms = pars['model-primary'], pars['model-secondary']
         single_mass, smoothing, z_transition, z_mixture = pars['single-mass'], pars['low-smoothing'], pars['redshift-transition'], pars['redshift-mixture']
         n_splines, degree, spacing, spline_variable = pars['splines-number'], pars['splines-degree'], pars['spacing'], pars['spline-variable']
+        knots = pars['knots']
         # This is subject to be completed in the future with the addition of other primary mass distributions models to icarogw
         self.m1_models = {
             'PowerLaw':                                                                                    {'wrap name': 'massprior_PowerLaw',                                                                          'z evolution': False, 'smoothing': 'global'},
@@ -191,6 +195,7 @@ class Wrappers:
             'PowerLaw-logBsplines':                                                                        {'wrap name': 'massprior_PowerLawlogBspline',                                                                'z evolution': False, 'smoothing': 'global'},
             'logBsplines-freeKnots':                                                                       {'wrap name': 'massprior_logBspline_freeKnots',                                                              'z evolution': False, 'smoothing': 'global'},
             'PowerLaw-logBsplines-freeKnots':                                                              {'wrap name': 'massprior_PowerLawlogBspline_freeKnots',                                                      'z evolution': False, 'smoothing': 'global'},
+            'PowerLaw-logBsplines-fixedKnots':                                                             {'wrap name': 'massprior_PowerLawlogBspline_fixedKnots',                                                     'z evolution': False, 'smoothing': 'global'},
             'Uniform':                                                                                     {'wrap name': 'Uniform',                                                                                     'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw':                                                                              {'wrap name': 'DoublePowerlaw',                                                                              'z evolution': False, 'smoothing': 'included'},
             'DoublePowerlaw-Gaussian':                                                                     {'wrap name': 'DoublePowerlaw_Gaussian',                                                                     'z evolution': False, 'smoothing': 'included'},
@@ -219,6 +224,8 @@ class Wrappers:
             # Non-evolving splines.
             elif 'Bsplines' in mp and 'freeKnots' in mp:
                 w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, degree = degree, spacing = spacing)
+            elif 'Bsplines' in mp and 'fixedKnots' in mp:
+                w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, degree = degree, knots = knots)
             elif 'Bsplines' in mp:
                 w = get_wrapper(self.m1_models[mp]['wrap name'], n_splines = n_splines, spacing = spacing, degree = degree, spline_variable = spline_variable)
             elif 'Splines' in mp:

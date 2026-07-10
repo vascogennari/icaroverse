@@ -56,6 +56,7 @@ def InitialiseOptions(Config):
         'splines-degree'              : 2,
         'spacing'                     : 'uniform',
         'spline-variable'             : 'uniform',
+        'knots'                       : [], 
         'dirichlet-prior'             : True,
         'dirichlet-alpha'             : 1.0,
 
@@ -133,7 +134,7 @@ def InitialiseOptions(Config):
         if (key == 'zmax') or (key == 'dirichlet-alpha'):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
-        if (key == 'priors') or (key == 'ref-cosmology'):
+        if (key == 'priors') or (key == 'ref-cosmology') or (key == 'knots'):
             try: input_pars[key] = ast.literal_eval(Config.get('model', key))
             except: pass
         if (key == 'splines-number') or (key == 'splines-degree'):
