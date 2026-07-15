@@ -46,6 +46,7 @@ def InitialiseOptions(Config):
         'redshift-mixture'            : True,
         'low-smoothing'               : False,
         'priors'                      : {},
+        'common-parameters'           : [],
         'scale-free'                  : False,
         'include-spin'                : False,
         'use-mixture'                 : False,
@@ -105,7 +106,7 @@ def InitialiseOptions(Config):
 
 
 
-    input_pars['use-mixture'] = Config.getboolean('model', 'use-mixture')
+    input_pars['use-mixture'] = Config.getboolean('model', 'use-mixture', fallback=False)
     # Read options from config file.
     for key in input_pars.keys():
 
@@ -148,6 +149,9 @@ def InitialiseOptions(Config):
             except: pass
         if (key == 'splines-number'):
             try: input_pars[key] = Config.getint('model', key)
+            except: pass
+        if (key == 'common-parameters'):
+            try: input_pars[key] =ast.literal_eval( Config.get('model', key))
             except: pass
         # Sampler
         if (key == 'sampler') or (key == 'print-method'):

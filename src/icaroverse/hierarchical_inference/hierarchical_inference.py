@@ -22,6 +22,7 @@ from . import postprocessing
 def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None, smoothing = None, z_mixture = None, cosmo_wrap = False, bkg_cosmo_wrap_name = None, n_splines = None, spacing = None, zmax = 20.):
 
     print('\t{}'.format(wrap_name))
+
     wrap = getattr(icarogw.wrappers, wrap_name)
     if cosmo_wrap:
         # if bkg_cosmo_wrap_name is not None, it is assumed that wrap_name refers to a modified gravity cosmology wrapper
@@ -212,6 +213,7 @@ class Wrappers:
 
         return w
 
+
     def SecondaryMass(self, pars, m1w = None):
 
         mp, ms = pars['model-primary'], pars['model-secondary']
@@ -295,9 +297,11 @@ class Wrappers:
                 raise ValueError("Unknown model for the Spin: {}.\nPlease choose from the available models:\n\t{}".format(ms, "\n\t".join(icarogw_models)))
             return w
 
+
         else:
             # To ensure compatibility with icarogw.
             return None
+
 
     def Cosmology(self, pars):
 
@@ -339,12 +343,28 @@ class Wrappers:
 
     def return_Wrappers(self):
 
-        self.Wrapper_PrimaryMass   = self.PrimaryMass(self.pars)
-        self.Wrapper_SecondaryMass = self.SecondaryMass(self.pars, self.Wrapper_PrimaryMass)
-        self.Wrapper_RateEvolution = self.RateEvolution(self.pars)
-        self.Wrapper_Spin          = self.Spin(self.pars)
-        self.Wrapper_Cosmology     = self.Cosmology(self.pars)
-        self.Wrapper_RefCosmology  = self.ReferenceCosmology()
+        if not self.pars['use-mixture']:
+            self.Wrapper_PrimaryMass   = self.PrimaryMass(self.pars)
+            self.Wrapper_SecondaryMass = self.SecondaryMass(self.pars, self.Wrapper_PrimaryMass)
+            self.Wrapper_RateEvolution = self.RateEvolution(self.pars)
+            self.Wrapper_Spin          = self.Spin(self.pars)
+            self.Wrapper_Cosmology     = self.Cosmology(self.pars)
+            self.Wrapper_RefCosmology  = self.ReferenceCosmology()
+        else:
+            keys_to_flatten = {'model-primary', 'model-spin', 'model-secondary', 'model-rate'}
+
+            pars1 = {k: v[0] if k in keys_to_flatten else v for k, v in self.pars.items()}
+            pars2 = {k: v[1] if k in keys_to_flatten else v for k, v in self.pars.items()}
+
+            self.Wrapper_PrimaryMass = [self.PrimaryMass(pars1), self.PrimaryMass(pars2)]
+            self.Wrapper_SecondaryMass = [self.SecondaryMass(pars1, self.Wrapper_PrimaryMass), self.SecondaryMass(pars2, self.Wrapper_PrimaryMass) ]
+            self.Wrapper_RateEvolution = [self.RateEvolution(pars1), self.RateEvolution(pars2)]
+            self.Wrapper_Spin = [self.Spin(pars1), self.Spin(pars2)]
+            self.Wrapper_Cosmology = [self.Cosmology(pars1), self.Cosmology(pars2)]
+            self.Wrapper_RefCosmology = [self.ReferenceCosmology(), self.ReferenceCosmology()]
+
+
+
 
         return self.Wrapper_PrimaryMass, self.Wrapper_SecondaryMass, self.Wrapper_RateEvolution, self.Wrapper_Spin, self.Wrapper_Cosmology, self.Wrapper_RefCosmology
 
@@ -359,36 +379,34 @@ class Rate():
         # mass and cosmology wrappers, and then checking that the provided
         # wrappers are compatible with the chosen rate model.
 
+
+
         if not pars['LISA-rate']: # CBC sources
+            if not  pars['use-mixture']:
+                 rate_model = self.select_rate_model(pars['model-primary'],pars['model-secondary'],pars['model-rate'],pars['single-mass'])
+            else:
+                 rate_model1 = self.select_rate_model( pars['model-primary'][0], pars['model-secondary'][0], pars['model-rate'][0], pars['single-mass'])
+                 rate_model2 = self.select_rate_model(pars['model-primary'][1],pars['model-secondary'][1],pars['model-rate'][1],pars['single-mass'])
 
-            if not pars['single-mass']: # Using both primary and secondary mass
-                if   not 'Redshift' in pars['model-primary'] and not 'MassRatio' in pars['model-secondary']:
-                    self.w = icarogw.rates.CBC_vanilla_rate(cw, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_vanilla_rate'))
-                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and not 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_rate_m1_q'))
-                elif not 'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary'] and 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_redshift_rate_m1_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_redshift_rate_m1_q'))
-                elif     'Redshift' in pars['model-primary'] and  not 'MassRatio' in pars['model-secondary']:
-                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_m2(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_rate_m1_given_redshift_m2'))
-                elif     'Redshift' in pars['model-primary'] and 'MassRatio' in pars['model-secondary']:
-                    self.w = icarogw.rates.CBC_rate_m1_given_redshift_q(cw, m1w, m2w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_rate_m1_given_redshift_q'))
+                 if rate_model1 != rate_model2:
+                    raise ValueError(
+                       "The two populations require different rate models:\n"
+                       f"  Population 1 -> {rate_model1}\n"
+                       f"  Population 2 -> {rate_model2}\n\n"
+                       "Mixture analyses currently require both populations to use the same rate model." )
 
-            else: # Using only the primary mass
-                if not 'Probability' in pars['model-rate']:
-                    self.w = icarogw.rates.CBC_rate_m_given_redshift(cw, m1w, rw, spin_wrapper = sw, scale_free = pars['scale-free'])
-                    print('\t{}'.format('CBC_rate_m_given_redshift'))
-                else:
-                    if not 'Luminosity' in pars['model-rate']:
-                        self.w = icarogw.rates.CBC_redshift_rate_m_given_redshift(cw, m1w, rw, scale_free = pars['scale-free'])
-                        print('\t{}'.format('CBC_redshift_rate_m_given_redshift'))
-                    else:
-                        self.w = icarogw.rates.CBC_redshift_rate_m_given_luminosity(cw, m1w, rw)
-                        print('\t{}'.format('CBC_redshift_rate_m_given_luminosity'))
+                 rate_model = rate_model1
+
+            if rate_model == "CBC_vanilla_rate":
+                             self.w = self.read_rate(pars, rate_model,cw, m2w, rw,spin_wrapper=sw,scale_free=pars["scale-free"])
+            elif rate_model == "CBC_rate_m1_q" or "CBC_redshift_rate_m1_q" or "CBC_rate_m1_given_redshift_m2"or "CBC_rate_m1_given_redshift_q":
+                             self.w = self.read_rate(pars, rate_model,cw, m1w, m2w, rw,spin_wrapper=sw,scale_free=pars["scale-free"])
+            elif rate_model == "CBC_rate_m_given_redshift":
+                             self.w = self.read_rate(pars, rate_model,cw, m1w, rw,spin_wrapper=sw,scale_free=pars["scale-free"])
+            elif rate_model == "CBC_redshift_rate_m_given_redshift":
+                             self.w = self.read_rate(pars, rate_model,cw, m1w, rw,scale_free=pars["scale-free"])
+            else:
+                             self.w = self.read_rate(pars, rate_model,cw, m1w, rw)
         
         else: # LISA sources
 
@@ -416,6 +434,55 @@ class Rate():
         print('\n * Population parameters.\n')
         print('\t{}'.format('[%s]' % ', '.join(map(str, self.w.population_parameters))))
         pars['population-parameters'] = self.w.population_parameters
+
+    def read_rate(self, input_pars, rate_model_name, *args, **kwargs):
+         rate_model = getattr(icarogw.rates, rate_model_name)
+         if not input_pars['use-mixture']:
+            self.w = rate_model(*args, **kwargs)
+            print('\t{}'.format(rate_model_name))
+         else:
+            args1 = [a[0] if isinstance(a, (list, tuple)) else a for a in args]
+            args2 = [a[1] if isinstance(a, (list, tuple)) else a for a in args]
+
+            kwargs1 = {k: (v[0] if isinstance(v, (list, tuple)) else v) for k, v in kwargs.items()}
+            kwargs2 = {k: (v[1] if isinstance(v, (list, tuple)) else v) for k, v in kwargs.items()}
+
+            self.rate1 = rate_model(*args1, **kwargs1)
+            self.rate2 = rate_model(*args2, **kwargs2)
+
+            input_pars['common-parameters'] += args[0][0].population_parameters
+            self.w = icarogw.rates.CBC_mixte_pop_rate(self.rate1, self.rate2, input_pars['common-parameters'])
+            print('\t{}'.format(rate_model_name))
+            print('\t{}'.format(rate_model_name))
+         return self.w
+
+    def select_rate_model(self, model_primary, model_secondary, model_rate, single_mass):
+
+        if not single_mass:   # Using both primary and secondary mass
+          if 'Redshift' not in model_primary and 'MassRatio' not in model_secondary:
+              return 'CBC_vanilla_rate'
+
+          elif 'Redshift' not in model_primary and 'MassRatio' in model_secondary:
+              if 'Probability' in model_rate:
+                  return 'CBC_redshift_rate_m1_q'
+              else:
+                  return 'CBC_rate_m1_q'
+
+          elif 'Redshift' in model_primary and 'MassRatio' not in model_secondary:
+              return 'CBC_rate_m1_given_redshift_m2'
+
+          elif 'Redshift' in model_primary and 'MassRatio' in model_secondary:
+              return 'CBC_rate_m1_given_redshift_q'
+
+        else:  # Using only the primary mass
+          if 'Probability' not in model_rate:
+              return 'CBC_rate_m_given_redshift'
+
+          elif 'Luminosity' not in model_rate:
+              return 'CBC_redshift_rate_m_given_redshift'
+
+          else:
+              return 'CBC_redshift_rate_m_given_luminosity'
 
     def return_Rate(self):
         return self.w
@@ -496,7 +563,7 @@ class SelectionEffects:
                 raise ValueError('Catalog option not yet implemented. Please choose GWTC-4.0 or O3.')
 
             # If using the mass ratio, correct the prior with the Jacobian m2->q.
-            if 'MassRatio' in pars['model-secondary']:
+            if self.use_mass_ratio(pars):
                 inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / inj_dict['mass_1']
                 prior *= inj_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
 
@@ -528,7 +595,7 @@ class SelectionEffects:
             
             if not pars['single-mass']:
                 # If using the mass ratio, correct the prior with the Jacobian m2->q.
-                if 'MassRatio' in pars['model-secondary']:
+                if self.use_mass_ratio(pars):
                     if not pars['inverse-mass-ratio']:
                         inj_dict['mass_ratio'] = inj_dict.pop('mass_2') / inj_dict['mass_1']
                         prior *= inj_dict['mass_1']                             # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
@@ -549,6 +616,14 @@ class SelectionEffects:
 
         print('\n\tUsing {} injections out of {} to compute selection effects.'.format(len(self.injections.injections_data['mass_1']), len(self.injections.injections_data_original['mass_1'])))
 
+    def use_mass_ratio(self, pars):
+
+        if not pars['use-mixture']:
+            self.flag = 'MassRatio' in pars['model-secondary']
+        else:
+            self.flag = 'MassRatio' in pars['model-secondary'][0]
+
+        return self.flag
     def return_SelectionEffects(self):
         return self.injections
 
@@ -574,7 +649,7 @@ class Data:
         else: print('\n\tIgnoring the PE priors as we just use the events true values.')
 
         if not pars['single-mass']:
-            if 'MassRatio' in pars['model-secondary']:
+            if self.use_mass_ratio(pars):
                 if not pars['inverse-mass-ratio']: print('\n\tUsing the mass ratio for the secondary, defined as q=m2/m1.')
                 else:                              print('\n\tUsing the mass ratio for the secondary, defined as q=m1/m2.')
         else: print('\n\tUsing just the primary mass.')
@@ -680,7 +755,7 @@ class Data:
                     raise ValueError("Unknown PE-prior-distance option. Please choose from 'dL', 'dL3', 'UniformSourceFrame', 'per-run'.")
 
                 # Case of using mass ratio instead of the secondary mass.
-                if 'MassRatio' in pars['model-secondary']:
+                if self.use_mass_ratio(pars):
                     pos_dict['mass_ratio'] = pos_dict.pop('mass_2') / pos_dict['mass_1']
                     prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
 
@@ -725,7 +800,7 @@ class Data:
                 # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
                 prior = xp.full(len(pos_dict['mass_1']), 1.)
 
-                if 'MassRatio' in pars['model-secondary']:
+                if self.use_mass_ratio(pars):
                     if not pars['inverse-mass-ratio']: pos_dict['mass_ratio'] = pos_dict['mass_2'] / pos_dict['mass_1']
                     else:                              pos_dict['mass_ratio'] = pos_dict['mass_1'] / pos_dict['mass_2']
 
@@ -753,10 +828,18 @@ class Data:
                                 elif pars['PE-prior-masses'] == 'Mc-q' : prior *= chirp_mass / pos_dict['mass_1']                # |J_(Mc,q)->(m1,q)| = Mc/m1, with q = m1/m2.
 
                 samps_dict['{}'.format(i)] = icarogw.posterior_samples.posterior_samples(pos_dict, prior = prior)
-        
+
         self.data = icarogw.posterior_samples.posterior_samples_catalog(samps_dict)
         print('\n\tUsing a population of {} events.'.format(self.data.n_ev))
 
+    def use_mass_ratio(self, pars):
+
+        if not pars['use-mixture']:
+            self.flag = 'MassRatio' in pars['model-secondary']
+        else:
+            self.flag = 'MassRatio' in pars['model-secondary'][0]
+
+        return self.flag
     def return_Data(self):
         return self.data
 
@@ -977,13 +1060,31 @@ class LikelihoodPrior:
                 dict_out[const] = constraints_dict[const]['const_bilby']
                 print(constraints_dict[const]['print'])
             
-            dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = constraints_conversion_function)
+           # dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = constraints_conversion_function)
 
             return dict_out
 
         prior = bilby.core.prior.PriorDict()
-        prior = initialise_prior(pars['all-priors'], prior, w)
+        if not pars['use-mixture']:
+            prior = initialise_prior(pars['all-priors'], prior, w)
 
+        else:
+            # Rename mixture population parameters
+            all_priors = {}
+            # Population 1
+            for param, value in pars['all-priors'][0].items():
+                if param in pars['common-parameters']:
+                    all_priors[param] = value
+                else:
+                    all_priors[f"{param}_pop1"] = value
+            # Population 2
+            for param, value in pars['all-priors'][1].items():
+                if param not in pars['common-parameters']:
+                    all_priors[f"{param}_pop2"] = value
+            # Add mixture-model parameters
+            all_priors["lambda_pop"] = [0.0, 1.0]
+
+            prior = initialise_prior(all_priors, prior, w) 
         return prior
         
     def return_LikelihoodPrior(self):
@@ -1044,6 +1145,7 @@ def main():
     print(' * I will be running with the following parameters.\n')
     print_dictionary(input_pars)
 
+
     # ------------------------------------------------------------------------------ #
     # Initialise the ICAROGW run: model, data, selection effects, likelihood, priors #
     # ------------------------------------------------------------------------------ #
@@ -1054,6 +1156,7 @@ def main():
 
     tmp = Rate(input_pars, m1w, m2w, rw, sw, cw)
     wrapper = tmp.return_Rate()
+    
 
     # Read injections for selection effects.
     if not input_pars['ignore-selection-effects']:
@@ -1069,7 +1172,7 @@ def main():
     # Initialise hierarchical likelihood and set the priors.
     tmp = LikelihoodPrior(input_pars, data, injections, wrapper)
     likelihood, prior = tmp.return_LikelihoodPrior()
-
+    
     # Plot weighted injections
     # print("\n * Plotting weighted injections")
     # try: 
