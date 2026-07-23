@@ -45,7 +45,8 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
                 print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}, inferred. Bspline variable: lin.\n'.format(n_splines, degree, spacing))
                 return wrap(n_basis = n_splines, degree = degree, spacing = spacing)
             elif 'Bspline' in wrap_name and 'fixedKnots' in wrap_name:
-                print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots: fixed, inferred. Bspline variable: lin.\n'.format(n_splines, degree))
+                knots_print = f"[t_0, ..., t_{len(knots)-1}] = [" + ", ".join([f"{t:.2f}" for t in knots]) + "]"
+                print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Bspline variable: lin.\n\t\tKnots fixed at {}\n'.format(n_splines, degree, knots_print))
                 return wrap(n_basis = n_splines, degree = degree, knots = knots)
             elif 'Bspline' in wrap_name:
                 print('\t\tUsing a Bspline model with {} basis elements of degree {} for the log(pdf). Knots spacing: {}. Bspline variable: {}.\n'.format(n_splines, degree, spacing, spline_variable))
