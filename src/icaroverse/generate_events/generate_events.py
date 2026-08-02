@@ -651,6 +651,7 @@ def get_distribution_samples(pars):
         tmp = clean_nans_in_pdf(tmp)
         if not 'RedshiftProbability' in pars['model-rate']:
             tmp *= pars['wrappers']['cw'].cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Convert from rate to probability distribution.
+            tmp /= np.trapezoid(tmp, z_array)
             zs, pdf_z = _sampler(z_array, tmp, N_events, 1)
             if pars['plot-astrophysical']: plot_injected_distribution(pars, z_array, pars['wrappers']['rw'], 'rate_evolution', rate_evolution = 1)
         else:
