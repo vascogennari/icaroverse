@@ -384,19 +384,17 @@ class ReconstructDistributions:
             samp_filt = {key: samp[key] for key in rw.population_parameters} # Update the rate model.
             rw.update(**samp_filt)
 
-            func = np.exp(rw.rate.log_evaluate(z_array))
-            if not pars['scale-free']: curves[idx] = func * samp.R0
-            else:                      curves[idx] = func
+            curves[idx] = np.exp(rw.rate.log_evaluate(z_array))
 
             # Comoving volume and redshift (1/(1+z)*dV/dz).
             samp_filt = {key: samp[key] for key in cw.population_parameters} # Update the cosmology model.
             cw.update(**samp_filt)
 
             if not 'RedshiftProbability' in pars['model-rate']: curves[idx] *= cw.cosmology.dVc_by_dzdOmega_at_z(z_array) * 4*np.pi / (1+z_array) # Get p(z) from the rate.
-            curves[idx] = curves[idx]
+            curves[idx] /= np.trapezoid(curves[idx], z_array)
 
         curves_CI = get_curves_percentiles(curves, pars)
-        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', r'$\propto ln[p(z)]$', pars['model-rate'])
+        plot_dict = get_plot_parameters(pars, z_array, pars['bounds-z'][0], pars['bounds-z'][1], 'RateEvolutionDistribution_Probability', '#AC9512', '$z$', r'$p(z)$', pars['model-rate'])
 
         return curves_CI, plot_dict
 
