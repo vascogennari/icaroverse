@@ -70,6 +70,10 @@ def InitialiseOptions(Config):
         'splines-number'              : 10,
         'splines-degree'              : 2,
         'spacing'                     : 'uniform',
+        'spline-variable'             : 'uniform',
+        'knots'                       : [], 
+        'dirichlet-prior'             : True,
+        'dirichlet-alpha'             : 1.0,
 
         # Plots
         'N-points'                      : 10000,

@@ -64,9 +64,9 @@ def get_wrapper(wrap_name, input_wrapper = None, order = None, transition = None
             # GaussianRedshift-order-X model.
             return wrap(order = order)
     else:
-        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftQuadratic' or wrap_name == 'PowerLaw_GaussianRedshiftPowerLaw' or wrap_name == 'PowerLaw_GaussianRedshiftSigmoid' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear':
+        if   wrap_name == 'PowerLaw_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftQuadratic' or wrap_name == 'PowerLaw_GaussianRedshiftPowerLaw' or wrap_name == 'PowerLaw_GaussianRedshiftSigmoid' or wrap_name == 'PowerLawBroken_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLaw_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear':
             return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture, flag_powerlaw_smoothing = smoothing)
-        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_PowerLawRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear':
+        elif wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'GaussianRedshiftLinear_GaussianRedshiftLinear_GaussianRedshiftLinear' or wrap_name == 'PowerLawRedshiftLinear_PowerLawRedshiftLinear_GaussianRedshiftLinear':
             return wrap(redshift_transition = transition, flag_redshift_mixture = z_mixture)
         elif wrap_name == 'DoublePowerlawRedshift':
             return wrap(redshift_transition = transition)
@@ -108,7 +108,15 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
             if stability < 1: print('\n\tWARNING: The number of injections is not enough to ensure numerical stability in the computation of selection effects in the likelihood. Please consider using a larger set of injections.')
             # Check effective numer of posterior samples.
             try:
-                N_eff_PE  = xp.min(likelihood.posterior_samples_dict.get_effective_number_of_PE())
+                N_eff_PEs = likelihood.posterior_samples_dict.get_effective_number_of_PE()
+
+                # print("will save NeffPE")
+                # to_save_N_eff_PEs = icarogw.cupy_pal.cp2np(N_eff_PEs)
+                # _np = icarogw.cupy_pal.get_module_array(to_save_N_eff_PEs)
+                # _np.save(os.path.join(pars["output"], "NeffPEs_at"+("_true" if (not pars['true-values'] == {}) else "_maxL")), N_eff_PEs)
+                # print("has saved NeffPE")
+
+                N_eff_PE = xp.min(N_eff_PEs)
                 print('\n\tThe minimum effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, reference_model_str))
             except AttributeError as err:
                 # The first likelihood evaluation at true population values gives 0 because the effective number of injections is below threshold.
