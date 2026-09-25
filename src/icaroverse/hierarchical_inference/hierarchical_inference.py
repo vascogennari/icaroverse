@@ -985,7 +985,41 @@ class LikelihoodPrior:
             else: 
                 pass
 
+            # Treating differently splines coeffs for smoothing prior
+            if pars["smoothing-prior"]:
+                nc = pars['splines-number']
+                N = nc - 2
+                coeffs = [f"c{i}" for i in range(1, N+1)]
+                tau, sigma = pars["smoothing-prior-tau"], pars["smoothing-prior-sigma"]
+
+                # part of the covariance matrix given by the difference matrix
+                diff_covinv = xp.eye(N)
+                diff_covinv[1:-1, 1:-1] *= 2
+                for i in range(N-1):
+                    diff_covinv[i, i+1] = -1
+                    diff_covinv[i+1, i] = -1
+                diff_covinv = diff_covinv
+
+                # boundary coefficients
+                bound_covinv = xp.zeros_like(diff_covinv)
+                bound_covinv[ 0,  0] = 1.0
+                bound_covinv[-1, -1] = 1.0
+
+                covinv = diff_covinv / tau**2 + bound_covinv / sigma**2
+
+                cov = xp.linalg.inv(covinv)
+                cov = icarogw.cupy_pal.cp2np(cov)
+
+                mvg = bilby.prior.MultivariateGaussianDist(names=coeffs, covs=cov)
+
+                for coeff in coeffs:
+                    dict_out[coeff] = bilby.core.prior.MultivariateGaussian(mvg, name=coeff)
+
+            # Setting priors for other parameters
             for par in w.population_parameters:
+
+                if pars["smoothing-prior"] and par in coeffs:
+                    continue
 
                 # Dirichlet case via Gamma priors
                 if flag_use_dirichlet and par in dirichlet_coeffs and dirichlet_procedure == "gamma_normalised":

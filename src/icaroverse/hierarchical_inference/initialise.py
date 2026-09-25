@@ -59,6 +59,9 @@ def InitialiseOptions(Config):
         'knots'                       : [], 
         'dirichlet-prior'             : True,
         'dirichlet-alpha'             : 1.0,
+        'smoothing-prior'             : True,
+        'smoothing-prior-tau'         : 1.0,
+        'smoothing-prior-sigma'       : 1.0,
 
         # Sampler
         'sampler'                     : 'dynesty',
@@ -128,10 +131,10 @@ def InitialiseOptions(Config):
         if (key == 'model-primary') or (key == 'model-spin') or (key == 'model-secondary') or (key == 'model-rate') or (key == 'model-cosmology') or (key == 'model-bkg-cosmo') or (key == 'redshift-transition') or (key == 'spacing') or (key == 'spline-variable') or (key == 'mass-parameters'):
             try: input_pars[key] = Config.get('model', key)
             except: pass
-        if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior') or (key == 'constraint_qmin_muq_ordering'):
+        if (key == 'redshift-mixture') or (key == 'include-spin') or (key == 'low-smoothing') or (key == 'scale-free') or (key == 'single-mass') or (key == 'LISA-rate') or (key == 'inverse-mass-ratio') or (key == 'constraint_w0wa_earlyMDera') or (key == 'constraint_MD_redundancy') or (key == 'constraint_peak_ordering') or (key == 'dirichlet-prior') or (key == 'constraint_qmin_muq_ordering') or (key == 'smoothing-prior'):
             try: input_pars[key] = Config.getboolean('model', key)
             except: pass
-        if (key == 'zmax') or (key == 'dirichlet-alpha'):
+        if (key == 'zmax') or (key == 'dirichlet-alpha') or (key == 'smoothing-prior-tau') or (key == 'smoothing-prior-sigma'):
             try: input_pars[key] = Config.getfloat('model', key)
             except: pass
         if (key == 'priors') or (key == 'ref-cosmology') or (key == 'knots'):
