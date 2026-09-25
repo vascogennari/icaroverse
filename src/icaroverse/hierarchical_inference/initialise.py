@@ -57,9 +57,9 @@ def InitialiseOptions(Config):
         'spacing'                     : 'uniform',
         'spline-variable'             : 'uniform',
         'knots'                       : [], 
-        'dirichlet-prior'             : True,
+        'dirichlet-prior'             : False,
         'dirichlet-alpha'             : 1.0,
-        'smoothing-prior'             : True,
+        'smoothing-prior'             : False,
         'smoothing-prior-tau'         : 1.0,
         'smoothing-prior-sigma'       : 1.0,
 

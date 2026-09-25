@@ -7,8 +7,9 @@ from tqdm import tqdm
 import pickle, h5py, pandas as pd, json
 import icarogw, bilby, astropy
 
-if icarogw.cupy_pal.is_there_cupy(): import cupy  as xp
-else:                                import numpy as xp
+# if icarogw.cupy_pal.is_there_cupy(): import cupy  as xp
+# else:                                import numpy as xp
+import numpy as np
 
 from numpy import minimum
 
@@ -116,7 +117,7 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
                 # _np.save(os.path.join(pars["output"], "NeffPEs_at"+("_true" if (not pars['true-values'] == {}) else "_maxL")), N_eff_PEs)
                 # print("has saved NeffPE")
 
-                N_eff_PE = xp.min(N_eff_PEs)
+                N_eff_PE = np.min(N_eff_PEs)
                 print('\n\tThe minimum effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, reference_model_str))
             except AttributeError as err:
                 # The first likelihood evaluation at true population values gives 0 because the effective number of injections is below threshold.
@@ -132,7 +133,7 @@ def check_effective_number_injections(pars, likelihood, n_events, maxL_values = 
                 print('\n\tWARNING: Could not retrieve Neffinj')
             try:
                 N_eff_PEs = likelihood.posterior_samples_dict.get_effective_number_of_PE()
-                N_eff_PE = xp.min(N_eff_PEs)
+                N_eff_PE = np.min(N_eff_PEs)
                 print('\n\tThe minimum effective number of PE samples for the {1} model is {0:.1f}.'.format(N_eff_PE, reference_model_str))
             except:
                 print('\n\tWARNING: Could not retrieve NeffPE')
@@ -502,12 +503,14 @@ class SelectionEffects:
 
             if   pars['catalog'] == 'O3':
 
-                prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
+                # prior  = icarogw.cupy_pal.np2cp(data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()])
+                prior  = data_inj['injections/mass1_source_mass2_source_sampling_pdf'][()] * data_inj['injections/redshift_sampling_pdf'][()]
                 # Converting the injections from source to detector frame, we need to correct the injections prior by the Jacobian of the transformation (m1s,m2s,z)->(m1d,m2d,dL).
-                prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
+                # prior *= icarogw.conversions.source2detector_jacobian(icarogw.cupy_pal.np2cp(data_inj['injections/redshift'][()]), ref_cosmo)
+                prior *= icarogw.conversions.source2detector_jacobian(data_inj['injections/redshift'][()], ref_cosmo)
 
-                tmp = xp.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
-                ifarmax = xp.max(tmp, axis = 0)
+                tmp = np.vstack([data_inj['injections'][key] for key in ['ifar_cwb', 'ifar_gstlal', 'ifar_mbta', 'ifar_pycbc_bbh', 'ifar_pycbc_hyperbank']])
+                ifarmax = np.max(tmp, axis = 0)
 
                 if   pars['selection-effects-cut'] == 'snr' : selected_filt = (data_inj['snr'] >= pars['snr-cut' ])
                 elif pars['selection-effects-cut'] == 'ifar': selected_filt = (ifarmax         >= pars['ifar-cut'])
@@ -515,37 +518,37 @@ class SelectionEffects:
                     raise ValueError('Unknown option to compute the selection effects cut.')
 
                 inj_dict = {
-                    'mass_1':              xp.array(data_inj['injections/mass1'][()]),
-                    'mass_2':              xp.array(data_inj['injections/mass2'][()]),
-                    'luminosity_distance': xp.array(data_inj['injections/distance'][()])
+                    'mass_1':              np.array(data_inj['injections/mass1'][()]),
+                    'mass_2':              np.array(data_inj['injections/mass2'][()]),
+                    'luminosity_distance': np.array(data_inj['injections/distance'][()])
                 }
 
             elif pars['catalog'] in ['GWTC-4.0', 'GWTC-5.0']:
 
                 pars['injections-number'] = data_inj.attrs['total_generated']
                 events = data_inj['events'][:]
-                ifarmax = 1 / xp.min(xp.array([events[search + '_far'] for search in data_inj.attrs['searches']]), axis = 0)
+                ifarmax = 1 / np.min(np.array([events[search + '_far'] for search in data_inj.attrs['searches']]), axis = 0)
                 if   pars['selection-effects-cut'] == 'snr' : real_noise_condition = ifarmax >= pars['snr-cut']
                 elif pars['selection-effects-cut'] == 'ifar': real_noise_condition = ifarmax >= pars['ifar-cut']
                 else:
                     raise ValueError('Unknown option to compute the selection effects cut.')
-                selected_filt = (real_noise_condition) | (xp.array(events['semianalytic_observed_phase_maximized_snr_net']) >= pars['snr-cut-analytic'])
+                selected_filt = (real_noise_condition) | (np.array(events['semianalytic_observed_phase_maximized_snr_net']) >= pars['snr-cut-analytic'])
 
-                lnprior = xp.array(events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle'])
-                lnprior -= xp.log(xp.sin(xp.array(events['spin2_polar_angle'])) * xp.sin(xp.array(events['spin1_polar_angle']))) # Accounts from implied Jacobian from t->cost.
-                lnprior += xp.log(4 * xp.pi * xp.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
-                lnprior -= xp.log(xp.array(events['weights'])) # Weights for different observing runs.
-                lnprior -= xp.log(xp.array(events['dluminosity_distance_dredshift']) * xp.power(1+xp.array(events['redshift']),2.))
-                prior = xp.exp(lnprior)
+                lnprior = np.array(events['lnpdraw_mass1_source_mass2_source_redshift_spin1_magnitude_spin1_polar_angle_spin1_azimuthal_angle_spin2_magnitude_spin2_polar_angle_spin2_azimuthal_angle'])
+                lnprior -= np.log(np.sin(np.array(events['spin2_polar_angle'])) * np.sin(np.array(events['spin1_polar_angle']))) # Accounts from implied Jacobian from t->cost.
+                lnprior += np.log(4 * np.pi * np.pi) # Azimuthal angles, not accouted in icarogw have uniform prior 1/2pi that we remove.
+                lnprior -= np.log(np.array(events['weights'])) # Weights for different observing runs.
+                lnprior -= np.log(np.array(events['dluminosity_distance_dredshift']) * np.power(1+np.array(events['redshift']),2.))
+                prior = np.exp(lnprior)
 
                 inj_dict = {
-                    'mass_1': xp.array(xp.array(events['mass1_source']) * (1 + xp.array(events['redshift']))),
-                    'mass_2': xp.array(xp.array(events['mass2_source']) * (1 + xp.array(events['redshift']))),
-                    'luminosity_distance': xp.array(events['luminosity_distance']),
-                    'chi_1': xp.array(events['spin1_magnitude']),
-                    'cos_t_1': xp.cos(xp.array(events['spin1_polar_angle'])),
-                    'chi_2': xp.array(events['spin2_magnitude']),
-                    'cos_t_2': xp.cos(xp.array(events['spin2_polar_angle']))
+                    'mass_1': np.array(np.array(events['mass1_source']) * (1 + np.array(events['redshift']))),
+                    'mass_2': np.array(np.array(events['mass2_source']) * (1 + np.array(events['redshift']))),
+                    'luminosity_distance': np.array(events['luminosity_distance']),
+                    'chi_1': np.array(events['spin1_magnitude']),
+                    'cos_t_1': np.cos(np.array(events['spin1_polar_angle'])),
+                    'chi_2': np.array(events['spin2_magnitude']),
+                    'cos_t_2': np.cos(np.array(events['spin2_polar_angle']))
                 }
             
             else:
@@ -565,7 +568,7 @@ class SelectionEffects:
             elif pars['mass-parameters'] == 'Mc-q':
                 m1, m2 = inj_dict.pop('mass_1'), inj_dict.pop('mass_2')
                 q = m2 / m1
-                Mc_over_m1 = xp.power(q, 3/5) * xp.power(1+q, -1/5)
+                Mc_over_m1 = np.power(q, 3/5) * np.power(1+q, -1/5)
                 Mc = Mc_over_m1 * m1
                 inj_dict['mass_ratio'] = q
                 inj_dict['chirp_mass'] = Mc
@@ -592,16 +595,16 @@ class SelectionEffects:
         
             if pars['include-spin'] == 'per-run': raise Warning("'include-spin' option is not yet impolemented for simulated injections.")
 
-            selected_filt = xp.array(data_inj['snr']) > pars['snr-cut']
+            selected_filt = np.array(data_inj['snr']) > pars['snr-cut']
             # This prior must be the one in detector frame for the variables (m1d,m2d,dL).
             # Whatever distribution and variables used to generate the injections, please make sure it follows such conventions.
-            prior = xp.array(data_inj['prior'])
+            prior = np.array(data_inj['prior'])
             obs_time = 1
 
             inj_dict = {
-                'mass_1':              xp.array(data_inj['m1d']),
-                'mass_2':              xp.array(data_inj['m2d']),
-                'luminosity_distance': xp.array(data_inj['dL'])}
+                'mass_1':              np.array(data_inj['m1d']),
+                'mass_2':              np.array(data_inj['m2d']),
+                'luminosity_distance': np.array(data_inj['dL'])}
 
 # =========================================================================================================
 #  T O   B E   I M P R O V E D   I S O L A T I N G   I N V E R S E   Q   v
@@ -620,7 +623,7 @@ class SelectionEffects:
                     m1, m2 = inj_dict.pop('mass_2'), inj_dict.pop('mass_1')
                     if pars['inverse-mass-ratio']: q = m1 / m2
                     else:                          q = m2 / m1
-                    Mc_red = xp.power(q, 3/5) * xp.power(1+q, -1/5)
+                    Mc_red = np.power(q, 3/5) * np.power(1+q, -1/5)
                     if pars['inverse-mass-ratio']: Mc = Mc_red * m2
                     else:                          Mc = Mc_red * m1
                     inj_dict['mass_ratio'] = q
@@ -640,7 +643,7 @@ class SelectionEffects:
 
         print(
             '\n\tUsing {} injections out of {} to compute selection effects.'.format(
-                xp.sum(selected_filt), 
+                np.sum(selected_filt), 
                 len(selected_filt)
             )
         )
@@ -724,23 +727,23 @@ class Data:
                 data_evs = tmp[catalog[ev]['PE_waveform']]['posterior_samples']
 
                 pos_dict  = {
-                    'mass_1'             : xp.array(data_evs['mass_1'][()]),
-                    'mass_2'             : xp.array(data_evs['mass_2'][()]),
-                    'luminosity_distance': xp.array(data_evs['luminosity_distance'][()]),
-                    'chi_1'              : xp.array(data_evs['a_1'][()]),
-                    'chi_2'              : xp.array(data_evs['a_2'][()]),
-                    'cos_t_1'            : xp.array(data_evs['cos_tilt_1'][()]),
-                    'cos_t_2'            : xp.array(data_evs['cos_tilt_2'][()]),
+                    'mass_1'             : np.array(data_evs['mass_1'][()]),
+                    'mass_2'             : np.array(data_evs['mass_2'][()]),
+                    'luminosity_distance': np.array(data_evs['luminosity_distance'][()]),
+                    'chi_1'              : np.array(data_evs['a_1'][()]),
+                    'chi_2'              : np.array(data_evs['a_2'][()]),
+                    'cos_t_1'            : np.array(data_evs['cos_tilt_1'][()]),
+                    'cos_t_2'            : np.array(data_evs['cos_tilt_2'][()]),
                 }
 
                 # Account for PE priors. For O3 data, PE priors are uniform in component masses.
                 # Luminosity distance.
                 if   pars['PE-prior-distance'] == 'dL' : 
-                    prior = xp.ones(len(pos_dict['luminosity_distance']))    # Set the prior to one.
+                    prior = np.ones(len(pos_dict['luminosity_distance']))    # Set the prior to one.
                     event_print += " | dL prior: {:<30}".format('uniform in dL')
 
                 elif pars['PE-prior-distance'] == 'dL3': 
-                    prior = xp.power(   pos_dict['luminosity_distance'], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
+                    prior = np.power(   pos_dict['luminosity_distance'], 2.) # PE prior uniform in comoving volume: p(dL) \propto dL^2.
                     event_print += " | dL prior: {:<30}".format('uniform in detected volume')
 
                 elif pars['PE-prior-distance'] == 'UniformSourceFrame':
@@ -750,13 +753,14 @@ class Data:
                         maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
                         unit='Mpc'
                     )
-                    prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                    # prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                    prior = prior_usf.prob(pos_dict['luminosity_distance'])
                     event_print += " | dL prior: {:<30}".format('uniform in source frame')
 
                 elif pars['PE-prior-distance'] == 'per-run':
                     # If the filenames for O1-O3 events have 'nocosmo', they correspond to PE samples with dL priors \propto dL^2
                     if catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b'] and 'nocosmo' in catalog[ev]['PE']:
-                        prior = xp.power(   pos_dict['luminosity_distance'], 2.)
+                        prior = np.power(   pos_dict['luminosity_distance'], 2.)
                         event_print += " | dL prior: {:<30}".format('uniform in detected volume')
                     # If the filenames for O1-O3 events doesn't have 'nocosmo', they correspond to PE samples with UniformSourceFrame dL priors
                     elif catalog[ev]['run'] in ['O1', 'O2', 'O3a', 'O3b', 'O4a', 'O4b']:
@@ -766,7 +770,8 @@ class Data:
                             maximum=float(1.1*max(pos_dict['luminosity_distance'])), 
                             unit='Mpc'
                         )                        
-                        prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                        # prior = icarogw.cupy_pal.np2cp(prior_usf.prob(icarogw.cupy_pal.cp2np(pos_dict['luminosity_distance'])))
+                        prior = prior_usf.prob(pos_dict['luminosity_distance'])
 
                         event_print += " | dL prior: {:<30}".format('uniform in source frame')
                     else:
@@ -779,18 +784,18 @@ class Data:
                 if pars['inverse-mass-ratio']:
                     raise ValueError("Inference with inverse mass ratio q = m1/m2 > 1 unavailable for LVK data.")
                 elif pars['mass-parameters'] != 'Mc-q' and 'MassRatio' not in pars['model-secondary']:
-                    pos_dict['mass_1']     = xp.array(data_evs['mass_1'][()])
-                    pos_dict['mass_2']     = xp.array(data_evs['mass_2'][()])
+                    pos_dict['mass_1']     = np.array(data_evs['mass_1'][()])
+                    pos_dict['mass_2']     = np.array(data_evs['mass_2'][()])
                 elif pars['mass-parameters'] != 'Mc-q':
-                    pos_dict['mass_1']     = xp.array(data_evs['mass_1'][()])
-                    pos_dict['mass_ratio'] = xp.array(data_evs['mass_ratio'][()])
+                    pos_dict['mass_1']     = np.array(data_evs['mass_1'][()])
+                    pos_dict['mass_ratio'] = np.array(data_evs['mass_ratio'][()])
                     prior *= pos_dict['mass_1'] # |J_(m1,m2)->(m1,q)| = m1, with q = m2/m1.
                 else:
-                    Mc                     = xp.array(data_evs['chirp_mass'][()])
-                    q                      = xp.array(data_evs['mass_ratio'][()])
+                    Mc                     = np.array(data_evs['chirp_mass'][()])
+                    q                      = np.array(data_evs['mass_ratio'][()])
                     pos_dict['chirp_mass'] = Mc
                     pos_dict['mass_ratio'] = q
-                    prior *= Mc * xp.power(1+q, 2/5) * xp.power(q, -6/5) # |J_(m1,m2)->(Mc,q)| = Mc * (1+q)^2/5 / q^6/5
+                    prior *= Mc * np.power(1+q, 2/5) * np.power(q, -6/5) # |J_(m1,m2)->(Mc,q)| = Mc * (1+q)^2/5 / q^6/5
 
                 if pars['include-spin']:
                     amax = 1.
@@ -819,19 +824,19 @@ class Data:
 
                 if pars['true-data']:
                     pos_dict = {
-                        'mass_1':              xp.array([data_evs['m1d'][i]]),
-                        'mass_2':              xp.array([data_evs['m2d'][i]]),
-                        'luminosity_distance': xp.array([data_evs['dL' ][i]])}
+                        'mass_1':              np.array([data_evs['m1d'][i]]),
+                        'mass_2':              np.array([data_evs['m2d'][i]]),
+                        'luminosity_distance': np.array([data_evs['dL' ][i]])}
                 else:
                     idx = list(data_evs['m1d'].keys())[i]
                     if idx in pars['remove-events']: continue
                     pos_dict = {
-                        'mass_1':              xp.array(data_evs['m1d'][idx]),
-                        'mass_2':              xp.array(data_evs['m2d'][idx]),
-                        'luminosity_distance': xp.array(data_evs['dL' ][idx])}
+                        'mass_1':              np.array(data_evs['m1d'][idx]),
+                        'mass_2':              np.array(data_evs['m2d'][idx]),
+                        'luminosity_distance': np.array(data_evs['dL' ][idx])}
 
                 # Initialize the PE prior as flat for all variables. This is the case when only true values are used instead of the full PE.
-                prior = xp.full(len(pos_dict['mass_1']), 1.)
+                prior = np.full(len(pos_dict['mass_1']), 1.)
 
                 if pars['mass-parameters'] != 'Mc-q' and 'MassRatio' not in pars['model-secondary']:
                     pass
@@ -839,7 +844,7 @@ class Data:
                     pos_dict['mass_ratio'] = pos_dict['mass_2'] / pos_dict['mass_1']
                 else:
                     m1, m2 = pos_dict['mass_1'], pos_dict['mass_2']
-                    pos_dict['chirp_mass'] = xp.power(m1*m2, 3/5) * xp.power(m1+m2, -1/5)
+                    pos_dict['chirp_mass'] = np.power(m1*m2, 3/5) * np.power(m1+m2, -1/5)
                     pos_dict['mass_ratio'] = m2 / m1
 
                 if 'MassRatio' in pos_dict and pars['inverse-mass-ratio']:
@@ -876,7 +881,7 @@ class Data:
                                 clean_dict(pos_dict, ['mass_1', 'mass_2'])
 
                         elif pars['PE-prior-masses'] == 'Mc-q':
-                            chirp_mass = xp.power(pos_dict['mass_1']*pos_dict['mass_2'], 3/5) / xp.power(pos_dict['mass_1']+pos_dict['mass_2'], 1/5)
+                            chirp_mass = np.power(pos_dict['mass_1']*pos_dict['mass_2'], 3/5) / np.power(pos_dict['mass_1']+pos_dict['mass_2'], 1/5)
                             if (pars['mass-parameters'] != 'Mc-q') and ('MassRatio' not in pars['model-secondary']): #FIXME: handle everything with 'mass-parameters'
                                 prior *= chirp_mass / pos_dict['mass_1']**2 # |J_(Mc,q)->(m1,m2)| = Mc/m1^2, with q = m2/m1
                                 clean_dict(pos_dict, ['chirp_mass', 'mass_ratio'])
@@ -993,7 +998,7 @@ class LikelihoodPrior:
                 tau, sigma = pars["smoothing-prior-tau"], pars["smoothing-prior-sigma"]
 
                 # part of the covariance matrix given by the difference matrix
-                diff_covinv = xp.eye(N)
+                diff_covinv = np.eye(N)
                 diff_covinv[1:-1, 1:-1] *= 2
                 for i in range(N-1):
                     diff_covinv[i, i+1] = -1
@@ -1001,14 +1006,13 @@ class LikelihoodPrior:
                 diff_covinv = diff_covinv
 
                 # boundary coefficients
-                bound_covinv = xp.zeros_like(diff_covinv)
+                bound_covinv = np.zeros_like(diff_covinv)
                 bound_covinv[ 0,  0] = 1.0
                 bound_covinv[-1, -1] = 1.0
 
                 covinv = diff_covinv / tau**2 + bound_covinv / sigma**2
 
-                cov = xp.linalg.inv(covinv)
-                cov = icarogw.cupy_pal.cp2np(cov)
+                cov = np.linalg.inv(covinv)
 
                 mvg = bilby.prior.MultivariateGaussianDist(names=coeffs, covs=cov)
 
@@ -1065,13 +1069,13 @@ class LikelihoodPrior:
                     'pars':        ['gamma', 'kappa'], 
                     'func':        (lambda x, y: x + y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0, 
-                                                               maximum = xp.inf),
+                                                               maximum = np.inf),
                     'print':       "\t[ gamma + kappa > 0 ]",
                 },
                 'w0wa_earlyMDera': {
                     'pars':        ['w0', 'wa'], 
                     'func':        (lambda x, y: x + y),
-                    'const_bilby': bilby.core.prior.Constraint(minimum = - xp.inf, 
+                    'const_bilby': bilby.core.prior.Constraint(minimum = - np.inf, 
                                                                maximum = 0),
                     'print':       "\t[ w0 + wa < 0 ]",
                 },
@@ -1079,49 +1083,49 @@ class LikelihoodPrior:
                     'pars':        ['mu_g_high', 'mu_g_low'], 
                     'func':        (lambda x, y: x - y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
-                                                               maximum = xp.inf),
+                                                               maximum = np.inf),
                     'print':       "\t[ mu_g_high > mu_g_low ]",
                 },
                 'PL2G_peak_ordering': {
                     'pars':        ['mu_b_z0', 'mu_a_z0'], 
                     'func':        (lambda x, y: x - y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
-                                                               maximum = xp.inf),
+                                                               maximum = np.inf),
                     'print':       "\t[ mu_b_z0 > mu_a_z0 ]",
                 },
                 'nPL_peak_ordering': {
                     'pars':        [f'mmin_{c}' for c in "abcdefghij"], 
                     'func':        lambda *mmins: minimum.reduce([ (mmins[i+1] - mmins[i]) for i in range(len(mmins)-1)]),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
-                                                               maximum = xp.inf),
+                                                               maximum = np.inf),
                     'print':       "\t[ mmin_{p} < mmin_{p+1} for all peaks p ] (PL peak ordering).",
                 },
                 'nPL_minmax_ordering': {
                     'pars':        [f'{p}_{c}' for c in "abcdefghij" for p in ['mmin', 'mmax']], 
                     'func':        lambda *pars: minimum.reduce([ (pars[2*i+1] - pars[2*i]) for i in range(len(pars)//2)]),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 1., 
-                                                               maximum = xp.inf),
+                                                               maximum = np.inf),
                     'print':       "\t[ mmin_{p} < mmax_{p} for peaks p ] (PL minmax ordering).",
                 },
                 'mmin_mmin_a_ordering': {
                     'pars':        ['mmin_a', 'mmin'], 
                     'func':        (lambda x, y: x - y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
-                                                               maximum = xp.inf),
+                                                               maximum = np.inf),
                     'print':       "\t[ mmin_a > mmin ]",
                 },
                 'mmin_m1min_ordering': {
                     'pars':        ['m1min', 'mmin'], 
                     'func':        (lambda x, y: x - y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
-                                                               maximum = xp.inf),
+                                                               maximum = np.inf),
                     'print':       "\t[ m1min > mmin ]",
                 },
                 'qmin_muq_ordering': {
                     'pars':        ['mu_q', 'qmin'], 
                     'func':        (lambda x, y: x - y),
                     'const_bilby': bilby.core.prior.Constraint(minimum = 0., 
-                                                               maximum = xp.inf),
+                                                               maximum = np.inf),
                     'print':       "\t[ mu_q > qmin ]",
                 },
             }
@@ -1333,9 +1337,15 @@ def main():
     print('\n * Running hierarchical analysis with this settings.\n')
     if   input_pars['sampler'] == 'dynesty' or input_pars['sampler'] == 'nessai':
         sampler_pars = {key: input_pars[key] for key in ['sampler', 'nlive', 'naccept', 'print-method', 'sample']}
+
         if icarogw.cupy_pal.is_there_cupy():
-            sampler_pars['npool'] = None
             print("\tRunning sampler on GPU, enforcing npool==None (no multiprocessing).")
+            sampler_pars['npool'] = None
+
+            print("\nCupyfying likelihood...")
+            likelihood.cupyfy()
+            print("\t...done !")
+
         else: 
             sampler_pars['npool'] = input_pars['npool']
         if input_pars['sampler'] == 'nessai':
@@ -1379,28 +1389,28 @@ def main():
         for _ in tqdm(range(input_pars['correct-BF-Nsamples']), total=input_pars['correct-BF-Nsamples']):
             sample = prior.sample(1)
             likelihood.parameters = {key:sample[key][0] for key in sample.keys()}
-            if likelihood.log_likelihood() == float(xp.nan_to_num(-xp.inf)):
+            if likelihood.log_likelihood() == float(np.nan_to_num(-np.inf)):
                 failed += 1
         eff_prior_vol_fraction = 1 - failed/input_pars['correct-BF-Nsamples']
         print('Effective volume: ', eff_prior_vol_fraction)
     else:
-        eff_prior_vol_fraction = xp.nan
+        eff_prior_vol_fraction = np.nan
 
     with open('{}/log_evidence.txt'.format(input_pars['output']), 'w') as f:
         f.write('# {:<15} {:<17} {:<17} {:<17} {:<17}\n'.format("log_Z_base_e", "log_Z_err", "max_log_L", "eff_prior_vol", "log_eff_prior_vol"))
         log_evidence_err = round(tmp['log_evidence_err'], 2)
-        if xp.isnan(tmp['log_evidence_err']): log_evidence_err = 0.1
+        if np.isnan(tmp['log_evidence_err']): log_evidence_err = 0.1
         f.write('{:17.2f} {:17.2f} {:17.2f} {:17.2e} {:17.2f}'.format(
             tmp['log_evidence'], 
             log_evidence_err, 
             max(df['log_likelihood']), 
             eff_prior_vol_fraction, 
-            xp.log(eff_prior_vol_fraction), 
+            np.log(eff_prior_vol_fraction), 
         ))
 
     # Control the effective number of injections on the maximum likelihood model.
     print('\n * Computing effective number of injections.')
-    maxL_index  = int(xp.argmax(xp.array(df['log_likelihood'])))
+    maxL_index  = int(np.argmax(np.array(df['log_likelihood'])))
     maxL_values = {key: df[key][maxL_index] for key in wrapper.population_parameters}
     if not input_pars['ignore-selection-effects']:
         # Control the effective number of injections on the maximum likelihood model.
