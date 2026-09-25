@@ -990,39 +990,20 @@ class LikelihoodPrior:
             else: 
                 pass
 
-            # Treating differently splines coeffs for smoothing prior
+            # Setting the coeffs names for splines with smoothing prior
             if pars["smoothing-prior"]:
                 nc = pars['splines-number']
                 N = nc - 2
                 coeffs = [f"c{i}" for i in range(1, N+1)]
-                tau, sigma = pars["smoothing-prior-tau"], pars["smoothing-prior-sigma"]
-
-                # part of the covariance matrix given by the difference matrix
-                diff_covinv = np.eye(N)
-                diff_covinv[1:-1, 1:-1] *= 2
-                for i in range(N-1):
-                    diff_covinv[i, i+1] = -1
-                    diff_covinv[i+1, i] = -1
-                diff_covinv = diff_covinv
-
-                # boundary coefficients
-                bound_covinv = np.zeros_like(diff_covinv)
-                bound_covinv[ 0,  0] = 1.0
-                bound_covinv[-1, -1] = 1.0
-
-                covinv = diff_covinv / tau**2 + bound_covinv / sigma**2
-
-                cov = np.linalg.inv(covinv)
-
-                mvg = bilby.prior.MultivariateGaussianDist(names=coeffs, covs=cov)
-
-                for coeff in coeffs:
-                    dict_out[coeff] = bilby.core.prior.MultivariateGaussian(mvg, name=coeff)
+                raw_coeffs = [f"z{i}" for i in range(1, N+1)]
 
             # Setting priors for other parameters
             for par in w.population_parameters:
 
+                # Treating differently splines coeffs for smoothing prior
                 if pars["smoothing-prior"] and par in coeffs:
+                    raw_coeff = raw_coeffs[coeffs.index(par)]
+                    dict_out[raw_coeff] = bilby.prior.Gaussian(0., 1., name=raw_coeff)
                     continue
 
                 # Dirichlet case via Gamma priors
@@ -1059,6 +1040,12 @@ class LikelihoodPrior:
                     for key in sorted(list(dict_out.keys()-set(dirichlet_coeffs)))
                 })
                 print(f'\n\tUsing a Dirichlet(alpha={alpha:.2f}) prior for the following set of coefficients: {dirichlet_coeffs}.')
+            elif pars["smoothing-prior"]:
+                print_dictionary({
+                    key: dict_in[key] 
+                    for key in sorted(list(dict_out.keys()-set(raw_coeffs)))
+                })
+                print(f'\n\tUsing a smoothing prior for the following set of coefficients: {coeffs}\n\twith the following parameters:\n\t\tstd of difference of neighbouring coefficients: {tau:.3f}\n\t\tstd of boundary coefficients {coeffs[0]} and {coeffs[-1]}: {sigma:.3f}')
             else:
                 print_dictionary({key: dict_in[key] for key in dict_out.keys()})
 
@@ -1366,16 +1353,97 @@ def main():
     if input_pars['sampler'] == 'nessai':
         if not input_pars['nessai-plot']: sampler_pars.update(dict(nessai_plot = False))
 
-    # Start Bilby sampler.
-    print('\n * Starting the sampler.\n')
-    hierarchical = bilby.run_sampler(
-            likelihood, prior,
-            outdir       = os.path.join(input_pars['output'], 'sampler'),
-            **sampler_pars,
-    )
+    # theta = prior.sample()
+    # print(theta.keys())
+
+    # theta = prior.conversion_function(theta)
+
+    # for i in range(1, 21):
+    #     print(
+    #         f"c{i}:",
+    #         theta[f"c{i}"],
+    #         type(theta[f"c{i}"])
+    #     )
+    # coeffs = [theta[f"c{i}"] for i in range(1, 21)]
+
+    # print(np.asarray(coeffs).dtype)
+    # print(np.asarray(coeffs).shape)
+    # # exit()
+
+    # Define a wrepped likelihood for smoothing prior on splines coeffs.
+    if input_pars["smoothing-prior"]:
+
+        class ZToCLikelihood(bilby.Likelihood):
+
+            def __init__(self, likelihood, L):
+                super().__init__()
+                self.likelihood = likelihood
+                self.L = L
+                self.N = L.shape[0]
+                self.coeffs = [f"c{i}" for i in range(1, self.N + 1)]
+                self.raw_coeffs = [f"z{i}" for i in range(1, self.N + 1)]
+                # ONLY the parameters that Nessai should sample
+                sampled_parameters = {par: None for par in likelihood.parameters if not (par in self.coeffs)}
+                sampled_parameters.update({rc: None for rc in self.raw_coeffs})
+                self.parameters = sampled_parameters
+
+            def log_likelihood(self):
+                z_arr = np.asarray([self.parameters[rc] for rc in self.raw_coeffs], dtype=float)
+                c_arr = self.L @ z_arr
+                # Pass z -> c to the underlying likelihood
+                my_parameters = {par: self.parameters[par] for par in likelihood.parameters if not (par in self.coeffs)}
+                my_parameters.update({coeff: float(c) for coeff, c in zip(coeffs, c_arr)})
+                self.likelihood.parameters.update(my_parameters)
+                return self.likelihood.log_likelihood()
+
+        nc = input_pars['splines-number']
+        N = nc - 2
+
+        coeffs = [f"c{i}" for i in range(1, N+1)]
+        raw_coeffs = [f"z{i}" for i in range(1, N+1)]
+
+        tau, sigma = input_pars["smoothing-prior-tau"], input_pars["smoothing-prior-sigma"]
+        # part of the covariance matrix given by the difference matrix
+        diff_covinv = np.eye(N)
+        diff_covinv[1:-1, 1:-1] *= 2
+        for i in range(N-1):
+            diff_covinv[i, i+1] = -1
+            diff_covinv[i+1, i] = -1
+        diff_covinv = diff_covinv
+
+        # boundary coefficients
+        bound_covinv = np.zeros_like(diff_covinv)
+        bound_covinv[ 0,  0] = 1.0
+        bound_covinv[-1, -1] = 1.0
+
+        covinv = diff_covinv / tau**2 + bound_covinv / sigma**2
+
+        cov = np.linalg.inv(covinv)
+        chol = np.linalg.cholesky(cov)
+
+        print("my pars before wrapping : ", likelihood.parameters)
+
+        wrapped_likelihood = ZToCLikelihood(likelihood, chol)
+        # Start Bilby sampler.
+        print('\n * Starting the sampler.\n')
+        hierarchical = bilby.run_sampler(
+                wrapped_likelihood, prior,
+                outdir       = os.path.join(input_pars['output'], 'sampler'),
+                **sampler_pars,
+        )
+
+    else:
+        # Start Bilby sampler.
+        print('\n * Starting the sampler.\n')
+        hierarchical = bilby.run_sampler(
+                likelihood, prior,
+                outdir       = os.path.join(input_pars['output'], 'sampler'),
+                **sampler_pars,
+        )
+
     if input_pars['true-values'] == {}: hierarchical.plot_corner()
     else:                               hierarchical.plot_corner(truth = {key: input_pars['true-values'][key] for key in hierarchical.search_parameter_keys})
-    
+
     # Get the samples.
     samp_path = os.path.join(input_pars['output'], 'sampler', 'label_result.json')
     with open(samp_path) as f:
