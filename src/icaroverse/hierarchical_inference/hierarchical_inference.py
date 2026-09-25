@@ -997,6 +997,25 @@ class LikelihoodPrior:
                 coeffs = [f"c{i}" for i in range(1, N+1)]
                 raw_coeffs = [f"z{i}" for i in range(1, N+1)]
 
+                tau, sigma = pars["smoothing-prior-tau"], pars["smoothing-prior-sigma"]
+                # part of the covariance matrix given by the difference matrix
+                diff_covinv = np.eye(N)
+                diff_covinv[1:-1, 1:-1] *= 2
+                for i in range(N-1):
+                    diff_covinv[i, i+1] = -1
+                    diff_covinv[i+1, i] = -1
+                diff_covinv = diff_covinv
+
+                # boundary coefficients
+                bound_covinv = np.zeros_like(diff_covinv)
+                bound_covinv[ 0,  0] = 1.0
+                bound_covinv[-1, -1] = 1.0
+
+                covinv = diff_covinv / tau**2 + bound_covinv / sigma**2
+
+                cov = np.linalg.inv(covinv)
+                chol = np.linalg.cholesky(cov)
+
             # Setting priors for other parameters
             for par in w.population_parameters:
 
@@ -1197,12 +1216,20 @@ class LikelihoodPrior:
                 constraints_dict.pop('mmin_m1min_ordering')
 
             # implementing the conversion function based on all the constraints that we kept
-            def constraints_conversion_function(params):
+            def conversion_function(params):
+                # constraitns part
                 converted_params = params.copy()
                 for const in constraints_dict:
                     converted_params[const] = constraints_dict[const]['func'](
                         *[params[par] for par in constraints_dict[const]['pars']]
                     )
+                # smoothing prior conversion part
+                if pars["smoothing-prior"]:
+                    z = np.array([params[f"z{i}"] for i in range(1, N+1)])
+                    c = chol @ z
+                    for i in range(N):
+                        converted_params[f"c{i+1}"] = c[i]
+
                 return converted_params
 
             # Adding the constraitns as bilby objects in the prior dictionary
@@ -1210,7 +1237,7 @@ class LikelihoodPrior:
                 dict_out[const] = constraints_dict[const]['const_bilby']
                 print(constraints_dict[const]['print'])
             
-            dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = constraints_conversion_function)
+            dict_out = bilby.core.prior.PriorDict(dict_out, conversion_function = conversion_function)
 
             return dict_out
 
