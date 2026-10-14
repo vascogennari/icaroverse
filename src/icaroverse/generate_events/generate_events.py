@@ -732,6 +732,8 @@ def get_distribution_samples(pars):
                 m2s = pars['wrappers']['m2w'].prior.sample(N_events)
                 pdf_m2 = pars['wrappers']['m2w'].prior.pdf(m2s)
                 pdf_m1m2 = pdf_m1 * pdf_m2
+                tmp = pars['wrappers']['m2w'].pdf(m2_array)
+                pdf_m2_array = tmp
                 if pars['plot-astrophysical']: plot_injected_distribution(pars, m2_array, pars['wrappers']['m2w'], 'm2_source_frame', m2_samps = m2s)
     else:
         m2s = np.zeros(N_events)
