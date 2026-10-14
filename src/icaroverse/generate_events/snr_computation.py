@@ -488,19 +488,28 @@ try:
         N = len(m1d)
 
         # Randomize the remaining parameters
-        t0     = np.random.uniform(0., Tobs, N)
-        inc    = np.random.uniform(0., np.pi, N)
-        phi    = np.random.uniform(0., 2 * np.pi, N)
-        lambd  = np.random.uniform(0., 2 * np.pi, N)
-        beta   = np.random.uniform(np.pi/2, np.pi/2, N)
-        psi    = np.random.uniform(0., 2 * np.pi, N)
+        t0 = np.random.uniform(0., Tobs, N)
 
-        # Draw spin orientations unifrormly on a unit sphere
-        # Keep only the aligned components for the SNR computation
-        a_1    = np.random.uniform(0., 1., N)
-        a_2    = np.random.uniform(0., 1., N)
+        # Isotropic binary orientation
+        inc = np.arccos(np.random.uniform(-1., 1., N))
+        phi = np.random.uniform(0., 2*np.pi, N)
+
+        # Isotropic sky position
+        lambd = np.random.uniform(0., 2*np.pi, N)
+        beta = np.arcsin(np.random.uniform(-1., 1., N))
+
+        # Uniform polarization angle
+        psi = np.random.uniform(0., 2*np.pi, N)
+
+        # Spin magnitudes: uniform in [0, 1]
+        a_1 = np.random.uniform(0., 1., N)
+        a_2 = np.random.uniform(0., 1., N)
+
+        # Spin orientations: isotropic
         tilt_1 = np.arccos(np.random.uniform(-1., 1., N))
         tilt_2 = np.arccos(np.random.uniform(-1., 1., N))
+
+        # Aligned spin components
         chi1 = a_1 * np.cos(tilt_1)
         chi2 = a_2 * np.cos(tilt_2)
 
