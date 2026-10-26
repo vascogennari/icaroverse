@@ -1010,10 +1010,11 @@ def compute_SNR(pars, m1s, m2s, zs, m1d, m2d, dL, save_strain=False, other_param
         print('\n * Computing the SNR with lisabeta')
 
         try:
-            SNR = snr_computation.SNR_lisabeta(m1d, m1d/m2d, dL, Tobs = pars['observation-time'])
-            idx_detected = snr_computation.cut_SNR(SNR)
-            idx_softcut  = snr_computation.cut_SNR(SNR, snr_thr=pars['SNR-soft-cut'])
-            additional_parameters = {}
+            ldp = snr_computation.LisabetaDetectionPipeline(m1d, m1d/m2d, dL, Tobs = pars['observation-time'])
+            additional_parameters = ldp.draw_additional_parameters()
+            SNR = ldp.compute_optimal_SNR()
+            idx_detected = ldp.cut_SNR(snr_thr=pars['SNR-cut'])
+            idx_softcut  = ldp.cut_SNR(snr_thr=pars['SNR-soft-cut'])
         except AttributeError:
             raise ImportError("Please make sure lisabeta is properly installed if you wish to use it for SNR computation. (See https://pypi.org/project/lisabeta/)")
 

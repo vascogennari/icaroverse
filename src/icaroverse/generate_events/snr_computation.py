@@ -482,123 +482,152 @@ class BilbyDetectionPipeline():
 try:
     import lisabeta.lisa.lisa as lisa
 
-    def SNR_lisabeta(m1d, q, dL, Tobs = 4.):
+    class LisabetaDetectionPipeline():
+        '''
+        Class to compute SNR & draw missing single event parameters using lisabeta.
+        '''
+        def __init__(self, m1d, q, dL, Tobs = 4.):
 
-        SNR = []
-        N = len(m1d)
+            self.m1d = m1d
+            self.q = q
+            self.dL = dL
+            self.Tobs = Tobs
 
-        # Randomize the remaining parameters
-        t0 = np.random.uniform(0., Tobs, N)
+        def draw_additional_parameters(self):
 
-        # Isotropic binary orientation
-        inc = np.arccos(np.random.uniform(-1., 1., N))
-        phi = np.random.uniform(0., 2*np.pi, N)
+            N = len(self.m1d)
 
-        # Isotropic sky position
-        lambd = np.random.uniform(0., 2*np.pi, N)
-        beta = np.arcsin(np.random.uniform(-1., 1., N))
+            # Randomize the remaining parameters
+            self.t0 = np.random.uniform(0., self.Tobs, N)
 
-        # Uniform polarization angle
-        psi = np.random.uniform(0., 2*np.pi, N)
+            # Isotropic binary orientation
+            self.inc = np.arccos(np.random.uniform(-1., 1., N))
+            self.phi = np.random.uniform(0., 2*np.pi, N)
 
-        # Spin magnitudes: uniform in [0, 1]
-        a_1 = np.random.uniform(0., 1., N)
-        a_2 = np.random.uniform(0., 1., N)
+            # Isotropic sky position
+            self.lambd = np.random.uniform(0., 2*np.pi, N)
+            self.beta = np.arcsin(np.random.uniform(-1., 1., N))
 
-        # Spin orientations: isotropic
-        tilt_1 = np.arccos(np.random.uniform(-1., 1., N))
-        tilt_2 = np.arccos(np.random.uniform(-1., 1., N))
+            # Uniform polarization angle
+            self.psi = np.random.uniform(0., 2*np.pi, N)
 
-        # Aligned spin components
-        chi1 = a_1 * np.cos(tilt_1)
-        chi2 = a_2 * np.cos(tilt_2)
+            # Spin magnitudes: uniform in [0, 1]
+            self.a_1 = np.random.uniform(0., 1., N)
+            self.a_2 = np.random.uniform(0., 1., N)
 
-        i = 0
-        for mi, qi, di in zip(m1d, q, dL):
-            
-            M = mi + mi / qi
+            # Spin orientations: isotropic
+            self.tilt_1 = np.arccos(np.random.uniform(-1., 1., N))
+            self.tilt_2 = np.arccos(np.random.uniform(-1., 1., N))
+
+            # Aligned spin components
+            self.chi1 = self.a_1 * np.cos(self.tilt_1)
+            self.chi2 = self.a_2 * np.cos(self.tilt_2)
 
             params = {
-                'M':      M,         # Total *redshifted* mass M=m1+m2 [M_odot]
-                'q':      qi,        # Mass ratio q=m1/m2
-                'dist':   di,        # Luminosity distance [Mpc]
-                'chi1':   chi1[i],   # Dimensionless spin 1 component along orbital momentum
-                'chi2':   chi2[i],   # Dimensionless spin 2 component along orbital momentum
-                'inc':    inc[i],    # Inclination, observer's colatitude in source-frame
-                'phi':    phi[i],    # Phase, observer's longitude in source-frame
-                'lambda': lambd[i],  # Longitude in the sky
-                'beta':   beta[i],   # Latitude in the sky
-                'psi':    psi[i],    # Polarization angle
-
-                'Deltat': 0.,        # Time shift of coalescence, s -- coalescence is at t0*yr + Deltat*s, t0 in waveform_params
-                'Lframe': True       # Flag indicating whether angles and Deltat pertain to the L-frame or SSB-frame
+                't0': self.t0,
+                'inc': self.inc,
+                'phi': self.phi,
+                'lambda': self.lambd,
+                'beta': self.beta,
+                'psi': self.psi,
+                'chi1': self.chi1,
+                'chi2': self.chi2
             }
-            
-            waveform_params = {
-                
-                # Frequency range
-                'minf':                  1e-10,
-                'maxf':                  0.5,
-                
-                't0':                    t0[i],  # Reference epoch of coalescence, yr -- coalescence is at t0*yr + Deltat*s, Deltat in params
-                'timetomerger_max':      Tobs,   # Always cut signals timetomerger_max*yr before merger -- to avoid needlessly long signals using minf
-                'DeltatL_cut':           None,   # Option to cut the signal pre-merger -- must be in L-frame
-                
-                # Further options to cut signals
-                'fend':                  None,
-                'tmin':                  None,
-                'tmax':                  None,
 
-                # Options for the time and phase alignment -- development/testing
-                'phiref':                0.0,
-                'fref_for_phiref':       0.0,
-                'tref':                  0.0,
-                'fref_for_tref':         0.0,
-                'toffset':               0.0,
-                'force_phiref_fref':     True,
+            return params
+
+        def compute_optimal_SNR(self):
+
+            SNR = []
+
+            i = 0
+            for mi, qi, di in zip(self.m1d, self.q, self.dL):
                 
-                # TDI channels to generate
-                'TDI':                   'TDIAET',
+                M = mi + mi / qi
 
-                # Internal accuracy params
-                'acc':                   1e-4,
-                'order_fresnel_stencil': 0,
+                params = {
+                    'M':      M,              # Total *redshifted* mass M=m1+m2 [M_odot]
+                    'q':      qi,             # Mass ratio q=m1/m2
+                    'dist':   di,             # Luminosity distance [Mpc]
+                    'chi1':   self.chi1[i],   # Dimensionless spin 1 component along orbital momentum
+                    'chi2':   self.chi2[i],   # Dimensionless spin 2 component along orbital momentum
+                    'inc':    self.inc[i],    # Inclination, observer's colatitude in source-frame
+                    'phi':    self.phi[i],    # Phase, observer's longitude in source-frame
+                    'lambda': self.lambd[i],  # Longitude in the sky
+                    'beta':   self.beta[i],   # Latitude in the sky
+                    'psi':    self.psi[i],    # Polarization angle
 
-                # Waveform approximant and set of harmonics to use
-                'approximant':           'IMRPhenomXHM',
-                'modes':                 None,
-
-                # LISA response options
-                'LISAconst':             'Proposal',
-                'responseapprox':        'full',
-                'frozenLISA':            False,
-                'TDIrescaled':           True,
-                
-                # Noise options -- can also be given as a numpy array for interpolation
-                'LISAnoise': {
-                    'InstrumentalNoise':       'SciRDv1',
-                    'WDbackground':            True,
-                    'WDduration' :             Tobs,
-                    'lowf_add_pm_noise_f0':    0.0,
-                    'lowf_add_pm_noise_alpha': 2.0
+                    'Deltat': 0.,             # Time shift of coalescence, s -- coalescence is at t0*yr + Deltat*s, t0 in waveform_params
+                    'Lframe': True            # Flag indicating whether angles and Deltat pertain to the L-frame or SSB-frame
                 }
-            }
+                
+                waveform_params = {
+                    
+                    # Frequency range
+                    'minf':                  1e-10,
+                    'maxf':                  0.5,
+                    
+                    't0':                    self.t0[i],  # Reference epoch of coalescence, yr -- coalescence is at t0*yr + Deltat*s, Deltat in params
+                    'timetomerger_max':      self.Tobs,   # Always cut signals timetomerger_max*yr before merger -- to avoid needlessly long signals using minf
+                    'DeltatL_cut':           None,        # Option to cut the signal pre-merger -- must be in L-frame
+                    
+                    # Further options to cut signals
+                    'fend':                  None,
+                    'tmin':                  None,
+                    'tmax':                  None,
+
+                    # Options for the time and phase alignment -- development/testing
+                    'phiref':                0.0,
+                    'fref_for_phiref':       0.0,
+                    'tref':                  0.0,
+                    'fref_for_tref':         0.0,
+                    'toffset':               0.0,
+                    'force_phiref_fref':     True,
+                    
+                    # TDI channels to generate
+                    'TDI':                   'TDIAET',
+
+                    # Internal accuracy params
+                    'acc':                   1e-4,
+                    'order_fresnel_stencil': 0,
+
+                    # Waveform approximant and set of harmonics to use
+                    'approximant':           'IMRPhenomXHM',
+                    'modes':                 None,
+
+                    # LISA response options
+                    'LISAconst':             'Proposal',
+                    'responseapprox':        'full',
+                    'frozenLISA':            False,
+                    'TDIrescaled':           True,
+                    
+                    # Noise options -- can also be given as a numpy array for interpolation
+                    'LISAnoise': {
+                        'InstrumentalNoise':       'SciRDv1',
+                        'WDbackground':            True,
+                        'WDduration' :             self.Tobs,
+                        'lowf_add_pm_noise_f0':    0.0,
+                        'lowf_add_pm_noise_alpha': 2.0
+                    }
+                }
+                
+                # Generate the waveform
+                tdi_signal = lisa.GenerateLISATDISignal_SMBH(params, **waveform_params)
+                SNR.append(tdi_signal['SNR'])
+                i += 1
+
+                self.snr = np.array(SNR)
             
-            # Generate the waveform
-            tdi_signal = lisa.GenerateLISATDISignal_SMBH(params, **waveform_params)
-            SNR.append(tdi_signal['SNR'])
-            i += 1
-        
-        return np.array(SNR)
+            return self.snr
+
+        def cut_SNR(self, snr_thr = 10):
+            '''
+            Apply a cut in snr : snr > snrthr
+            Returns the indices of each event that fits the criterion.
+            '''
+            indices = np.where((self.snr >= snr_thr))[0]
+
+            return indices
 
 except (ModuleNotFoundError, ImportError):
     logging.warning("Failed to import lisabeta. (See https://pypi.org/project/lisabeta/)")
-
-def cut_SNR(snr, snr_thr = 10):
-    '''
-    Apply a cut in snr : snr > snrthr
-    Returns the indices of each event that fits the criterion.
-    '''
-    indices = np.where((snr >= snr_thr))[0]
-
-    return indices
