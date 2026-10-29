@@ -1468,8 +1468,9 @@ def main():
                 **sampler_pars,
         )
 
-    if input_pars['true-values'] == {}: hierarchical.plot_corner()
-    else:                               hierarchical.plot_corner(truth = {key: input_pars['true-values'][key] for key in hierarchical.search_parameter_keys})
+    if input_pars['plot-corner']:
+        if input_pars['true-values'] == {}: hierarchical.plot_corner()
+        else:                               hierarchical.plot_corner(truth = {key: input_pars['true-values'][key] for key in hierarchical.search_parameter_keys})
 
     # Get the samples.
     samp_path = os.path.join(input_pars['output'], 'sampler', 'label_result.json')

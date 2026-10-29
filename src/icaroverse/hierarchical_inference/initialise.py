@@ -86,6 +86,7 @@ def InitialiseOptions(Config):
         'allow_multi_valued_likelihood': False, 
 
         # Plots
+        'plot-corner'                 : True,
         'N-points'                    : 500,
         'N-z-slices'                  : 5,
         'bounds-m1'                   : [0, 100],
@@ -168,7 +169,7 @@ def InitialiseOptions(Config):
         if (key == 'true-values') or (key == 'bounds-m1') or (key == 'bounds-m2') or (key == 'bounds-q') or (key == 'bounds-dL') or (key == 'bounds-z')  or (key == 'percentiles'):
             try: input_pars[key] = ast.literal_eval(Config.get('plots', key))
             except: pass
-        if (key == 'selection-effects') or (key == 'plot-prior') or (key == 'log10-PDF'):
+        if (key == 'selection-effects') or (key == 'plot-prior') or (key == 'log10-PDF') or (key == 'plot-corner'):
             try: input_pars[key] = Config.getboolean('plots', key)
             except: pass
         if (key == 'downsample-postprocessing') or (key == 'KDE-bandwidth-scale') or (key == 'KDE-bandwidth-scale-m1'):
@@ -557,6 +558,7 @@ usage = """
     # plots #
     # ----- #
 
+        plot-corner                 [bool ]  Flag to create the corner plot with bilby at the end of the inference. Default: True. 
         N-points                    [int  ]  Number of points used to evaluate the reconstructed distributions. Default: 500.
         N-z-slices                  [int  ]  Number of points in redshift for which the conditional primary mass distribution is evaluated. Default: 5.
         bounds-m1                   [list ]  Bounds used to reconstruct the primary mass distribution. Default: [0, 100].
