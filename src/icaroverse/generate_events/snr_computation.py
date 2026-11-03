@@ -502,14 +502,14 @@ try:
 
             # Isotropic binary orientation
             self.inc = np.arccos(np.random.uniform(-1., 1., N))
-            self.phi = np.random.uniform(0., 2*np.pi, N)
+            self.phi = np.random.uniform(-np.pi, np.pi, N)
 
             # Isotropic sky position
-            self.lambd = np.random.uniform(0., 2*np.pi, N)
+            self.lambd = np.random.uniform(-np.pi, np.pi, N)
             self.beta = np.arcsin(np.random.uniform(-1., 1., N))
 
             # Uniform polarization angle
-            self.psi = np.random.uniform(0., 2*np.pi, N)
+            self.psi = np.random.uniform(0., np.pi, N)
 
             # Spin magnitudes: uniform in [0, 1]
             self.a_1 = np.random.uniform(0., 1., N)
