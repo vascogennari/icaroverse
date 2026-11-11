@@ -1,5 +1,5 @@
 # The PE samples are publicly available here:
-# https://zenodo.org/records/6513631PE for O1, O2 and O3a events.
+# https://zenodo.org/records/6513631 for O1, O2 and O3a events.
 # https://zenodo.org/records/8177023 for O3b events.
 # https://zenodo.org/records/17014085 for O4a events.
 # https://zenodo.org/records/20348005 and https://zenodo.org/records/20348006 for O4b events
